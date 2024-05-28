@@ -1,0 +1,17 @@
+@prefix math: <http://www.w3.org/2000/10/swap/math#> .
+@prefix list: <http://www.w3.org/2000/10/swap/list#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix log: <http://www.w3.org/2000/10/swap/log#> .
+@prefix dfg: <http://rdf.org/dfg#> .
+@prefix : <http://example.org/> .
+
+{ ?desc dfg:ancestor ?anc }
+<= { ?desc dfg:parent ?parent . ?parent dfg:ancestor ?anc } .
+
+# c - b, b - ? > _b - ?_ | __b - b__
+#   b - a, a - ? > X a - ? | _a - a_
+{ ?desc dfg:ancestor ?desc } <= { true log:callWithCut true } .
+
+# :d dfg:parent :c .
+:c dfg:parent :b .
+:b dfg:parent :a .
