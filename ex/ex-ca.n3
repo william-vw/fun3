@@ -1,0 +1,15 @@
+@prefix : <http://example.org/> .
+
+{ ?p a :Person } => { ?p :ability :think } .
+{ ?p a :Person } => { ?p :name "Socrates" } .
+{ ?p a :Canadian } => { ?p a :Person . ?p :address ?a . ?a :country "CA" } .
+
+:ed a :Person .
+:will :ability :think .
+:soc :name "Socrates" .
+:ed :address :addr1 .
+:will :address :addr2 .
+:soc :address :addr3 .
+:addr1 :country "BE" .
+:addr2 :country "CA" .
+:addr3 :country "CA" .

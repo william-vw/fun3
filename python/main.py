@@ -1,64 +1,38 @@
-class State : 
+from preamble import *
+
+# - ex 1
+
+def result(p, a, state):
+    print(f"solution: {p} {a}")
+    # state.stop = True
     
-    def __init__(self, stop):
-        self.stop = stop
+# (?p, type, Person) :-
+#   (?p, ability, think) .
 
-class Store :
-
-    def __init__(self, triples):
-        self.triples = triples
-        
-    def find(self, s, p, o, state, ctu):
-        for t in self.triples:
-            if state.stop:
-                return
-            
-            if (s == None or t.s == s) and (p == None or t.p == p) and (o == None or t.o == o):
-                ctu(t, state)
-        
-class Triple :
+def r1(p, store, state, ctu):
+    store.find(p, "ability", "think", state, lambda t, state: ctu(t.s, state) )
     
-    def __init__(self, s, p, o):
-        self.s = s
-        self.p = p
-        self.o = o
-        
-    def __str__(self):
-        return f"{self.s} {self.p} {self.o}"
+# (?p, type, Person) :-
+#   (?p, name, "Socrates") .
 
-# # - ex 1
-
-# def result(p, a, state):
-#     print(f"solution: {p} {a}")
-#     # state.stop = True
+def r2(p, store, state, ctu):
+    store.find(p, "name", "\"Socrates\"", state, lambda t, state: ctu(t.s, state))
     
-# # (?p, type, Person) :-
-# #   (?p, ability, think) .
+# (?p, type, :Canadian) :-
+#   (?p, type, Person), (?p, address, ?a), (?a, country, "CA")
 
-# def r1(p, store, state, ctu):
-#     store.find(p, "ability", "think", state, lambda t, state: ctu(t.s, state) )
-    
-# # (?p, type, Person) :-
-# #   (?p, name, "Socrates") .
+def r3(p, store, state, ctu):
+    store.find(p, "type", "Person", state, lambda t, state: r3_cl2(t.s, store, state, ctu))
+    if not state.stop:
+        r1(p, store, state, lambda p, state: r3_cl2(p, store, state, ctu))
+    if not state.stop:
+        r2(p, store, state, lambda p, state: r3_cl2(p, store, state, ctu))
 
-# def r2(p, store, state, ctu):
-#     store.find(p, "name", "\"Socrates\"", state, lambda t, state: ctu(t.s, state))
-    
-# # (?p, type, :Canadian) :-
-# #   (?p, type, Person), (?p, address, ?a), (?a, country, "CA")
+def r3_cl2(p, store, state, ctu):
+    store.find(p, "address", None, state, lambda t, state: r3_cl3(p, t.o, store, state, ctu))
 
-# def r3(p, store, state, ctu):
-#     store.find(p, "type", "Person", state, lambda t, state: r3_cl2(t.s, store, state, ctu))
-#     if not state.stop:
-#         r1(p, store, state, lambda p, state: r3_cl2(p, store, state, ctu))
-#     if not state.stop:
-#         r2(p, store, state, lambda p, state: r3_cl2(p, store, state, ctu))
-
-# def r3_cl2(p, store, state, ctu):
-#     store.find(p, "address", None, state, lambda t, state: r3_cl3(p, t.o, store, state, ctu))
-
-# def r3_cl3(p, a, store, state, ctu):
-#     store.find(a, "country", "\"CA\"", state, lambda _, state: ctu(p, a, state))
+def r3_cl3(p, a, store, state, ctu):
+    store.find(a, "country", "\"CA\"", state, lambda _, state: ctu(p, a, state))
     
     
 # - ex 2
@@ -78,20 +52,30 @@ def result(desc, anc, state):
 
 def r1(desc_0, anc_0, desc, anc, store, state, ctu):
     print(f"r1 {desc_0} {anc_0} {desc} {anc}")
+    # unify desc with parent
+    # either compare values, or transfer value to desc
     store.find(desc, "parent", None, state, lambda t, state: r1_cl2((desc_0 if desc_0 != None else t.s), anc_0, t.o, anc, store, state, ctu))
 
+# desc_0 will be bound
+# parent will be bound
 def r1_cl2(desc_0, anc_0, parent, anc, store, state, ctu):
     print("r1_cl2 {desc_0} {anc_0} {parent} {anc}")
     
     r1(desc_0, anc_0, parent, anc, store, state, ctu)
     
     if not state.stop:
-        if anc_0 != None:
-            if parent == anc_0:
+        # unify parent with anc
+        if anc != None:
+            # compare values of parent, anc
+            # if equal, solution = desc_0, parent/anc
+            if parent == anc:
                 ctu(desc_0, parent, state)
                 # return # cut
         else:
+            # transfer value from parent to anc (anc = parent)
+            # solution = desc_0, anc
             ctu(desc_0, parent, state)
+        
 
 def main():
     state = State(False)
