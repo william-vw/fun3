@@ -259,6 +259,12 @@ class n3Parser ( Parser ):
             if hasattr( listener, "exitN3Doc" ):
                 listener.exitN3Doc(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitN3Doc" ):
+                return visitor.visitN3Doc(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -330,6 +336,12 @@ class n3Parser ( Parser ):
             if hasattr( listener, "exitN3Statement" ):
                 listener.exitN3Statement(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitN3Statement" ):
+                return visitor.visitN3Statement(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -388,6 +400,12 @@ class n3Parser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitN3Directive" ):
                 listener.exitN3Directive(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitN3Directive" ):
+                return visitor.visitN3Directive(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -448,6 +466,12 @@ class n3Parser ( Parser ):
             if hasattr( listener, "exitSparqlDirective" ):
                 listener.exitSparqlDirective(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitSparqlDirective" ):
+                return visitor.visitSparqlDirective(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -505,6 +529,12 @@ class n3Parser ( Parser ):
             if hasattr( listener, "exitSparqlBase" ):
                 listener.exitSparqlBase(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitSparqlBase" ):
+                return visitor.visitSparqlBase(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -554,6 +584,12 @@ class n3Parser ( Parser ):
             if hasattr( listener, "exitSparqlPrefix" ):
                 listener.exitSparqlPrefix(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitSparqlPrefix" ):
+                return visitor.visitSparqlPrefix(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -602,6 +638,12 @@ class n3Parser ( Parser ):
             if hasattr( listener, "exitPrefixID" ):
                 listener.exitPrefixID(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitPrefixID" ):
+                return visitor.visitPrefixID(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -646,6 +688,12 @@ class n3Parser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitBase" ):
                 listener.exitBase(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitBase" ):
+                return visitor.visitBase(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -694,6 +742,12 @@ class n3Parser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitTriples" ):
                 listener.exitTriples(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitTriples" ):
+                return visitor.visitTriples(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -755,6 +809,12 @@ class n3Parser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitPredicateObjectList" ):
                 listener.exitPredicateObjectList(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitPredicateObjectList" ):
+                return visitor.visitPredicateObjectList(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -824,6 +884,12 @@ class n3Parser ( Parser ):
             if hasattr( listener, "exitObjectList" ):
                 listener.exitObjectList(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitObjectList" ):
+                return visitor.visitObjectList(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -882,6 +948,12 @@ class n3Parser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitVerb" ):
                 listener.exitVerb(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitVerb" ):
+                return visitor.visitVerb(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -969,6 +1041,12 @@ class n3Parser ( Parser ):
             if hasattr( listener, "exitSubject" ):
                 listener.exitSubject(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitSubject" ):
+                return visitor.visitSubject(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -1010,6 +1088,12 @@ class n3Parser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitPredicate" ):
                 listener.exitPredicate(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitPredicate" ):
+                return visitor.visitPredicate(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -1067,6 +1151,12 @@ class n3Parser ( Parser ):
             if hasattr( listener, "exitObject" ):
                 listener.exitObject(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitObject" ):
+                return visitor.visitObject(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -1108,6 +1198,12 @@ class n3Parser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitExpression" ):
                 listener.exitExpression(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitExpression" ):
+                return visitor.visitExpression(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -1154,6 +1250,12 @@ class n3Parser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitPath" ):
                 listener.exitPath(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitPath" ):
+                return visitor.visitPath(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -1243,6 +1345,12 @@ class n3Parser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitPathItem" ):
                 listener.exitPathItem(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitPathItem" ):
+                return visitor.visitPathItem(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -1336,6 +1444,12 @@ class n3Parser ( Parser ):
             if hasattr( listener, "exitLiteral" ):
                 listener.exitLiteral(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitLiteral" ):
+                return visitor.visitLiteral(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -1396,6 +1510,12 @@ class n3Parser ( Parser ):
             if hasattr( listener, "exitBlankNodePropertyList" ):
                 listener.exitBlankNodePropertyList(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitBlankNodePropertyList" ):
+                return visitor.visitBlankNodePropertyList(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -1449,6 +1569,12 @@ class n3Parser ( Parser ):
             if hasattr( listener, "exitIriPropertyList" ):
                 listener.exitIriPropertyList(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitIriPropertyList" ):
+                return visitor.visitIriPropertyList(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -1499,6 +1625,12 @@ class n3Parser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitCollection" ):
                 listener.exitCollection(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitCollection" ):
+                return visitor.visitCollection(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -1554,6 +1686,12 @@ class n3Parser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitFormula" ):
                 listener.exitFormula(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitFormula" ):
+                return visitor.visitFormula(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -1615,6 +1753,12 @@ class n3Parser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitFormulaContent" ):
                 listener.exitFormulaContent(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitFormulaContent" ):
+                return visitor.visitFormulaContent(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -1701,6 +1845,12 @@ class n3Parser ( Parser ):
             if hasattr( listener, "exitNumericLiteral" ):
                 listener.exitNumericLiteral(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitNumericLiteral" ):
+                return visitor.visitNumericLiteral(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -1754,6 +1904,12 @@ class n3Parser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitRdfLiteral" ):
                 listener.exitRdfLiteral(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitRdfLiteral" ):
+                return visitor.visitRdfLiteral(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -1817,6 +1973,12 @@ class n3Parser ( Parser ):
             if hasattr( listener, "exitIri" ):
                 listener.exitIri(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitIri" ):
+                return visitor.visitIri(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -1874,6 +2036,12 @@ class n3Parser ( Parser ):
             if hasattr( listener, "exitPrefixedName" ):
                 listener.exitPrefixedName(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitPrefixedName" ):
+                return visitor.visitPrefixedName(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -1924,6 +2092,12 @@ class n3Parser ( Parser ):
             if hasattr( listener, "exitBlankNode" ):
                 listener.exitBlankNode(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitBlankNode" ):
+                return visitor.visitBlankNode(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -1970,6 +2144,12 @@ class n3Parser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitQuickVar" ):
                 listener.exitQuickVar(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitQuickVar" ):
+                return visitor.visitQuickVar(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 

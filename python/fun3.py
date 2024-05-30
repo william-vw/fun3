@@ -7,33 +7,34 @@ def build_fn():
     rule_fn = FunctionDef(
         name="r1",
         args=arguments(
-            args=[ arg(arg='p'), arg(arg='store'), arg(arg='state'), arg(arg='ctu') ], 
+            args=[ ], 
             posonlyargs=[], vararg=None, kwarg=None, defaults=[], kwonlyargs=[], kw_defaults=[]
         ),
-        body=[
-            Expr(
-                Call(
-                    func=Attribute(value=Name(id='store', ctx=Load()), attr='find', ctx=Load()),
-                    args=[
-                        Name(id='p', ctx=Load()), Constant(value='ability'), Constant(value='think'), Name(id='state', ctx=Load()),
-                        Lambda(
-                            args=arguments(
-                                args=[ arg(arg='t'), arg(arg='state') ],
-                                posonlyargs=[], kwonlyargs=[], kw_defaults=[], defaults=[]
-                            ),
-                            body=Call(
-                                func=Name(id='ctu', ctx=Load()),
-                                args=[ Attribute(value=Name(id='t', ctx=Load()), attr='s', ctx=Load()), Name(id='state', ctx=Load()) ],
-                                keywords=[]
-                            )
-                        )
-                    ],
-                    keywords=[]
-                )
-            )
-        ],
+        body=[],
         decorator_list=[]
     )
+    
+    rule_fn.args.args.extend([arg(arg='p'), arg(arg='store'), arg(arg='state'), arg(arg='ctu')])
+    rule_fn.body.append(Expr(
+        Call(
+            func=Attribute(value=Name(id='store', ctx=Load()), attr='find', ctx=Load()),
+            args=[
+                Name(id='p', ctx=Load()), Constant(value='ability'), Constant(value='think'), Name(id='state', ctx=Load()),
+                Lambda(
+                    args=arguments(
+                        args=[ arg(arg='t'), arg(arg='state') ],
+                        posonlyargs=[], kwonlyargs=[], kw_defaults=[], defaults=[]
+                    ),
+                    body=Call(
+                        func=Name(id='ctu', ctx=Load()),
+                        args=[ Attribute(value=Name(id='t', ctx=Load()), attr='s', ctx=Load()), Name(id='state', ctx=Load()) ],
+                        keywords=[]
+                    )
+                )
+            ],
+            keywords=[]
+        )
+    ))
     
     rule_mod = Module(body=[rule_fn], type_ignores=[])
     fix_missing_locations(rule_mod)
