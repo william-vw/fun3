@@ -1,4 +1,4 @@
-from preamble import *
+from util import *
 
 # - ex 1
 
@@ -18,7 +18,7 @@ def r1(p, store, state, ctu):
 def r2(p, store, state, ctu):
     store.find(p, "name", "\"Socrates\"", state, lambda t, state: ctu(t.s, state))
     
-# (?p, type, :Canadian) :-
+# (?p, type, Canadian) :-
 #   (?p, type, Person), (?p, address, ?a), (?a, country, "CA")
 
 def r3(p, store, state, ctu):

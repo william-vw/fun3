@@ -1,7 +1,7 @@
 from antlr4 import *
-from grammar.parser.n3Lexer import n3Lexer
-from grammar.parser.n3Parser import n3Parser
-from grammar.parser.n3Listener import n3Listener
+from n3.grammar.parser.n3Lexer import n3Lexer
+from n3.grammar.parser.n3Parser import n3Parser
+from n3.grammar.parser.n3Listener import n3Listener
 
 from n3.model import Model
 from n3.terms import *
@@ -186,7 +186,7 @@ class n3Creator(n3Listener):
     def exitObject(self, ctx:n3Parser.ObjectContext):
         self.state.triple.o = self.state.path_item
         
-        self.emitTriple(self.state.triple)
+        self.emitTriple()
 
 
     # Enter a parse tree produced by n3Parser#expression.
@@ -383,28 +383,30 @@ class n3Creator(n3Listener):
     def text(self, node):
         return node.getText().strip()
         
-    def emitTriple(self, triple):
-        self.state.model.add(triple)
+    def emitTriple(self):
+        triple = self.state.triple
         
-        if triple.p == "<=" or triple.p == "=>":
-            self.state.rules.add(triple)
+        self.state.model.add(triple)
+        if triple.p.iri == "<=" or triple.p.iri == "=>":
+            self.state.rules.append(triple)
+            
+        self.state.triple = Triple()
 
-
-def main():
-    # input_text =  "@prefix : <http://example.org/> . :will a :Cool . :will :name \"will\" . ?x a [] . "
-    input_text =  "@prefix : <http://example.org/> . { ?x a :Cool } => { ?x :name \"will\" } . " #input("> ")
+class n3ParseResult:
     
+    def __init__(self, state):
+        self.model = state.model
+        self.rules = state.rules
+
+def parse_n3(str):
     creator = n3Creator()
     
-    lexer = n3Lexer(InputStream(input_text))
+    lexer = n3Lexer(InputStream(str))
     stream = CommonTokenStream(lexer)
     parser = n3Parser(stream)
     parser.addParseListener(creator)
 
-    tree = parser.n3Doc()
+    _ = parser.n3Doc()
     # print(tree.toStringTree(recog=parser))
     
-    print(creator.state.model)
-    
-if __name__ == "__main__":
-    main()
+    return n3ParseResult(creator.state)

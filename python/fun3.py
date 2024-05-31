@@ -1,81 +1,136 @@
-from ast import *
-from types import *
+from ast import dump, unparse
+import ast
+from types import CodeType, FunctionType
 
-from preamble import *
+from n3.terms import Iri, Literal, Var
+from n3.parse import parse_n3
+from n3.fun.gen import gen_py
 
-def build_fn():
-    rule_fn = FunctionDef(
-        name="r1",
-        args=arguments(
-            args=[ ], 
-            posonlyargs=[], vararg=None, kwarg=None, defaults=[], kwonlyargs=[], kw_defaults=[]
-        ),
-        body=[],
-        decorator_list=[]
-    )
-    
-    rule_fn.args.args.extend([arg(arg='p'), arg(arg='store'), arg(arg='state'), arg(arg='ctu')])
-    rule_fn.body.append(Expr(
-        Call(
-            func=Attribute(value=Name(id='store', ctx=Load()), attr='find', ctx=Load()),
-            args=[
-                Name(id='p', ctx=Load()), Constant(value='ability'), Constant(value='think'), Name(id='state', ctx=Load()),
-                Lambda(
-                    args=arguments(
-                        args=[ arg(arg='t'), arg(arg='state') ],
-                        posonlyargs=[], kwonlyargs=[], kw_defaults=[], defaults=[]
-                    ),
-                    body=Call(
-                        func=Name(id='ctu', ctx=Load()),
-                        args=[ Attribute(value=Name(id='t', ctx=Load()), attr='s', ctx=Load()), Name(id='state', ctx=Load()) ],
-                        keywords=[]
-                    )
-                )
-            ],
-            keywords=[]
-        )
-    ))
-    
-    rule_mod = Module(body=[rule_fn], type_ignores=[])
-    fix_missing_locations(rule_mod)
-    
-    mod_code = compile(rule_mod, "<?p, type, Person>", "exec")
-    fn_code = [c for c in mod_code.co_consts if isinstance(c, CodeType)][0]
-    
-    return FunctionType(fn_code, {})
+class State : 
+    def __init__(self, stop):
+        self.stop = stop
 
 def result(p, state):
     print(f"solution: {p}")
     # state.stop = True
 
-def main():
-    # (?p, type, Person) :-
-    #   (?p, ability, think) .
 
-    # def r1(p, store, state, ctu):
-    #     store.find(p, "ability", "think", state, lambda t, state: ctu(t.s, state) )
+def fun3():    
+    # (?x, a, Cool) :- (?x, name, "will")
+    # rules =  """@prefix : <http://example.org/> . 
+# { ?x a :Cool } <= { ?x :name \"will\" } . """
+    
+    # (?p, type, Canadian) :-
+    #   (?p, type, Person), (?p, address, ?a), (?a, country, "CA")
+    rules =  """@prefix : <http://example.org/> . 
+{ ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . """
+    
+    data = """@prefix : <http://example.org/> . 
+:will a :Person . :will :address :addr1 . :addr1 :country "CA" ."""
+    
+    # parse
+    
+    result = parse_n3(rules)
+    # print(result.model)
+    print(result.rules)
+    
+    model = parse_n3(data).model
+    print(model)
+    
+    print()
+    
+    # generate
+    
+    mod = gen_py(result.rules)
+    # print(dump(mod, indent=4))
+    print(unparse_with_lineno(mod))
+    
+    print()
+    
+    # compile
+    
+    rule_fn = compile_py(mod)
+    print(rule_fn)
+    
+    print()
+    
+    # test
     
     state = State(False)
     
-    # # - ex1
+    rule_fn(None, model, state, result)
     
-    store = Store([ 
-        Triple( s="ed", p="type", o="Person" ),
-        Triple( s="will", p="ability", o="think" ),
-        Triple( s="soc", p="name", o="\"Socrates\"" ),
     
-        Triple( s="ed", p="address", o="addr1" ),
-        Triple( s="will", p="address", o="addr2" ),
-        Triple( s="soc", p="address", o="addr3" ),
+def unparse_with_lineno(ast):
+    code = unparse(ast)
+    return "\n".join([ f"{i+1}. {line}" for i, line in enumerate(code.split("\n")) ])
+
+def compile_py(mod):    
+    mod_code = compile(mod, "<fun3>", "exec")
     
-        Triple( s="addr1", p="country", o="\"BE\"" ),
-        Triple( s="addr2", p="country", o="\"CA\"" ),
-        Triple( s="addr3", p="country", o="\"CA\"" )
-    ])
-    
-    fn = build_fn()
-    
-    fn(None, store, state, result)
-    
+    # return first function or whatever
+    for c in mod_code.co_consts:
+        if isinstance(c, CodeType) and c.co_name == "rule_0":
+            return FunctionType(c, {})
+
 if __name__ == "__main__":
-    main()
+    fun3()
+    # print_ast()
+
+
+    
+def print_ast():
+    
+    mod_code = """class Iri:
+    
+    # label: debugging
+    def __init__(self, iri, label=False):
+        self.iri = iri
+        self.label = label
+        
+    def type(self):
+        return term_types.IRI
+        
+    def __str__(self):
+        return f"<{self.iri}>" if not self.label else self.iri
+    def __repr__(self):
+        return self.__str__()
+        
+class Literal:
+    
+    def __init__(self, value):
+        self.value = value
+        
+    def type(self):
+        return term_types.LITERAL
+        
+    def __str__(self):
+        return self.value
+    def __repr__(self):
+        return self.__str__()
+
+
+class var_types(Enum):
+    UNIVERSAL = 0
+    EXISTENTIAL = 1
+
+class Var:
+    
+    def __init__(self, type, name):
+        self.type = type
+        self.name = name
+        
+    def type(self):
+        return term_types.VAR
+        
+    def __str__(self):
+        match self.type:
+            case var_types.UNIVERSAL:
+                return f"?{self.name}"
+            case _:
+                return f"_:{self.name}"
+    
+    def __repr__(self):
+        return self.__str__()"""
+    
+    print(dump(ast.parse(mod_code), indent=4))
