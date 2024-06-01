@@ -19,7 +19,7 @@ class Model:
         print("find", s, p, o)
         
         for t in self.__triples:
-            print(t.s, t.p, t.o)
+            # print(t)
             
             if state.stop: # TODO
                 return

@@ -1,12 +1,11 @@
-# TODO
-from ast import *
-from n3.terms import *
-from n3.model import Model
+import ast
+from n3.terms import Var, term_types
 
 
 def gen_py(rules):
     gen = GenPython()
     return gen.gen_python(rules)
+
 
 class GenPython:
 
@@ -23,28 +22,16 @@ class GenPython:
         return self.__gen_rule_mod(rules)
 
     def __gen_rule_mod(self, rules):
-        # TODO
-        # code = [ self.__gen_imports() ]
-        # code = self.__terms()
-        code = []
+        code = [self.__gen_imports()]
         code += [fn for (head, _, body)
                  in rules for fn in self.__gen_rule(head, body)]
-        
-        rule_call = self.__builder.to_stmt(
-            self.__builder.fn_call(self.__builder.ref('rule_0'), 
-                [ self.__builder.cnst(':will'), 
-                self.__builder.ref('model'), # self.__builder.fn_call(self.__builder.ref('Model')),
-                self.__builder.cnst(None), self.__builder.cnst(None) 
-                ]))
-        fix_missing_locations(rule_call)
-        code.append(rule_call)
 
-        return Module(body=code, type_ignores=[])
+        return ast.Module(body=code, type_ignores=[])
 
     def __gen_imports(self):
-        imprt = ImportFrom(module='n3.terms',
-                           names=[alias(name='Iri'), alias(name='Var'), alias(name='Literal')], level=0)
-        fix_missing_locations(imprt)
+        imprt = ast.ImportFrom(module='n3.terms',
+                               names=[ast.alias(name='Iri'), ast.alias(name='Var'), ast.alias(name='Literal')], level=0)
+        ast.fix_missing_locations(imprt)
 
         return imprt
 
@@ -56,7 +43,8 @@ class GenPython:
     def __gen_clause(self, head, body, index):
         clause = body.model.triple_at(index)
 
-        own_params = self.__cur_params + ['model', 'state', 'ctu']
+        in_params = self.__cur_params
+        own_params = in_params + ['model', 'state', 'ctu']
         clause_fn = self.__builder.fn(own_params)
 
         # running example: clause = ?p :address ?a ; cur_vars = [ p, r ] ; head = ?p a :Person
@@ -100,10 +88,18 @@ class GenPython:
         # finally, create model.find call
 
         # s, p, o from clause will be search terms
-        #   if variable, refer to the function argument (provided as argument)
+        #   if variable: if provided as argument, refer to the function argument, else None
         #   else, use resource from clause
-        call_args = [self.__builder.ref(r.name) if isinstance(
-            r, Var) else self.__construct_call(r) for r in clause]
+        call_args = []
+        for r in clause:
+            if isinstance(r, Var):
+                if r.name in in_params:
+                    call_args.append(self.__builder.ref(r.name))
+                else:
+                    call_args.append(self.__builder.cnst(None))
+            else:
+                call_args.append(self.__cnstor_call(r))
+
         call_args += [self.__builder.ref('state'), lmbda]
         model_call = self.__builder.fn_call(
             self.__builder.attr_ref('model', 'find'), call_args)
@@ -112,7 +108,7 @@ class GenPython:
         self.__builder.fn_body_stmt(
             clause_fn, self.__builder.to_stmt(model_call))
 
-        fix_missing_locations(clause_fn)
+        ast.fix_missing_locations(clause_fn)
 
         return clause_fn
 
@@ -133,596 +129,20 @@ class GenPython:
             if isinstance(r, Var):
                 yield spo[i], r.name
 
-    def __construct_call(self, r):
+    def __cnstor_call(self, r):
         match r.type():
             case term_types.IRI:
                 cls = "Iri"
-                val = r.iri
+                args = [r.iri, r.label]
             case term_types.VAR:
                 cls = "Var"
-                val = r.name
+                args = [r.name]
             case term_types.LITERAL:
                 cls = "Literal"
-                val = r.value
+                args = [r.value]
             case _: print("inconceivable")
 
-        return self.__builder.fn_call(fn=self.__builder.ref(cls), args=[self.__builder.cnst(val)])
-    
-    # TODO
-    def __terms(self):
-        terms = [
-                    ImportFrom(
-            module='enum',
-            names=[
-                alias(name='Enum')],
-            level=0),
-        ClassDef(
-            name='term_types',
-            bases=[
-                Name(id='Enum', ctx=Load())],
-            keywords=[],
-            body=[
-                Assign(
-                    targets=[
-                        Name(id='IRI', ctx=Store())],
-                    value=Constant(value=0)),
-                Assign(
-                    targets=[
-                        Name(id='LITERAL', ctx=Store())],
-                    value=Constant(value=1)),
-                Assign(
-                    targets=[
-                        Name(id='VAR', ctx=Store())],
-                    value=Constant(value=2))],
-            decorator_list=[]),
-        ClassDef(
-            name='Iri',
-            bases=[],
-            keywords=[],
-            body=[
-                FunctionDef(
-                    name='__init__',
-                    args=arguments(
-                        posonlyargs=[],
-                        args=[
-                            arg(arg='self'),
-                            arg(arg='iri'),
-                            arg(arg='label')],
-                        kwonlyargs=[],
-                        kw_defaults=[],
-                        defaults=[
-                            Constant(value=False)]),
-                    body=[
-                        Assign(
-                            targets=[
-                                Attribute(
-                                    value=Name(id='self', ctx=Load()),
-                                    attr='iri',
-                                    ctx=Store())],
-                            value=Name(id='iri', ctx=Load())),
-                        Assign(
-                            targets=[
-                                Attribute(
-                                    value=Name(id='self', ctx=Load()),
-                                    attr='label',
-                                    ctx=Store())],
-                            value=Name(id='label', ctx=Load()))],
-                    decorator_list=[]),
-                FunctionDef(
-                    name='type',
-                    args=arguments(
-                        posonlyargs=[],
-                        args=[
-                            arg(arg='self')],
-                        kwonlyargs=[],
-                        kw_defaults=[],
-                        defaults=[]),
-                    body=[
-                        Return(
-                            value=Attribute(
-                                value=Name(id='term_types', ctx=Load()),
-                                attr='IRI',
-                                ctx=Load()))],
-                    decorator_list=[]),
-                FunctionDef(
-                    name='__str__',
-                    args=arguments(
-                        posonlyargs=[],
-                        args=[
-                            arg(arg='self')],
-                        kwonlyargs=[],
-                        kw_defaults=[],
-                        defaults=[]),
-                    body=[
-                        Return(
-                            value=IfExp(
-                                test=UnaryOp(
-                                    op=Not(),
-                                    operand=Attribute(
-                                        value=Name(id='self', ctx=Load()),
-                                        attr='label',
-                                        ctx=Load())),
-                                body=JoinedStr(
-                                    values=[
-                                        Constant(value='<'),
-                                        FormattedValue(
-                                            value=Attribute(
-                                                value=Name(id='self', ctx=Load()),
-                                                attr='iri',
-                                                ctx=Load()),
-                                            conversion=-1),
-                                        Constant(value='>')]),
-                                orelse=Attribute(
-                                    value=Name(id='self', ctx=Load()),
-                                    attr='iri',
-                                    ctx=Load())))],
-                    decorator_list=[]),
-                FunctionDef(
-                    name='__repr__',
-                    args=arguments(
-                        posonlyargs=[],
-                        args=[
-                            arg(arg='self')],
-                        kwonlyargs=[],
-                        kw_defaults=[],
-                        defaults=[]),
-                    body=[
-                        Return(
-                            value=Call(
-                                func=Attribute(
-                                    value=Name(id='self', ctx=Load()),
-                                    attr='__str__',
-                                    ctx=Load()),
-                                args=[],
-                                keywords=[]))],
-                    decorator_list=[])],
-            decorator_list=[]),
-        ClassDef(
-            name='Literal',
-            bases=[],
-            keywords=[],
-            body=[
-                FunctionDef(
-                    name='__init__',
-                    args=arguments(
-                        posonlyargs=[],
-                        args=[
-                            arg(arg='self'),
-                            arg(arg='value')],
-                        kwonlyargs=[],
-                        kw_defaults=[],
-                        defaults=[]),
-                    body=[
-                        Assign(
-                            targets=[
-                                Attribute(
-                                    value=Name(id='self', ctx=Load()),
-                                    attr='value',
-                                    ctx=Store())],
-                            value=Name(id='value', ctx=Load()))],
-                    decorator_list=[]),
-                FunctionDef(
-                    name='type',
-                    args=arguments(
-                        posonlyargs=[],
-                        args=[
-                            arg(arg='self')],
-                        kwonlyargs=[],
-                        kw_defaults=[],
-                        defaults=[]),
-                    body=[
-                        Return(
-                            value=Attribute(
-                                value=Name(id='term_types', ctx=Load()),
-                                attr='LITERAL',
-                                ctx=Load()))],
-                    decorator_list=[]),
-                FunctionDef(
-                    name='__str__',
-                    args=arguments(
-                        posonlyargs=[],
-                        args=[
-                            arg(arg='self')],
-                        kwonlyargs=[],
-                        kw_defaults=[],
-                        defaults=[]),
-                    body=[
-                        Return(
-                            value=Attribute(
-                                value=Name(id='self', ctx=Load()),
-                                attr='value',
-                                ctx=Load()))],
-                    decorator_list=[]),
-                FunctionDef(
-                    name='__repr__',
-                    args=arguments(
-                        posonlyargs=[],
-                        args=[
-                            arg(arg='self')],
-                        kwonlyargs=[],
-                        kw_defaults=[],
-                        defaults=[]),
-                    body=[
-                        Return(
-                            value=Call(
-                                func=Attribute(
-                                    value=Name(id='self', ctx=Load()),
-                                    attr='__str__',
-                                    ctx=Load()),
-                                args=[],
-                                keywords=[]))],
-                    decorator_list=[])],
-            decorator_list=[]),
-        ClassDef(
-            name='var_types',
-            bases=[
-                Name(id='Enum', ctx=Load())],
-            keywords=[],
-            body=[
-                Assign(
-                    targets=[
-                        Name(id='UNIVERSAL', ctx=Store())],
-                    value=Constant(value=0)),
-                Assign(
-                    targets=[
-                        Name(id='EXISTENTIAL', ctx=Store())],
-                    value=Constant(value=1))],
-            decorator_list=[]),
-        ClassDef(
-            name='Var',
-            bases=[],
-            keywords=[],
-            body=[
-                FunctionDef(
-                    name='__init__',
-                    args=arguments(
-                        posonlyargs=[],
-                        args=[
-                            arg(arg='self'),
-                            arg(arg='type'),
-                            arg(arg='name')],
-                        kwonlyargs=[],
-                        kw_defaults=[],
-                        defaults=[]),
-                    body=[
-                        Assign(
-                            targets=[
-                                Attribute(
-                                    value=Name(id='self', ctx=Load()),
-                                    attr='type',
-                                    ctx=Store())],
-                            value=Name(id='type', ctx=Load())),
-                        Assign(
-                            targets=[
-                                Attribute(
-                                    value=Name(id='self', ctx=Load()),
-                                    attr='name',
-                                    ctx=Store())],
-                            value=Name(id='name', ctx=Load()))],
-                    decorator_list=[]),
-                FunctionDef(
-                    name='type',
-                    args=arguments(
-                        posonlyargs=[],
-                        args=[
-                            arg(arg='self')],
-                        kwonlyargs=[],
-                        kw_defaults=[],
-                        defaults=[]),
-                    body=[
-                        Return(
-                            value=Attribute(
-                                value=Name(id='term_types', ctx=Load()),
-                                attr='VAR',
-                                ctx=Load()))],
-                    decorator_list=[]),
-                FunctionDef(
-                    name='__str__',
-                    args=arguments(
-                        posonlyargs=[],
-                        args=[
-                            arg(arg='self')],
-                        kwonlyargs=[],
-                        kw_defaults=[],
-                        defaults=[]),
-                    body=[
-                        Match(
-                            subject=Attribute(
-                                value=Name(id='self', ctx=Load()),
-                                attr='type',
-                                ctx=Load()),
-                            cases=[
-                                match_case(
-                                    pattern=MatchValue(
-                                        value=Attribute(
-                                            value=Name(id='var_types', ctx=Load()),
-                                            attr='UNIVERSAL',
-                                            ctx=Load())),
-                                    body=[
-                                        Return(
-                                            value=JoinedStr(
-                                                values=[
-                                                    Constant(value='?'),
-                                                    FormattedValue(
-                                                        value=Attribute(
-                                                            value=Name(id='self', ctx=Load()),
-                                                            attr='name',
-                                                            ctx=Load()),
-                                                        conversion=-1)]))]),
-                                match_case(
-                                    pattern=MatchAs(),
-                                    body=[
-                                        Return(
-                                            value=JoinedStr(
-                                                values=[
-                                                    Constant(value='_:'),
-                                                    FormattedValue(
-                                                        value=Attribute(
-                                                            value=Name(id='self', ctx=Load()),
-                                                            attr='name',
-                                                            ctx=Load()),
-                                                        conversion=-1)]))])])],
-                    decorator_list=[]),
-                FunctionDef(
-                    name='__repr__',
-                    args=arguments(
-                        posonlyargs=[],
-                        args=[
-                            arg(arg='self')],
-                        kwonlyargs=[],
-                        kw_defaults=[],
-                        defaults=[]),
-                    body=[
-                        Return(
-                            value=Call(
-                                func=Attribute(
-                                    value=Name(id='self', ctx=Load()),
-                                    attr='__str__',
-                                    ctx=Load()),
-                                args=[],
-                                keywords=[]))],
-                    decorator_list=[])],
-            decorator_list=[]),
-        ClassDef(
-            name='Model',
-            bases=[],
-            keywords=[],
-            body=[
-                FunctionDef(
-                    name='__init__',
-                    args=arguments(
-                        posonlyargs=[],
-                        args=[
-                            arg(arg='self')],
-                        kwonlyargs=[],
-                        kw_defaults=[],
-                        defaults=[]),
-                    body=[
-                        Assign(
-                            targets=[
-                                Attribute(
-                                    value=Name(id='self', ctx=Load()),
-                                    attr='__triples',
-                                    ctx=Store())],
-                            value=List(elts=[], ctx=Load()))],
-                    decorator_list=[]),
-                FunctionDef(
-                    name='add',
-                    args=arguments(
-                        posonlyargs=[],
-                        args=[
-                            arg(arg='self'),
-                            arg(arg='triple')],
-                        kwonlyargs=[],
-                        kw_defaults=[],
-                        defaults=[]),
-                    body=[
-                        Expr(
-                            value=Call(
-                                func=Attribute(
-                                    value=Attribute(
-                                        value=Name(id='self', ctx=Load()),
-                                        attr='__triples',
-                                        ctx=Load()),
-                                    attr='append',
-                                    ctx=Load()),
-                                args=[
-                                    Name(id='triple', ctx=Load())],
-                                keywords=[]))],
-                    decorator_list=[]),
-                FunctionDef(
-                    name='len',
-                    args=arguments(
-                        posonlyargs=[],
-                        args=[
-                            arg(arg='self')],
-                        kwonlyargs=[],
-                        kw_defaults=[],
-                        defaults=[]),
-                    body=[
-                        Return(
-                            value=Call(
-                                func=Name(id='len', ctx=Load()),
-                                args=[
-                                    Attribute(
-                                        value=Name(id='self', ctx=Load()),
-                                        attr='__triples',
-                                        ctx=Load())],
-                                keywords=[]))],
-                    decorator_list=[]),
-                FunctionDef(
-                    name='triple_at',
-                    args=arguments(
-                        posonlyargs=[],
-                        args=[
-                            arg(arg='self'),
-                            arg(arg='i')],
-                        kwonlyargs=[],
-                        kw_defaults=[],
-                        defaults=[]),
-                    body=[
-                        Return(
-                            value=Subscript(
-                                value=Attribute(
-                                    value=Name(id='self', ctx=Load()),
-                                    attr='__triples',
-                                    ctx=Load()),
-                                slice=Name(id='i', ctx=Load()),
-                                ctx=Load()))],
-                    decorator_list=[]),
-                FunctionDef(
-                    name='triples',
-                    args=arguments(
-                        posonlyargs=[],
-                        args=[
-                            arg(arg='self')],
-                        kwonlyargs=[],
-                        kw_defaults=[],
-                        defaults=[]),
-                    body=[
-                        Return(
-                            value=Attribute(
-                                value=Name(id='self', ctx=Load()),
-                                attr='__triples',
-                                ctx=Load()))],
-                    decorator_list=[]),
-                FunctionDef(
-                    name='find',
-                    args=arguments(
-                        posonlyargs=[],
-                        args=[
-                            arg(arg='self'),
-                            arg(arg='s'),
-                            arg(arg='p'),
-                            arg(arg='o'),
-                            arg(arg='state'),
-                            arg(arg='ctu')],
-                        kwonlyargs=[],
-                        kw_defaults=[],
-                        defaults=[]),
-                    body=[
-                        Expr(
-                            value=Call(
-                                func=Name(id='print', ctx=Load()),
-                                args=[
-                                    Constant(value='find'),
-                                    Name(id='s', ctx=Load()),
-                                    Name(id='p', ctx=Load()),
-                                    Name(id='o', ctx=Load())],
-                                keywords=[])),
-                        For(
-                            target=Name(id='t', ctx=Store()),
-                            iter=Attribute(
-                                value=Name(id='self', ctx=Load()),
-                                attr='__triples',
-                                ctx=Load()),
-                            body=[
-                                Expr(
-                                    value=Call(
-                                        func=Name(id='print', ctx=Load()),
-                                        args=[
-                                            Attribute(
-                                                value=Name(id='t', ctx=Load()),
-                                                attr='s',
-                                                ctx=Load()),
-                                            Attribute(
-                                                value=Name(id='t', ctx=Load()),
-                                                attr='p',
-                                                ctx=Load()),
-                                            Attribute(
-                                                value=Name(id='t', ctx=Load()),
-                                                attr='o',
-                                                ctx=Load())],
-                                        keywords=[])),
-                                If(
-                                    test=Attribute(
-                                        value=Name(id='state', ctx=Load()),
-                                        attr='stop',
-                                        ctx=Load()),
-                                    body=[
-                                        Return()],
-                                    orelse=[]),
-                                If(
-                                    test=BoolOp(
-                                        op=And(),
-                                        values=[
-                                            BoolOp(
-                                                op=Or(),
-                                                values=[
-                                                    Compare(
-                                                        left=Name(id='s', ctx=Load()),
-                                                        ops=[
-                                                            Eq()],
-                                                        comparators=[
-                                                            Constant(value=None)]),
-                                                    Compare(
-                                                        left=Attribute(
-                                                            value=Name(id='t', ctx=Load()),
-                                                            attr='s',
-                                                            ctx=Load()),
-                                                        ops=[
-                                                            Eq()],
-                                                        comparators=[
-                                                            Name(id='s', ctx=Load())])]),
-                                            BoolOp(
-                                                op=Or(),
-                                                values=[
-                                                    Compare(
-                                                        left=Name(id='p', ctx=Load()),
-                                                        ops=[
-                                                            Eq()],
-                                                        comparators=[
-                                                            Constant(value=None)]),
-                                                    Compare(
-                                                        left=Attribute(
-                                                            value=Name(id='t', ctx=Load()),
-                                                            attr='p',
-                                                            ctx=Load()),
-                                                        ops=[
-                                                            Eq()],
-                                                        comparators=[
-                                                            Name(id='p', ctx=Load())])]),
-                                            BoolOp(
-                                                op=Or(),
-                                                values=[
-                                                    Compare(
-                                                        left=Name(id='o', ctx=Load()),
-                                                        ops=[
-                                                            Eq()],
-                                                        comparators=[
-                                                            Constant(value=None)]),
-                                                    Compare(
-                                                        left=Attribute(
-                                                            value=Name(id='t', ctx=Load()),
-                                                            attr='o',
-                                                            ctx=Load()),
-                                                        ops=[
-                                                            Eq()],
-                                                        comparators=[
-                                                            Name(id='o', ctx=Load())])])]),
-                                    body=[
-                                        Expr(
-                                            value=Call(
-                                                func=Name(id='print', ctx=Load()),
-                                                args=[
-                                                    Constant(value='found'),
-                                                    Name(id='t', ctx=Load())],
-                                                keywords=[])),
-                                        Expr(
-                                            value=Call(
-                                                func=Name(id='ctu', ctx=Load()),
-                                                args=[
-                                                    Name(id='t', ctx=Load()),
-                                                    Name(id='state', ctx=Load())],
-                                                keywords=[]))],
-                                    orelse=[])],
-                            orelse=[])],
-                    decorator_list=[])],
-            decorator_list=[])
-        ]
-        
-        # TODO
-        return [ fix_missing_locations(term) for term in terms ]
+        return self.__builder.fn_call(fn=self.__builder.ref(cls), args=[self.__builder.cnst(a) for a in args])
 
 
 class FnBuilder:
@@ -735,14 +155,14 @@ class FnBuilder:
         self.__fn_cnt = 0
 
     def fn(self, params=[]):
-        args = [arg(arg=p) for p in params]
+        args = [ast.arg(arg=p) for p in params]
 
         name = self.__fn_name(self.__fn_cnt)
         self.__fn_cnt += 1
 
-        return FunctionDef(
+        return ast.FunctionDef(
             name=name,
-            args=arguments(
+            args=ast.arguments(
                 args=args,
                 posonlyargs=[], vararg=None, kwarg=None, defaults=[], kwonlyargs=[], kw_defaults=[]
             ),
@@ -754,26 +174,23 @@ class FnBuilder:
         fn.body.append(stmt)
 
     def ref(self, name):
-        return Name(id=name, ctx=Load())
+        return ast.Name(id=name, ctx=ast.Load())
 
     def cnst(self, value):
         # TODO escape strings
-        return Constant(value=value)
+        return ast.Constant(value=value)
 
     def attr_ref(self, var, attr):
-        return Attribute(value=self.ref(var), attr=attr, ctx=Load())
+        return ast.Attribute(value=self.ref(var), attr=attr, ctx=ast.Load())
 
     def fn_call(self, fn, args=[]):
-        return Call(func=fn, args=args, keywords=[])
-
-    def fn_call_arg(self, fn_call, arg):
-        fn_call.args.append(arg)
+        return ast.Call(func=fn, args=args, keywords=[])
 
     def lmbda(self, params, expr):
-        args = [arg(arg=p) for p in params]
+        args = [ast.arg(arg=p) for p in params]
 
-        return Lambda(
-            args=arguments(
+        return ast.Lambda(
+            args=ast.arguments(
                 args=args,
                 posonlyargs=[], kwonlyargs=[], kw_defaults=[], defaults=[]
             ),
@@ -781,7 +198,7 @@ class FnBuilder:
         )
 
     def to_stmt(self, expr):
-        return Expr(expr)
+        return ast.Expr(expr)
 
     def next_fn_name(self):
         return self.__fn_name(self.__fn_cnt)

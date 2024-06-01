@@ -2,33 +2,35 @@
 #     def __init__(self, str):
 #         self.str = str
 
-from test_node import Node
-from types import CodeType, FunctionType
+# from test_node import Node
+# from types import CodeType, FunctionType
+
+# def fn_2():
+#     print("got here")
 
 def main():
     str = """
-class Node:
-    def __init__(self, str):
-        self.str = str
+from test_node import Node
+    
+def fn_2(input):
+    n = Node(input)
+    print(n.str)
         
 def fn(input):
-    n = Node(input)
-    print(n)
-
-# Node("abc") # works with embedded Node class
-fn("abc") # works with definition / import in outer file
-
+    fn_2(input)
 """    
-    mod = compile(str, "testing", 'exec')
-    exec(mod)
-    
-    # get function to be called
-    for c in mod.co_consts:
-        if isinstance(c, CodeType) and c.co_name == "fn":
-            fn = FunctionType(c, {})
 
-    # call function
-    fn("abc") # doesn't work at all
+    mod_code = compile(str, "<fun3>", "exec")
+
+    new_refs = {}
+    exec(mod_code, globals(), new_refs)
+    # print(new_refs)
+    
+    for name, code in new_refs.items():
+        globals()[name] = code
+        
+    new_refs['fn']("abc")
+            
 
 if __name__ == "__main__":
     main()

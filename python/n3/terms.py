@@ -17,6 +17,11 @@ class Iri:
     def type(self):
         return term_types.IRI
         
+    def __eq__(self, other): 
+        if not isinstance(other, Iri):
+            return NotImplemented
+        return self.iri == other.iri
+        
     def __str__(self):
         return f"<{self.iri}>" if not self.label else self.iri
     def __repr__(self):
@@ -29,6 +34,11 @@ class Literal:
         
     def type(self):
         return term_types.LITERAL
+        
+    def __eq__(self, other): 
+        if not isinstance(other, Literal):
+            return NotImplemented
+        return self.value == other.value
         
     def __str__(self):
         return self.value
@@ -49,13 +59,17 @@ class Var:
     def type(self):
         return term_types.VAR
         
+    def __eq__(self, other): 
+        if not isinstance(other, Var):
+            return NotImplemented
+        return self.name == other.name
+        
     def __str__(self):
         match self.type:
             case var_types.UNIVERSAL:
                 return f"?{self.name}"
             case _:
                 return f"_:{self.name}"
-    
     def __repr__(self):
         return self.__str__()
     
