@@ -2,9 +2,11 @@ from ast import dump, unparse
 import ast
 from types import CodeType, FunctionType
 
-from n3.terms import Iri, Literal, Var
 from n3.parse import parse_n3
 from n3.fun.gen import gen_py
+
+from n3.terms import Iri, Literal, Var
+from n3.model import Model
 
 class State : 
     def __init__(self, stop):
@@ -54,11 +56,11 @@ def fun3():
     
     print()
     
-    # test
+    # # test
     
-    state = State(False)
+    # state = State(False)
     
-    rule_fn(None, model, state, result)
+    # rule_fn(None, model, state, result)
     
     
 def unparse_with_lineno(ast):
@@ -68,69 +70,49 @@ def unparse_with_lineno(ast):
 def compile_py(mod):    
     mod_code = compile(mod, "<fun3>", "exec")
     
+    exec(mod_code)
+    
     # return first function or whatever
     for c in mod_code.co_consts:
         if isinstance(c, CodeType) and c.co_name == "rule_0":
             return FunctionType(c, {})
 
+    
+def print_ast():
+    mod_code = """
+class Model:
+    
+    def __init__(self):
+        self.__triples = []
+        
+    def add(self, triple):
+        self.__triples.append(triple)
+        
+    def len(self):
+        return len(self.__triples)
+    
+    def triple_at(self, i):
+        return self.__triples[i]
+    
+    def triples(self):
+        return self.__triples
+    
+    def find(self, s, p, o, state, ctu):
+        print("find", s, p, o)
+        
+        for t in self.__triples:
+            print(t.s, t.p, t.o)
+            
+            if state.stop: # TODO
+                return
+            
+            if (s == None or t.s == s) and (p == None or t.p == p) and (o == None or t.o == o):
+                print("found", t)
+                ctu(t, state)"""
+    
+    print(dump(ast.parse(mod_code), indent=4))
+    
+
 if __name__ == "__main__":
     fun3()
     # print_ast()
-
-
-    
-def print_ast():
-    
-    mod_code = """class Iri:
-    
-    # label: debugging
-    def __init__(self, iri, label=False):
-        self.iri = iri
-        self.label = label
-        
-    def type(self):
-        return term_types.IRI
-        
-    def __str__(self):
-        return f"<{self.iri}>" if not self.label else self.iri
-    def __repr__(self):
-        return self.__str__()
-        
-class Literal:
-    
-    def __init__(self, value):
-        self.value = value
-        
-    def type(self):
-        return term_types.LITERAL
-        
-    def __str__(self):
-        return self.value
-    def __repr__(self):
-        return self.__str__()
-
-
-class var_types(Enum):
-    UNIVERSAL = 0
-    EXISTENTIAL = 1
-
-class Var:
-    
-    def __init__(self, type, name):
-        self.type = type
-        self.name = name
-        
-    def type(self):
-        return term_types.VAR
-        
-    def __str__(self):
-        match self.type:
-            case var_types.UNIVERSAL:
-                return f"?{self.name}"
-            case _:
-                return f"_:{self.name}"
-    
-    def __repr__(self):
-        return self.__str__()"""
-    
-    print(dump(ast.parse(mod_code), indent=4))
