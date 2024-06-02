@@ -306,8 +306,7 @@ class FnBuilder:
             case 'eq': cmp = ast.Eq()
             case 'neq': cmp = ast.NotEq()
             case 'is': cmp = ast.Is()
-            case _: print("inconceivable")
-            return
+            case _: print("inconceivable"); return
 
         return ast.Compare(left=op1, ops=[cmp], comparators=[op2]),
 
