@@ -16,6 +16,12 @@ class Iri:
         
     def type(self):
         return term_types.IRI
+    
+    def is_concrete(self):
+        return True
+    
+    def idx_val(self):
+        return self.iri
         
     def __eq__(self, other): 
         if not isinstance(other, Iri):
@@ -34,6 +40,12 @@ class Literal:
         
     def type(self):
         return term_types.LITERAL
+    
+    def is_concrete(self):
+        return True
+    
+    def idx_val(self):
+        return self.value
         
     def __eq__(self, other): 
         if not isinstance(other, Literal):
@@ -53,11 +65,17 @@ class var_types(Enum):
 class Var:
     
     def __init__(self, type, name):
-        self.type = type
+        self.var_type = type
         self.name = name
         
     def type(self):
         return term_types.VAR
+    
+    def is_concrete(self):
+        return False
+    
+    def idx_val(self):
+        return self.name
         
     def __eq__(self, other): 
         if not isinstance(other, Var):
@@ -65,7 +83,7 @@ class Var:
         return self.name == other.name
         
     def __str__(self):
-        match self.type:
+        match self.var_type:
             case var_types.UNIVERSAL:
                 return f"?{self.name}"
             case _:
@@ -85,6 +103,20 @@ class Triple:
         
     def __iter__(self):
         return TripleIt(self)
+    
+    def __getitem__(self, key):
+        match key:
+            case 0: return self.s
+            case 1: return self.p
+            case 2: return self.o
+            case _: print("inconceivable!"); return None
+    
+    def __setitem__(self, key, value):
+        match key:
+            case 0: self.s = value
+            case 1: self.p = value
+            case 2: self.o = value
+            case _: print("inconceivable!");
     
     def __str__(self):
         return f"{self.s} {self.p} {self.o} ."

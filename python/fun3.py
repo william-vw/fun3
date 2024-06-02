@@ -12,18 +12,25 @@ def result_fn(p, state):
     # state.stop = True
 
 
-def fun3():    
+def fun3():
     # (?x, a, Cool) :- (?x, name, "will")
     # rules =  """@prefix : <http://example.org/> . 
 # { ?x a :Cool } <= { ?x :name \"will\" } . """
     
     # (?p, type, Canadian) :-
-    #   (?p, type, Person), (?p, address, ?a), (?a, country, "CA")
+    #   (?p, type, Person), (?p, address, ?a), (?a, country, "CA") .
+    # (?p, type, Person) :-
+    #   (?p, ability, think) .
+    
     rules =  """@prefix : <http://example.org/> . 
-{ ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . """
+{ ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a ?c "CA" } . 
+{ ?p a :Person } <= { ?p :ability :think } .
+"""
     
     data = """@prefix : <http://example.org/> . 
-:will a :Person . :will :address :addr1 . :addr1 :country "CA" ."""
+:will a :Person ; :address :addr1 . :addr1 :country "CA" .
+:ed :ability :think ; :address :addr1 .
+"""
     
     # parse
     
@@ -44,18 +51,18 @@ def fun3():
     
     print()
     
-    # compile
+    # # compile
     
-    rule_fn = compile_py(mod)
-    print(rule_fn)
+    # rule_fn = compile_py(mod)
+    # print(rule_fn)
     
-    print()
+    # print()
     
-    # test
+    # # test
     
-    state = State(False)
+    # state = State(False)
     
-    rule_fn(None, model, state, result_fn)
+    # rule_fn(None, model, state, result_fn)
     
     
 def unparse_with_lineno(ast):

@@ -4,7 +4,7 @@ from n3.grammar.parser.n3Parser import n3Parser
 from n3.grammar.parser.n3Listener import n3Listener
 
 from n3.model import Model
-from n3.terms import *
+from n3.terms import term_types, Iri, var_types, Var, Literal, GraphTerm, Triple
 
 class state:
     
@@ -387,7 +387,7 @@ class n3Creator(n3Listener):
         triple = self.state.triple
         
         self.state.model.add(triple)
-        if triple.p.iri == "<=" or triple.p.iri == "=>":
+        if triple.p.type() == term_types.IRI and (triple.p.iri == "<=" or triple.p.iri == "=>"):
             self.state.rules.append(triple)
             
         self.state.triple = Triple()

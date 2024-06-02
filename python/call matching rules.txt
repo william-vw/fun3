@@ -1,0 +1,37 @@
+?p a Person
+m: ?p a Canadian
+
+?p a ?t
+m: ?p a Canadian
+
+?p a Person
+m: ?pe a ?t
+lambda pe, t, state: ...
+
+
+
+match_cond = []; match_args = []; ok = True
+
+for match in matches:
+	match_clause = match.triple.head.triples()[0]
+for pos in range(3):
+	match_r = match_clause[pos]; clause_r = clause[pos]
+
+	if match_r.is_concrete():
+		if clause_r.is_concrete():
+			if clause_r != match_r:
+				ok = False; break
+		else:
+			if clause_r.name in in_params:
+				match_cond.append(build: param(clause_r) is None or clause_r == match_r)
+	else:
+		if clause_r.is_concrete():
+			match_args.append(cnst(clause_r))
+		else:
+			if clause_r.name in in_params:
+				match_args.append(ref(param(clause_r)))
+			else:
+				match_args.append(cnst(None))
+
+lambda - params = ctu params
+	ctu call - args = ctu params + (model, state, ctu) / state

@@ -2,7 +2,8 @@ from ast import dump, parse
 
 def print_ast():
     mod_code = """
-None"""
+def fn(a, _): 
+    pass"""
     
     print(dump(parse(mod_code), indent=4))
     
