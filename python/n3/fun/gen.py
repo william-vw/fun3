@@ -128,8 +128,8 @@ class GenPython:
             clause_fn, self.__builder.to_stmt(search_call))
     
     def __match_rule_calls(self, clause_fn, clause, in_params, ctu_fn, ctu_params, rest_args):
+        print("matching:", clause)
         matches = self.__matching_rules(clause)
-        print("match", clause.p, matches)
 
         # TODO blank nodes vs. universals
 
@@ -143,17 +143,23 @@ class GenPython:
         # 4/ head:  ?p a ?t (cur_vars=[])
         #    match: ?pe a ?ty
 
-        match_conds = []; match_args = []; lmbda_params = [], ok = True
         for match in matches:
-            match_clause = match.rule.head.triples()[0]
+            match_conds = []; match_args = []; lmbda_params = []; ok = True
+            print("match:", match.rule.s)
+            
+            head = match.rule.s
+            match_clause = head.model.triples()[0]
             
             for pos in range(3):
                 match_r = match_clause[pos]; clause_r = clause[pos]
+                print(f"{match_r} <> {clause_r}")
+                
                 if match_r.is_concrete():
                     if clause_r.is_concrete():
                         # ex 1: Person <> Canadian
                         if clause_r != match_r:  # compile-time check
                             ok = False
+                            print("compile-time check: nok")
                             break
                     else:  # add runtime check, if possible
                         if clause_r.name in in_params:
@@ -182,7 +188,9 @@ class GenPython:
                         else: # ex 4
                             match_args.append(self.__builder.cnst(None))
 
+            print(f"ok? {ok}")
             if ok:
+                print("match_conds:", match_conds, "match_args:", match_args, "lmbda_params:", lmbda_params)
                 # arguments to be passed to ctu
                 # ex 1, 2: p ; ex 3, 4: p, t
                 call_args = [self.__builder.ref(p) for p in ctu_params] + rest_args
@@ -208,6 +216,8 @@ class GenPython:
 
                 self.__builder.fn_body_stmt(
                     clause_fn, self.__builder.to_stmt(match_call))
+            print()
+        print()
 
 
     def __matching_rules(self, clause):
@@ -216,9 +226,9 @@ class GenPython:
 
         ret = []
         if clause.p.idx_val() in self.__pred_idx:
-            ret.append(self.__pred_idx.getall(clause.p.idx_val()))
+            ret.extend(self.__pred_idx.getall(clause.p.idx_val()))
         if 'var' in self.__pred_idx:
-            ret += self.__pred_idx.getall('var')
+            ret.extend(self.__pred_idx.getall('var'))
         return ret
 
     def __process_rules(self, rules):
@@ -229,8 +239,10 @@ class GenPython:
             r = rules[i]
             if r.s.model.len() != 1:
                 print(f"warning: cannot use rule, length of head > 1 ({r})")
-                del rules[i]
-                continue
+                del rules[i]; continue
+            if r.p.iri == "=>":
+                print(f"warning: cannot use bottom-up rule ({r})")
+                del rules[i]; continue
 
             entry = FnEntry(r, self.__builder.fn_name(i, 0))
             for t in r.s.model.triples():

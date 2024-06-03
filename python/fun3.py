@@ -22,6 +22,7 @@ def fun3():
     # (?p, type, Person) :-
     #   (?p, ability, think) .
     
+    
     rules =  """@prefix : <http://example.org/> . 
 { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a ?c "CA" } . 
 { ?p a :Person } <= { ?p :ability :think } .
@@ -80,7 +81,6 @@ def compile_py(mod):
         globals()[name] = code
 
     return new_refs['rule_0']
-
 
 if __name__ == "__main__":
     fun3()
