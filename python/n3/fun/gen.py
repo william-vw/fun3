@@ -135,7 +135,7 @@ class GenPython:
 
         # examples:
         # 1/ head:  ?p a Person
-        #    match: ?p a Canadian
+        #    match: ?p a Person / Belgian
         # 2/ head:  ?p a ?t (cur_vars=[t])
         #    match: ?p a Canadian
         # 3/ head:  ?p a Person (cur_vars=[p])
@@ -183,8 +183,7 @@ class GenPython:
                         # (use our var's name, as it is same as ctu_param)
                         lmbda_params.append(clause_r.name) # (ex: p, t)
                         if clause_r.name in in_params: # ex 3
-                            match_args.append(
-                                self.__builder.ref(clause_r.name))
+                            match_args.append(self.__builder.ref(clause_r.name))
                         else: # ex 4
                             match_args.append(self.__builder.cnst(None))
 

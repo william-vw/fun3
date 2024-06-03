@@ -333,7 +333,7 @@ class n3Creator(n3Listener):
             self.state.path_item = Iri(pname_ln, True)
                 
         else:
-            pname_ns = ctx.PNAME_NS.getText().strip()
+            pname_ns = ctx.PNAME_NS().getText().strip()
             
             # prefix = pname_ns[:-1]
             # ns = self.resolve_prefix(prefix)

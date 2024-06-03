@@ -22,10 +22,20 @@ def fun3():
     # (?p, type, Person) :-
     #   (?p, ability, think) .
     
-    
     rules =  """@prefix : <http://example.org/> . 
-{ ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a ?c "CA" } . 
-{ ?p a :Person } <= { ?p :ability :think } .
+# ex:1
+#{ ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a ?c "CA" } . 
+#{ ?pe a :Person } <= { ?pe :ability :think } .
+#{ ?pe a :Belgian } <= { ?pe :ability :think } .
+# ex:2
+#{ ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a ?c "CA" } . 
+# { ?pe a ?ty } <= { ?pe :ability ?ty } .
+# ex:3
+#{ ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a ?c "CA" } . 
+# { ?pe a ?ty } <= { ?pe :ability ?ty } .
+# ex:4
+{ ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a ?c "CA" } . 
+ { ?pe a ?ty } <= { ?pe :ability ?ty } .
 """
     
     data = """@prefix : <http://example.org/> . 
