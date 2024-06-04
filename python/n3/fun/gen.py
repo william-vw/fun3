@@ -165,7 +165,7 @@ class GenPython:
                         if clause_r != match_r:  # compile-time check
                             print("compile-time check: nok")
                             ok = False; break
-                    else:  
+                    else:
                         clause_varname = self.__safe_var(clause_r.name)
                         # add runtime check, if possible
                         if clause_varname in in_params:
@@ -176,12 +176,12 @@ class GenPython:
                             cmp2 = self.__builder.comp(self.__builder.ref(
                                 clause_varname)), 'eq', self.__cnstr_call(match_r)
                             match_conds.append(self.__builder.disj([cmp1, cmp2]))
-                        else:
-                            # clause has variable; match rule has concrete value
-                            # if successful, pass concrete value to ctu (ex 3), if needed
-                            # (get arg index from ctu_params)
-                            if clause_varname in ctu_params:
-                                call_args[ctu_params.index(clause_varname)] = self.__cnstr_call(match_r)
+
+                        # clause has variable; match rule has concrete value
+                        # if successful, pass concrete value to ctu (ex 3), if needed
+                        # (get arg index from ctu_params)
+                        if clause_varname in ctu_params:
+                            call_args[ctu_params.index(clause_varname)] = self.__cnstr_call(match_r)
                 
                 else: # values will be passed as lambda parameters
                     if clause_r.is_concrete():
