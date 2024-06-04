@@ -390,7 +390,8 @@ class n3Creator(n3Listener):
         if triple.p.type() == term_types.IRI and (triple.p.iri == "<=" or triple.p.iri == "=>"):
             self.state.rules.append(triple)
             
-        self.state.triple = Triple()
+        # so predicateLists etc work
+        self.state.triple = triple.clone()
 
 class n3ParseResult:
     

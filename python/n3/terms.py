@@ -101,6 +101,9 @@ class Triple:
         self.p = p
         self.o = o
         
+    def clone(self):
+        return Triple(self.s, self.p, self.o)
+        
     def __iter__(self):
         return TripleIt(self)
     

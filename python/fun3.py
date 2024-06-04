@@ -24,18 +24,22 @@ def fun3():
     
     rules =  """@prefix : <http://example.org/> . 
 # ex:1
-#{ ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a ?c "CA" } . 
-#{ ?pe a :Person } <= { ?pe :ability :think } .
-#{ ?pe a :Belgian } <= { ?pe :ability :think } .
+# { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
+# { ?pe a :Person } <= { ?pe :ability :think } .
+# { ?pe a :Belgian } <= { ?pe :ability :think } .
 # ex:2
-#{ ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a ?c "CA" } . 
+# { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
 # { ?pe a ?ty } <= { ?pe :ability ?ty } .
 # ex:3
-#{ ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a ?c "CA" } . 
+# { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
 # { ?pe a ?ty } <= { ?pe :ability ?ty } .
 # ex:4
-{ ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a ?c "CA" } . 
- { ?pe a ?ty } <= { ?pe :ability ?ty } .
+# { ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
+#  { ?pe a ?ty } <= { ?pe :ability ?ty } .
+# ex: 5
+{ ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
+ { ?pe a :Person } <= { ?pe :ability :think } .
+ { ?p a ?t } <= { ?p :name "Socrates" } .
 """
     
     data = """@prefix : <http://example.org/> . 
@@ -47,10 +51,10 @@ def fun3():
     
     result = parse_n3(rules)
     # print(result.model)
-    print(result.rules)
+    print("rules:\n", result.rules)
     
-    model = parse_n3(data).model
-    print(model)
+    data = parse_n3(data).model
+    print("model\n:", data)
     
     print()
     
@@ -58,29 +62,31 @@ def fun3():
     
     mod = gen_py(result.rules)
     # print(dump(mod, indent=4))
-    print(unparse_with_lineno(mod))
+    # print(unparse_with_lineno(mod))
+    print(unparse(mod))
     
     print()
     
-    # # compile
+    # compile
     
-    # rule_fn = compile_py(mod)
+    rule_fn = compile_py(mod)
     # print(rule_fn)
     
-    # print()
+    print()
     
     # # test
     
     # state = State(False)
     
-    # rule_fn(None, model, state, result_fn)
+    # print("run -")
+    # rule_fn(None, data, state, result_fn)
     
     
 def unparse_with_lineno(ast):
     code = unparse(ast)
     return "\n".join([ f"{i+1}. {line}" for i, line in enumerate(code.split("\n")) ])
 
-def compile_py(mod):    
+def compile_py(mod): 
     mod_code = compile(mod, "<fun3>", "exec")
     
     new_refs = {}
@@ -91,6 +97,7 @@ def compile_py(mod):
         globals()[name] = code
 
     return new_refs['rule_0']
+
 
 if __name__ == "__main__":
     fun3()

@@ -48,7 +48,7 @@ class GenPython:
         # incoming parameters representing variables
         in_params = self.__cur_params
         # all incoming parameters
-        own_params = in_params + ['model', 'state', 'ctu']
+        own_params = in_params + ['data', 'state', 'ctu']
         
         # function representing this clause
         clause_fn = self.__builder.fn(rule_no, clause_no, own_params)
@@ -64,7 +64,7 @@ class GenPython:
             ctu_params = list(dict.fromkeys(self.__cur_params + own_vars)) # keep order
             # rest of ctu args (unrelated to vars)
             rest_args = [self.__builder.ref(v)
-                         for v in ['model', 'state', 'ctu']]
+                         for v in ['data', 'state', 'ctu']]
             self.__cur_params = ctu_params
             # call next clause fn
             ctu_fn = self.__builder.fn_name(rule_no, clause_no+1)
@@ -122,7 +122,7 @@ class GenPython:
 
         call_args += [self.__builder.ref('state'), lmbda]
         search_call = self.__builder.fn_call(
-            self.__builder.attr_ref('model', 'find'), call_args)
+            self.__builder.attr_ref('data', 'find'), call_args)
 
         self.__builder.fn_body_stmt(
             clause_fn, self.__builder.to_stmt(search_call))
@@ -144,6 +144,11 @@ class GenPython:
         #    match: ?pe a ?ty
 
         for match in matches:
+            # arguments to be passed to ctu
+            # (can be updated by code below)
+            # ex 1, 2: p ; ex 3, 4: p, t
+            call_args = [ self.__builder.ref(p) for p in ctu_params ]
+            
             match_conds = []; match_args = []; lmbda_params = []; ok = True
             print("match:", match.rule.s)
             
@@ -158,18 +163,25 @@ class GenPython:
                     if clause_r.is_concrete():
                         # ex 1: Person <> Canadian
                         if clause_r != match_r:  # compile-time check
-                            ok = False
                             print("compile-time check: nok")
-                            break
-                    else:  # add runtime check, if possible
-                        if clause_r.name in in_params:
+                            ok = False; break
+                    else:  
+                        clause_varname = self.__safe_var(clause_r.name)
+                        # add runtime check, if possible
+                        if clause_varname in in_params:
                             # ex 2: t clause var is given as param
                             # t is None or t == Iri(Canadian)
                             cmp1 = self.__builder.comp(self.__builder.ref(
-                                clause_r.name), 'is', self.__builder.cnst(None))
+                                clause_varname), 'is', self.__builder.cnst(None))
                             cmp2 = self.__builder.comp(self.__builder.ref(
-                                clause_r.name)), 'eq', self.__cnstr_call(match_r)
+                                clause_varname)), 'eq', self.__cnstr_call(match_r)
                             match_conds.append(self.__builder.disj([cmp1, cmp2]))
+                        else:
+                            # clause has variable; match rule has concrete value
+                            # if successful, pass concrete value to ctu (ex 3), if needed
+                            # (get arg index from ctu_params)
+                            if clause_varname in ctu_params:
+                                call_args[ctu_params.index(clause_varname)] = self.__cnstr_call(match_r)
                 
                 else: # values will be passed as lambda parameters
                     if clause_r.is_concrete():
@@ -177,22 +189,21 @@ class GenPython:
                         lmbda_params.append('_')
                         match_args.append(self.__cnstr_call(clause_r)) # Iri(Person)
                     else:
+                        clause_varname = self.__safe_var(clause_r.name)
                         # ex 1-4 (p<>p, p<>pe, t<>ty)
                         # always get value from match clause / find call; 
                         # either we gave None, or it is the same as what we gave
                         # (use our var's name, as it is same as ctu_param)
-                        lmbda_params.append(clause_r.name) # (ex: p, t)
-                        if clause_r.name in in_params: # ex 3
-                            match_args.append(self.__builder.ref(clause_r.name))
+                        lmbda_params.append(clause_varname) # (ex: p, t)
+                        if clause_varname in in_params: # ex 3
+                            match_args.append(self.__builder.ref(clause_varname))
                         else: # ex 4
                             match_args.append(self.__builder.cnst(None))
 
-            print(f"ok? {ok}")
+            # print(f"ok? {ok}")
             if ok:
-                print("match_conds:", match_conds, "match_args:", match_args, "lmbda_params:", lmbda_params)
-                # arguments to be passed to ctu
-                # ex 1, 2: p ; ex 3, 4: p, t
-                call_args = [self.__builder.ref(p) for p in ctu_params] + rest_args
+                # print("match_conds:", match_conds, "match_args:", match_args, "lmbda_params:", lmbda_params)
+                call_args += rest_args
                 ctu_call = self.__builder.fn_call(
                     self.__builder.ref(ctu_fn), call_args)
 
@@ -203,7 +214,7 @@ class GenPython:
 
                 # match args: args we pass to match fn call
                 # ex 3: p (in param), Person (concrete); ex 4: None, None
-                match_args += [self.__builder.ref('model'),
+                match_args += [self.__builder.ref('data'),
                                self.__builder.ref('state'), lmbda]
                 match_call = self.__builder.to_stmt(self.__builder.fn_call(
                     self.__builder.ref(match.fn_name), match_args))
@@ -213,10 +224,9 @@ class GenPython:
                     match_call = self.__builder.ifc(
                         self.__builder.conj(match_conds), match_call)
 
-                self.__builder.fn_body_stmt(
-                    clause_fn, self.__builder.to_stmt(match_call))
-            print()
-        print()
+                self.__builder.fn_body_stmt(clause_fn, match_call)
+        #     print()
+        # print()
 
 
     def __matching_rules(self, clause):
@@ -260,7 +270,11 @@ class GenPython:
         spo = ['s', 'p', 'o']
         for i, r in enumerate(t):
             if isinstance(r, Var):
-                yield spo[i], r.name
+                yield spo[i], self.__safe_var(r.name)
+                
+    def __safe_var(self, n):
+        # return n
+        return "tt" if n == "t" else n
 
     def __cnstr_call(self, r):
         match r.type():
