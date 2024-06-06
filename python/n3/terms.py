@@ -5,14 +5,15 @@ class term_types(Enum):
     IRI = 0
     LITERAL = 1
     VAR = 2
+    GRAPH = 3
 
 
 class Iri:
+
+    # iri
     
-    # label: debugging
-    def __init__(self, iri, label=False):
+    def __init__(self, iri):
         self.iri = iri
-        self.label = label
         
     def type(self):
         return term_types.IRI
@@ -22,14 +23,32 @@ class Iri:
     
     def idx_val(self):
         return self.iri
-        
+    
+    @staticmethod
+    def get_ns(iri):
+        return iri[0:Iri.__sep_idx(iri)+1]
+    
+    @staticmethod
+    def get_ln(iri):
+        return iri[Iri.__sep_idx(iri)+1:]
+    
+    @staticmethod
+    def __sep_idx(iri):
+        return iri.rfind('#') if '#' in iri else iri.rfind('/')
+    
+    def __getattr__(self, name):
+        match name:
+            case 'ns': return Iri.get_ns(self.iri)
+            case 'ln': return Iri.get_ln(self.iri)
+            case _: raise AttributeError(f"unknown attribute: {name}")
+            
     def __eq__(self, other): 
         if not isinstance(other, Iri):
             return NotImplemented
         return self.iri == other.iri
         
     def __str__(self):
-        return f"<{self.iri}>" if not self.label else self.iri
+        return f"<{self.iri}>"
     def __repr__(self):
         return self.__str__()
         
@@ -53,7 +72,7 @@ class Literal:
         return self.value == other.value
         
     def __str__(self):
-        return self.value
+        return str(self.value)
     def __repr__(self):
         return self.__str__()
 
@@ -150,6 +169,9 @@ class GraphTerm:
     
     def __init__(self, model=None):
         self.model = model if model is not None else Model()
+        
+    def type(self):
+        return term_types.GRAPH
         
     def __str__(self):
         return "{"  + "".join([ str(t) for t in self.model.triples() ]) + "}"

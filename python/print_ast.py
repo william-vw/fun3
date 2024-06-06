@@ -3,7 +3,11 @@ from ast import dump, parse
 def print_ast():
     mod_code = """
 def fn(a, _): 
-    pass"""
+    if a == 1: 
+        pass
+    else:
+        pass
+    """
     
     print(dump(parse(mod_code), indent=4))
     

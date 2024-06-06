@@ -2,49 +2,49 @@ from ast import dump, unparse
 
 from n3.parse import parse_n3
 from n3.fun.gen import gen_py
+from n3.terms import Iri
 
 class State : 
     def __init__(self, stop):
         self.stop = stop
 
-def result_fn(p, state):
-    print(f"solution: {p}")
+def result_fn(*args):
+    print(f"solution: { [ a for a in args[:-1] ] }")
     # state.stop = True
 
 
 def fun3():
-    # (?x, a, Cool) :- (?x, name, "will")
-    # rules =  """@prefix : <http://example.org/> . 
-# { ?x a :Cool } <= { ?x :name \"will\" } . """
-    
-    # (?p, type, Canadian) :-
-    #   (?p, type, Person), (?p, address, ?a), (?a, country, "CA") .
-    # (?p, type, Person) :-
-    #   (?p, ability, think) .
-    
-    rules =  """@prefix : <http://example.org/> . 
-# ex:1
-# { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
-# { ?pe a :Person } <= { ?pe :ability :think } .
-# { ?pe a :Belgian } <= { ?pe :ability :think } .
-# ex:2
-# { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
-# { ?pe a ?ty } <= { ?pe :ability ?ty } .
-# ex:3
-# { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
-# { ?pe a ?ty } <= { ?pe :ability ?ty } .
-# ex:4
+#     rules =  """@prefix : <http://example.org/> . 
+# # -
+# # { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
+# # { ?pe a :Person } <= { ?pe :ability :think } .
+# # { ?pe a :Belgian } <= { ?pe :ability :drink } .
+# # -
+# # { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
+# # { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
+# # -
+# # { ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
+# # { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
+# # -
 # { ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
-#  { ?pe a ?ty } <= { ?pe :ability ?ty } .
-# ex: 5
-{ ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
- { ?pe a :Person } <= { ?pe :ability :think } .
- { ?p a ?t } <= { ?p :name "Socrates" } .
+#  { ?pe a :Person } <= { ?pe :ability :think } .
+#  { ?p a ?t } <= { ?p :name "Socrates" } .
+# """
+#     data = """@prefix : <http://example.org/> . 
+# :will a :Person ; :address :addr1 . :addr1 :country "CA" .
+# :ed :ability :think ; :address :addr1 ; :describedAs :Person .
+# :el :ability :drink ; :address :addr1 ; :describedAs :Belgian .
+# :dor :ability :think ; :address :addr2 ; :describedAs :German .
+# :soc :name "Socrates" ; :address :addr1 .
+# """
+
+    rules =  """@prefix log: <http://www.w3.org/2000/10/swap/log#> .
+@prefix : <http://example.org/> . 
+{ ?desc :ancestor ?anc } <= { ?desc :parent ?parent . ?parent :ancestor ?anc } .
+{ ?desc :ancestor ?desc } <= true .
 """
-    
     data = """@prefix : <http://example.org/> . 
-:will a :Person ; :address :addr1 . :addr1 :country "CA" .
-:ed :ability :think ; :address :addr1 .
+:c :parent :b . :b :parent :a .
 """
     
     # parse
@@ -54,7 +54,7 @@ def fun3():
     print("rules:\n", result.rules)
     
     data = parse_n3(data).model
-    print("model\n:", data)
+    print("model:\n", data)
     
     print()
     
@@ -74,12 +74,12 @@ def fun3():
     
     print()
     
-    # # test
+    # test
     
-    # state = State(False)
+    state = State(False)
     
-    # print("run -")
-    # rule_fn(None, data, state, result_fn)
+    print("run -")
+    rule_fn(None, None, data, state, result_fn)
     
     
 def unparse_with_lineno(ast):

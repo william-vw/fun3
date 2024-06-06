@@ -1,6 +1,8 @@
-import ast
-from n3.terms import Var, term_types
+from collections import Counter
 from multidict import MultiDict
+from n3.fun.py_build import PyBuilder
+from n3.terms import Var, term_types
+from n3.ns import n3Log, swapNs
 
 
 def gen_py(rules):
@@ -8,14 +10,22 @@ def gen_py(rules):
     return gen.gen_python(rules)
 
 
+class GenError(Exception):
+    pass
+
+
 class GenPython:
 
     # __builder
+    # __fn_prefix
     # __pred_idx
     # __cur_params
+    # __extra_params
 
     def __init__(self):
-        self.__builder = FnBuilder("rule")
+        self.__builder = PyBuilder()
+        self.__fn_prefix = "rule"
+        self.__extra_params = [ 'data', 'state', 'ctu' ]
 
     def gen_python(self, rules):
         self.__process_rules(rules)
@@ -28,32 +38,47 @@ class GenPython:
         code += [fn for i, (head, _, body) in enumerate(rules)
                  for fn in self.__gen_rule(i, head, body)]
 
-        return ast.Module(body=code, type_ignores=[])
+        return self.__builder.module(code)
 
     def __gen_imports(self):
-        imprt = ast.ImportFrom(module='n3.terms',
-                               names=[ast.alias(name='Iri'), ast.alias(name='Var'), ast.alias(name='Literal')], level=0)
-        ast.fix_missing_locations(imprt)
-
-        return imprt
+        return self.__builder.imports('n3.terms', ['Iri', 'Var', 'Literal'])
 
     def __gen_rule(self, rule_no, head, body):
-        self.__cur_params = self.__vars_graph(head)
+        if head.type() == term_types.GRAPH:
+            self.__cur_params = self.__vars_graph(head)
 
-        return [self.__gen_clause(rule_no, head, body, i) for i, _ in enumerate(body.model.triples())]
+            if body.type() == term_types.GRAPH:
+                return [self.__gen_clause(rule_no, head, body, i) for i, _ in enumerate(body.model.triples())]
+
+            elif body.type() == term_types.LITERAL and body.value == True:
+                return [self.__gen_clause(rule_no, head, None, 0)]
 
     def __gen_clause(self, rule_no, head, body, clause_no):
-        clause = body.model.triple_at(clause_no)
-        
+        # unification taking place in rule head
+        # (may modify cur_params)
+        unify_stmts = self.__unify_head() if clause_no == 0 and len(
+            self.__cur_params) != len(set(self.__cur_params)) else None
+
         # incoming parameters representing variables
         in_params = self.__cur_params
         # all incoming parameters
-        own_params = in_params + ['data', 'state', 'ctu']
-        
+        own_params = in_params + self.__extra_params
+
         # function representing this clause
-        clause_fn = self.__builder.fn(rule_no, clause_no, own_params)
+        clause_fn = self.__builder.fn(
+            self.__fn_name(rule_no, clause_no), own_params)
 
         # running example: clause = ?p :address ?a ; cur_vars = [ p, r ] ; head = ?p a :Person
+
+        # e.g., boolean as body
+        if body is None:
+            if unify_stmts is not None:
+                self.__builder.fn_body_stmts(clause_fn, unify_stmts)
+            else:
+                self.__builder.fn_body_stmt(clause_fn, self.__builder.pss())
+            return clause_fn
+
+        clause = body.model.triple_at(clause_no)
 
         # ex: [ p, a ]
         own_vars = [v for _, v in self.__vars_triple(clause)]
@@ -61,13 +86,13 @@ class GenPython:
         if clause_no < body.model.len() - 1:
             # parameters for the ctu function; unique(prior + own vars)
             # ex: p, r, a
-            ctu_params = list(dict.fromkeys(self.__cur_params + own_vars)) # keep order
+            ctu_params = list(dict.fromkeys(
+                self.__cur_params + own_vars))  # keep order
             # rest of ctu args (unrelated to vars)
-            rest_args = [self.__builder.ref(v)
-                         for v in ['data', 'state', 'ctu']]
+            rest_args = [self.__builder.ref(v) for v in self.__extra_params]
             self.__cur_params = ctu_params
             # call next clause fn
-            ctu_fn = self.__builder.fn_name(rule_no, clause_no+1)
+            ctu_fn = self.__fn_name(rule_no, clause_no+1)
         else:
             # only pass var needed by original ctu fn (head vars!)
             # ex: p
@@ -77,12 +102,65 @@ class GenPython:
             # at the last clause, so call the original ctu
             ctu_fn = 'ctu'
 
-        self.__find_triple_call(clause_fn, clause, in_params, ctu_fn, ctu_params, rest_args)
-        self.__match_rule_calls(clause_fn, clause, in_params, ctu_fn, ctu_params, rest_args)
-
-        ast.fix_missing_locations(clause_fn)
+        # if self.__is_builtin(clause):
+        #     self.__run_builtin(clause_fn, clause, in_params, ctu_fn, ctu_params, rest_args)
+        # else:
+        self.__find_triple_call(
+            clause_fn, clause, in_params, ctu_fn, ctu_params, rest_args)
+        self.__match_rule_calls(
+            clause_fn, clause, in_params, ctu_fn, ctu_params, rest_args)
 
         return clause_fn
+
+    def __unify_head(self):
+        dupl_params = self.__deduplicate_params()
+        # print("dupl_params:", dupl_params)
+
+        body = []
+        self.__unify_vars(dupl_params, 0, [], [], body)
+
+        return body
+
+    def __deduplicate_params(self):
+        counts = Counter(self.__cur_params)
+        ren_params = []; dupl_params = []
+        for p in self.__cur_params:
+            if counts[p] > 1:
+                np = f"{p}{len(dupl_params)}"
+                ren_params.append(np); dupl_params.append(np)
+            else:
+                ren_params.append(p)
+        self.__cur_params = ren_params
+        
+        return dupl_params
+    
+    def __unify_vars(self, vars, idx, bound, unbound, body):
+        bld = self.__builder; var = vars[idx]
+        
+        if_body = []; else_body = []
+        body.append(bld.iif(bld.comp(bld.ref(var), 'is not', bld.cnst(None)), if_body, else_body))
+        
+        if len(bound) > 0:
+            if_body2 = []
+            if_body.append(bld.iif(bld.comp(bld.ref(bound[-1]), 'eq', bld.ref(var)), if_body2))
+            if_body = if_body2
+            
+        bound.append(var)
+        if idx+1 < len(vars):
+            self.__unify_vars(vars, idx+1, bound[:], unbound[:], if_body)
+        else:
+            if_body.append(bld.stmt(bld.fn_call(bld.ref('ctu'), self.__unify_ctu_args(bld, vars, bound))))
+        
+        bound.pop()
+        unbound.append(var)
+        
+        if idx+1 < len(vars):
+            self.__unify_vars(vars, idx+1, bound[:], unbound[:], else_body)
+        elif len(bound) > 0:
+            else_body.append(bld.stmt(bld.fn_call(bld.ref('ctu'), self.__unify_ctu_args(bld, vars, bound))))
+
+    def __unify_ctu_args(self, bld, vars, bound):
+        return [ bld.ref(var) if var in bound else bld.ref(bound[0]) for var in vars ] + [ bld.ref('state') ]
     
     def __find_triple_call(self, clause_fn, clause, in_params, ctu_fn, ctu_params, rest_args):
         # ex: { 'p' : 's', 'a': 'o' }
@@ -91,16 +169,15 @@ class GenPython:
         # arguments to be passed to ctu
         # if next is clause: ex: att_ref(t.s), ref(r), att_ref(t.o)
         # if next is head: ex: att_ref(t.s)
-        pass_args = [self.__builder.attr_ref('t', clause_vars[p]) if p in clause_vars else self.__builder.ref(p)
+        var_args = [self.__builder.attr_ref('t', clause_vars[p]) if p in clause_vars else self.__builder.ref(p)
                      for p in ctu_params]
 
         # model.find will call a lambda
         # this lambda will itself call a ctu
 
         # first, build the ctu call
-        call_args = pass_args + rest_args
-        ctu_call = self.__builder.fn_call(
-            self.__builder.ref(ctu_fn), call_args)
+        call_args = var_args + rest_args
+        ctu_call = self.__builder.fn_call(self.__builder.ref(ctu_fn), call_args)
 
         # then, create lambda with as body the ctu call
         lmbda = self.__builder.lmbda(['t', 'state'], ctu_call)
@@ -125,52 +202,44 @@ class GenPython:
             self.__builder.attr_ref('data', 'find'), call_args)
 
         self.__builder.fn_body_stmt(
-            clause_fn, self.__builder.to_stmt(search_call))
+            clause_fn, self.__builder.stmt(search_call))
     
     def __match_rule_calls(self, clause_fn, clause, in_params, ctu_fn, ctu_params, rest_args):
-        print("matching:", clause)
+        #print("matching:", clause)
         matches = self.__matching_rules(clause)
 
         # TODO blank nodes vs. universals
 
-        # examples:
-        # 1/ head:  ?p a Person
-        #    match: ?p a Person / Belgian
-        # 2/ head:  ?p a ?t (cur_vars=[t])
-        #    match: ?p a Canadian
-        # 3/ head:  ?p a Person (cur_vars=[p])
-        #    match: ?pe a ?t
-        # 4/ head:  ?p a ?t (cur_vars=[])
-        #    match: ?pe a ?ty
-
         for match in matches:
+            
+            # TODO deal with recursion
+            if match.fn_name == clause_fn.name:
+                #print(f"warning: avoiding recursion in {match.fn_name}")
+                continue;
+            
             # arguments to be passed to ctu
             # (can be updated by code below)
-            # ex 1, 2: p ; ex 3, 4: p, t
             call_args = [ self.__builder.ref(p) for p in ctu_params ]
             
             match_conds = []; match_args = []; lmbda_params = []; ok = True
-            print("match:", match.rule.s)
+            #print("match:", match.rule.s)
             
             head = match.rule.s
             match_clause = head.model.triples()[0]
             
             for pos in range(3):
                 match_r = match_clause[pos]; clause_r = clause[pos]
-                print(f"{match_r} <> {clause_r}")
+                #print(f"{match_r} <> {clause_r}")
                 
                 if match_r.is_concrete():
                     if clause_r.is_concrete():
-                        # ex 1: Person <> Canadian
                         if clause_r != match_r:  # compile-time check
-                            print("compile-time check: nok")
+                            #print("compile-time check: nok")
                             ok = False; break
                     else:
                         clause_varname = self.__safe_var(clause_r.name)
                         # add runtime check, if possible
                         if clause_varname in in_params:
-                            # ex 2: t clause var is given as param
-                            # t is None or t == Iri(Canadian)
                             cmp1 = self.__builder.comp(self.__builder.ref(
                                 clause_varname), 'is', self.__builder.cnst(None))
                             cmp2 = self.__builder.comp(self.__builder.ref(
@@ -185,7 +254,7 @@ class GenPython:
                 
                 else: # values will be passed as lambda parameters
                     if clause_r.is_concrete():
-                        # not a variable so is not needed in ctu (ex 3)
+                        # not a variable so is not needed in ctu
                         lmbda_params.append('_')
                         match_args.append(self.__cnstr_call(clause_r)) # Iri(Person)
                     else:
@@ -194,8 +263,8 @@ class GenPython:
                         # always get value from match clause / find call; 
                         # either we gave None, or it is the same as what we gave
                         # (use our var's name, as it is same as ctu_param)
-                        lmbda_params.append(clause_varname) # (ex: p, t)
-                        if clause_varname in in_params: # ex 3
+                        lmbda_params.append(clause_varname)
+                        if clause_varname in in_params:
                             match_args.append(self.__builder.ref(clause_varname))
                         else: # ex 4
                             match_args.append(self.__builder.cnst(None))
@@ -208,26 +277,23 @@ class GenPython:
                     self.__builder.ref(ctu_fn), call_args)
 
                 # lambda params: useful vars from matching clause
-                # ex 3: p, _; ex 4: p, t
                 lmbda_params.append('state') # (add rest param)
                 lmbda = self.__builder.lmbda(lmbda_params, ctu_call)
 
                 # match args: args we pass to match fn call
-                # ex 3: p (in param), Person (concrete); ex 4: None, None
                 match_args += [self.__builder.ref('data'),
                                self.__builder.ref('state'), lmbda]
-                match_call = self.__builder.to_stmt(self.__builder.fn_call(
+                match_call = self.__builder.stmt(self.__builder.fn_call(
                     self.__builder.ref(match.fn_name), match_args))
 
                 # if needed, wrap in runtime conditional
                 if len(match_conds) > 0:
-                    match_call = self.__builder.ifc(
+                    match_call = self.__builder.iif(
                         self.__builder.conj(match_conds), match_call)
 
                 self.__builder.fn_body_stmt(clause_fn, match_call)
         #     print()
         # print()
-
 
     def __matching_rules(self, clause):
         if clause.p.type() == term_types.VAR:
@@ -249,11 +315,11 @@ class GenPython:
             if r.s.model.len() != 1:
                 print(f"warning: cannot use rule, length of head > 1 ({r})")
                 del rules[i]; continue
-            if r.p.iri == "=>":
+            if r.p.iri == n3Log['implies']:
                 print(f"warning: cannot use bottom-up rule ({r})")
                 del rules[i]; continue
 
-            entry = FnEntry(r, self.__builder.fn_name(i, 0))
+            entry = FnEntry(r, self.__fn_name(i, 0))
             for t in r.s.model.triples():
                 if t.p.type() == term_types.VAR:
                     self.__pred_idx.add('var', entry)
@@ -262,6 +328,16 @@ class GenPython:
                 self.__pred_idx.add('all', entry)
 
             i += 1
+            
+    # def __is_builtin(self, clause):
+    #     return clause.p.type() == term_types.IRI and clause.p.ns.startswith(swapNs.iri)
+    
+    # def __run_builtin(self, clause_fn, clause, in_params, ctu_fn, ctu_params, rest_args):
+    #     match clause.p.ln:
+    #         case 'notEqualTo': ...
+    #         case _: raise GenError(f"unsupported builtin: '{clause.p.ln}'")
+            
+    # helper functions
 
     def __vars_graph(self, graph):
         return [v for t in graph.model.triples() for _, v in self.__vars_triple(t)]
@@ -273,24 +349,29 @@ class GenPython:
                 yield spo[i], self.__safe_var(r.name)
                 
     def __safe_var(self, n):
-        # return n
+        # TODO others as well (data, state, ctu, etc)
         return "tt" if n == "t" else n
 
     def __cnstr_call(self, r):
         match r.type():
             case term_types.IRI:
                 cls = "Iri"
-                args = [r.iri, r.label]
+                arg = r.iri
             case term_types.VAR:
                 cls = "Var"
-                args = [r.name]
+                arg = r.name
             case term_types.LITERAL:
                 cls = "Literal"
-                args = [r.value]
+                arg = r.value
             case _: print("inconceivable")
 
-        return self.__builder.fn_call(fn=self.__builder.ref(cls), args=[self.__builder.cnst(a) for a in args])
+        return self.__builder.fn_call(fn=self.__builder.ref(cls), args=[self.__builder.cnst(arg)])
 
+    def __fn_name(self, rule_no, clause_no):
+        if clause_no == 0:
+            return f"{self.__fn_prefix}_{rule_no}"
+        else:
+            return f"{self.__fn_prefix}_{rule_no}_{clause_no}"
 
 class FnEntry:
 
@@ -306,82 +387,3 @@ class FnEntry:
 
     def __repr__(self):
         return self.__str__()
-
-
-class FnBuilder:
-
-    # fn_prefix
-
-    def __init__(self, fn_prefix):
-        self.__fn_prefix = fn_prefix
-
-    def fn(self, rule_no, clause_no, params=[]):
-        name = self.fn_name(rule_no, clause_no)
-        args = [ast.arg(arg=p) for p in params]
-
-        return ast.FunctionDef(
-            name=name,
-            args=ast.arguments(
-                args=args,
-                posonlyargs=[], vararg=None, kwarg=None, defaults=[], kwonlyargs=[], kw_defaults=[]
-            ),
-            body=[],
-            decorator_list=[]
-        )
-
-    def fn_body_stmt(self, fn, stmt):
-        fn.body.append(stmt)
-
-    def ref(self, name):
-        return ast.Name(id=name, ctx=ast.Load())
-
-    def cnst(self, value):
-        # TODO escape strings
-        return ast.Constant(value=value)
-
-    def attr_ref(self, var, attr):
-        return ast.Attribute(value=self.ref(var), attr=attr, ctx=ast.Load())
-
-    def fn_call(self, fn, args=[]):
-        return ast.Call(func=fn, args=args, keywords=[])
-
-    def lmbda(self, params, expr):
-        args = [ast.arg(arg=p) for p in params]
-
-        return ast.Lambda(
-            args=ast.arguments(
-                args=args,
-                posonlyargs=[], kwonlyargs=[], kw_defaults=[], defaults=[]
-            ),
-            body=expr
-        )
-
-    def to_stmt(self, expr):
-        return ast.Expr(expr)
-
-    def comp(self, op1, cmp, op2):
-        match cmp:
-            case 'eq': cmp = ast.Eq()
-            case 'neq': cmp = ast.NotEq()
-            case 'is': cmp = ast.Is()
-            case _: print("inconceivable"); return
-
-        return ast.Compare(left=op1, ops=[cmp], comparators=[op2]),
-
-    def conj(self, conds):
-        return ast.BoolOp(op=ast.And(), values=conds)
-
-    def disj(self, conds):
-        return ast.BoolOp(op=ast.Or(), values=conds)
-
-    def ifc(self, cond, body):
-        return ast.If(
-            test=cond,
-            body=body,
-            orelse=[])
-
-    def fn_name(self, rule_no, clause_no):
-        if clause_no == 0:
-            return f"{self.__fn_prefix}_{rule_no}"
-        else:
-            return f"{self.__fn_prefix}_{rule_no}_{clause_no}"

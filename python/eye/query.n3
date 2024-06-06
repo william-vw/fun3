@@ -1,0 +1,3 @@
+@prefix : <http://example.org/> . 
+
+{ ?desc :ancestor ?anc } => { ?desc :ancestor ?anc } .

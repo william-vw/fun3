@@ -5,6 +5,7 @@ from n3.grammar.parser.n3Listener import n3Listener
 
 from n3.model import Model
 from n3.terms import term_types, Iri, var_types, Var, Literal, GraphTerm, Triple
+from n3.ns import rdf, owl, n3Log
 
 class state:
     
@@ -17,19 +18,21 @@ class state:
     
     # parent
     
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, prefixes={}):
         self.path_item = None
         self.triple = Triple()
         
         self.model = Model()
-        self.prefixes = {}
+        self.prefixes = prefixes
         self.rules = []
         
         self.parent = parent
         
     def sub(self):
-        return state(self)
+        return state(self, self.prefixes)
         
+class n3ParseError(Exception):
+    pass
 
 class n3Creator(n3Listener):
     
@@ -142,21 +145,19 @@ class n3Creator(n3Listener):
     def exitVerb(self, ctx:n3Parser.VerbContext):
         if ctx.predicate() is None:
             token = ctx.start.text.strip()
-            # if token == "a":
-            #     predicate = "rdf:type"
-
-            # # has, is
-			
-            # elif token == "=":
-            #     predicate = "owl:sameAs"
-                
-            # elif token == "=>":
-            #     predicate = "log:implies"
             
-            # elif token == "<=":
-            #     predicate = "log:impliedBy"
+            # self.state.path_item = Iri(token, True)
+            
+            # TODO has, is
+            predicate = None
+            match token:
+                case 'a': predicate = rdf['type']
+                case '=': predicate = owl['sameAs']
+                case '=>': predicate = n3Log["implies"]
+                case '<=': predicate = n3Log["impliedBy"]
 
-            self.state.path_item = Iri(token, True)
+            if predicate is not None:
+                self.state.path_item = predicate
             
         self.state.triple.p = self.state.path_item
 
@@ -222,7 +223,8 @@ class n3Creator(n3Listener):
 
     # Exit a parse tree produced by n3Parser#literal.
     def exitLiteral(self, ctx:n3Parser.LiteralContext):
-        pass
+        lit = ctx.BooleanLiteral()
+        self.state.path_item = Literal(self.bool(lit))
 
     # Enter a parse tree produced by n3Parser#blankNodePropertyList.
     def enterBlankNodePropertyList(self, ctx:n3Parser.BlankNodePropertyListContext):
@@ -324,23 +326,25 @@ class n3Creator(n3Listener):
         if pname_ln is not None:
             pname_ln = pname_ln.getText().strip()
             
-            # (prefix, name) = pname_ln.split(":", 1)
-            # ns = self.resolve_prefix(prefix)
-            # if ns is not None:
-            #     ns = self.state.prefixes[prefix]
-            #     iri = ns + name
-            #     self.state.path_item = Iri(iri)
-            self.state.path_item = Iri(pname_ln, True)
+            (prefix, name) = pname_ln.split(":", 1)
+            ns = self.resolve_prefix(prefix)
+            if ns is not None:
+                ns = self.state.prefixes[prefix]
+                iri = ns + name
+                self.state.path_item = Iri(iri)
+                
+            # self.state.path_item = Iri(pname_ln, True)
                 
         else:
             pname_ns = ctx.PNAME_NS().getText().strip()
             
-            # prefix = pname_ns[:-1]
-            # ns = self.resolve_prefix(prefix)
-            # if ns is not None:
-            #     ns = self.state.prefixes[prefix]
-            #     self.state.path_item = Iri(ns)
-            self.state.path_item = Iri(pname_ns, True)
+            prefix = pname_ns[:-1]
+            ns = self.resolve_prefix(prefix)
+            if ns is not None:
+                ns = self.state.prefixes[prefix]
+                self.state.path_item = Iri(ns)
+                
+            # self.state.path_item = Iri(pname_ns, True)
             
 
     # Enter a parse tree produced by n3Parser#blankNode.
@@ -375,10 +379,15 @@ class n3Creator(n3Listener):
         
     def resolve_prefix(self, prefix):
         if prefix not in self.state.prefixes:
-            print(f"ERROR: unknown prefix {prefix}")
-            return None
+            raise n3ParseError(f"error: unknown prefix '{prefix}'") from None
         else:
             return self.state.prefixes[prefix]
+    
+    def bool(self, node):
+        txt = self.text(node)
+        if txt.startswith("@"):
+            txt = txt[1:]
+        return txt == 'true'
     
     def text(self, node):
         return node.getText().strip()
@@ -387,11 +396,23 @@ class n3Creator(n3Listener):
         triple = self.state.triple
         
         self.state.model.add(triple)
-        if triple.p.type() == term_types.IRI and (triple.p.iri == "<=" or triple.p.iri == "=>"):
+        if triple.p.type() == term_types.IRI and (triple.p == n3Log['implies'] or triple.p == n3Log['impliedBy']):
             self.state.rules.append(triple)
             
         # so predicateLists etc work
         self.state.triple = triple.clone()
+        
+    def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
+        raise n3ParseError(msg) from None
+
+    def reportAmbiguity(self, recognizer, dfa, startIndex, stopIndex, exact, ambigAlts, configs):
+        pass
+
+    def reportAttemptingFullContext(self, recognizer, dfa, startIndex, stopIndex, conflictingAlts, configs):
+        pass
+
+    def reportContextSensitivity(self, recognizer, dfa, startIndex, stopIndex, prediction, configs):
+        pass
 
 class n3ParseResult:
     
@@ -406,6 +427,7 @@ def parse_n3(str):
     stream = CommonTokenStream(lexer)
     parser = n3Parser(stream)
     parser.addParseListener(creator)
+    parser.addErrorListener(creator)
 
     _ = parser.n3Doc()
     # print(tree.toStringTree(recog=parser))
