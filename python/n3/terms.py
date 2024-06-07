@@ -1,11 +1,14 @@
 from enum import Enum
+import string, random
 from n3.model import Model
 
 class term_types(Enum):
     IRI = 0
     LITERAL = 1
-    VAR = 2
+    COLLECTION = 2
     GRAPH = 3
+    VAR = 4
+    BNODE = 5
 
 
 class Iri:
@@ -52,10 +55,13 @@ class Iri:
     def __repr__(self):
         return self.__str__()
         
+        
 class Literal:
     
-    def __init__(self, value):
+    def __init__(self, value, dt=None, lng=None):
         self.value = value
+        self.dt = dt
+        self.lng = lng
         
     def type(self):
         return term_types.LITERAL
@@ -72,19 +78,45 @@ class Literal:
         return self.value == other.value
         
     def __str__(self):
-        return str(self.value)
+        suffix = None
+        if isinstance(self.value, str):
+            if self.lng is not None:
+                suffix = f"@{self.lng}"
+            elif self.dt is not None:
+                suffix = f"^^{self.dt}"
+        return str(self.value) + (suffix if suffix is not None else "")
     def __repr__(self):
         return self.__str__()
 
 
-class var_types(Enum):
-    UNIVERSAL = 0
-    EXISTENTIAL = 1
+class Collection:
+    
+    def __init__(self, elements):
+        self.elements = tuple(elements) # immutable
+    
+    def type(self):
+        return term_types.COLLECTION
+    
+    def is_concrete(self):
+        return True
+    
+    def idx_val(self):
+        return self.elements
+        
+    def __eq__(self, other): 
+        if not isinstance(other, Collection):
+            return NotImplemented
+        return self.elements == other.elements
+        
+    def __str__(self):
+        return str(self.elements)
+    def __repr__(self):
+        return self.__str__()
+
 
 class Var:
     
-    def __init__(self, type, name):
-        self.var_type = type
+    def __init__(self, name):
         self.name = name
         
     def type(self):
@@ -102,11 +134,35 @@ class Var:
         return self.name == other.name
         
     def __str__(self):
-        match self.var_type:
-            case var_types.UNIVERSAL:
-                return f"?{self.name}"
-            case _:
-                return f"_:{self.name}"
+        return f"?{self.name}"
+    def __repr__(self):
+        return self.__str__()
+    
+
+class BlankNode:
+        
+    def __init__(self, label=None):
+        if label is None:
+            self.label = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+        else:
+            self.label = label
+        
+    def type(self):
+        return term_types.BNODE
+    
+    def is_concrete(self):
+        return False
+    
+    def idx_val(self):
+        return self.label
+        
+    def __eq__(self, other): 
+        if not isinstance(other, BlankNode):
+            return NotImplemented
+        return self.label == other.label
+        
+    def __str__(self):
+        return f"_:{self.label}"
     def __repr__(self):
         return self.__str__()
     
@@ -174,6 +230,6 @@ class GraphTerm:
         return term_types.GRAPH
         
     def __str__(self):
-        return "{"  + "".join([ str(t) for t in self.model.triples() ]) + "}"
+        return "{ "  + "".join([ str(t) for t in self.model.triples() ])[:-2] + " }"
     def __repr__(self):
         return self.__str__()

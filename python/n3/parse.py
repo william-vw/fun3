@@ -1,35 +1,85 @@
 from antlr4 import *
+import uritools
 from n3.grammar.parser.n3Lexer import n3Lexer
 from n3.grammar.parser.n3Parser import n3Parser
 from n3.grammar.parser.n3Listener import n3Listener
 
 from n3.model import Model
-from n3.terms import term_types, Iri, var_types, Var, Literal, GraphTerm, Triple
-from n3.ns import rdf, owl, n3Log
+from n3.terms import term_types, Iri, Collection, Var, BlankNode, Literal, GraphTerm, Triple
+from n3.ns import rdf, owl, n3Log, xsd
 
 class state:
     
-    # path_item
-    # triple
-    
-    # model
-    # prefixes
-    # rules
-    
     # parent
     
-    def __init__(self, parent=None, prefixes={}):
+    # path_item
+    # triple
+    # iri_mode (None/'ipl'/'rdflit')
+    # dt
+    # collection
+    
+    # base
+    # prefixes
+    # model
+    # bnodes
+    # rules
+    
+    def __init__(self, parent=None, new_scope=False):        
+        self.parent = parent
         self.path_item = None
-        self.triple = Triple()
+        self.iri_mode = None
+        self.dt = None
+        self.collection = None
         
-        self.model = Model()
-        self.prefixes = prefixes
+        # always copy base & prefixes
+        if parent is not None:
+            self.base = parent.base
+            # subgraphs can have "local" prefixes
+            self.prefixes = { k: v for k, v in parent.prefixes.items() }
+        else:
+            self.base = None; self.prefixes = {}
+        
+        if parent is None or new_scope:
+            self.triple = Triple()
+            self.model = Model()
+            self.bnodes = {}
+        else:
+            self.triple = parent.triple.clone()
+            self.model = parent.model
+            self.bnodes = parent.bnodes
+           
         self.rules = []
         
-        self.parent = parent
+    def sub(self, new_scope=False):
+        return state(self, new_scope)
+    
+    def bnode(self, label=None):
+        if label is None:
+            return BlankNode()
+        else:
+            if label not in self.bnodes:
+                # https://w3c.github.io/N3/spec/semantics.html
+                # bnodes are only local to current graph
+                # so, only _per scope_, return same bnode for same label
+                # (random ID so not to overlap with bnodes in other graphs)
+                self.bnodes[label] = BlankNode() 
+            
+            return self.bnodes[label]
         
-    def sub(self):
-        return state(self, self.prefixes)
+    def start_collect(self):
+        self.collection = []
+        
+    def is_collecting(self):
+        return self.collection is not None
+    
+    def collect(self, object):
+        self.collection.append(object)
+        
+    def end_collect(self):
+        ret = self.collection
+        self.collection = None
+        
+        return ret
         
 class n3ParseError(Exception):
     pass
@@ -37,7 +87,6 @@ class n3ParseError(Exception):
 class n3Creator(n3Listener):
     
     def __init__(self):
-        self.model = Model()
         self.state = state()
     
     # Enter a parse tree produced by n3Parser#n3Doc.
@@ -80,7 +129,7 @@ class n3Creator(n3Listener):
 
     # Exit a parse tree produced by n3Parser#sparqlBase.
     def exitSparqlBase(self, ctx:n3Parser.SparqlBaseContext):
-        pass
+        self.state.base = self.text(ctx.IRIREF())[1:-1]
 
 
     # Enter a parse tree produced by n3Parser#sparqlPrefix.
@@ -107,7 +156,7 @@ class n3Creator(n3Listener):
 
     # Exit a parse tree produced by n3Parser#base.
     def exitBase(self, ctx:n3Parser.BaseContext):
-        pass
+        self.state.base = self.text(ctx.IRIREF())[1:-1]
 
 
     # Enter a parse tree produced by n3Parser#triples.
@@ -185,9 +234,11 @@ class n3Creator(n3Listener):
 
     # Exit a parse tree produced by n3Parser#object.
     def exitObject(self, ctx:n3Parser.ObjectContext):
-        self.state.triple.o = self.state.path_item
-        
-        self.emitTriple()
+        if self.state.is_collecting():
+            self.state.collect(self.state.path_item)
+        else:
+            self.state.triple.o = self.state.path_item
+            self.emitTriple()
 
 
     # Enter a parse tree produced by n3Parser#expression.
@@ -199,6 +250,7 @@ class n3Creator(n3Listener):
         pass
 
 
+    # TODO
     # Enter a parse tree produced by n3Parser#path.
     def enterPath(self, ctx:n3Parser.PathContext):
         pass
@@ -225,38 +277,54 @@ class n3Creator(n3Listener):
     def exitLiteral(self, ctx:n3Parser.LiteralContext):
         lit = ctx.BooleanLiteral()
         if lit is not None:
-            self.state.path_item = Literal(self.bool(lit))
+            self.state.path_item = Literal(self.bool(lit), xsd['boolean'])
 
     # Enter a parse tree produced by n3Parser#blankNodePropertyList.
     def enterBlankNodePropertyList(self, ctx:n3Parser.BlankNodePropertyListContext):
-        pass
+        self.state = self.state.sub()
+        
+        # use same bnode as subject for properties in list
+        self.state.triple[0] = self.state.bnode()
 
     # Exit a parse tree produced by n3Parser#blankNodePropertyList.
     def exitBlankNodePropertyList(self, ctx:n3Parser.BlankNodePropertyListContext):
-        pass
+        # bnode for property list
+        bnode = self.state.triple[0]
+        
+        self.state = self.state.parent
+        # use bnode as path_item (e.g., object)
+        self.state.path_item = bnode
 
 
     # Enter a parse tree produced by n3Parser#iriPropertyList.
     def enterIriPropertyList(self, ctx:n3Parser.IriPropertyListContext):
-        pass
+        self.state = self.state.sub()
+        
+        # use next iri as subject for properties in ipl
+        self.state.iri_mode = 'ipl'
 
     # Exit a parse tree produced by n3Parser#iriPropertyList.
     def exitIriPropertyList(self, ctx:n3Parser.IriPropertyListContext):
-        pass
+         # iri for property list
+        iri = self.state.triple[0]
+        
+        self.state = self.state.parent
+        # use iri as path_item (e.g., object)
+        self.state.path_item = iri
 
 
     # Enter a parse tree produced by n3Parser#collection.
     def enterCollection(self, ctx:n3Parser.CollectionContext):
-        pass
+        self.state.start_collect()
 
     # Exit a parse tree produced by n3Parser#collection.
     def exitCollection(self, ctx:n3Parser.CollectionContext):
-        pass
+        self.state.path_item = Collection(self.state.end_collect())
 
 
     # Enter a parse tree produced by n3Parser#formula.
     def enterFormula(self, ctx:n3Parser.FormulaContext):
-        self.state = self.state.sub()
+        self.state = self.state.sub(new_scope=True)
 
     # Exit a parse tree produced by n3Parser#formula.
     def exitFormula(self, ctx:n3Parser.FormulaContext):
@@ -281,28 +349,32 @@ class n3Creator(n3Listener):
 
     # Exit a parse tree produced by n3Parser#numericLiteral.
     def exitNumericLiteral(self, ctx:n3Parser.NumericLiteralContext):
-        n = None
+        n = None; dt = None
         
         if ctx.INTEGER() is not None:
-            n = ctx.INTEGER()
-        elif ctx.DOUBLE is not None:
-            n = ctx.DOUBLE()
-        elif ctx.DECIMAL is not None:
-            n = ctx.DECIMAL()
+            n = self.int(ctx.INTEGER()); dt = xsd['int']
+        elif ctx.DOUBLE() is not None:
+            n = self.double(ctx.DOUBLE()); dt = xsd['double']
+        elif ctx.DECIMAL() is not None:
+            n = self.decimal(ctx.DECIMAL()); dt = xsd['decimal']
         
         if n is not None:
-            self.state.path_item = Literal(self.text(n))
+            self.state.path_item = Literal(n, dt)
 
     # Enter a parse tree produced by n3Parser#rdfLiteral.
     def enterRdfLiteral(self, ctx:n3Parser.RdfLiteralContext):
-        pass
+        self.state.iri_mode = 'rdflit'
 
     # Exit a parse tree produced by n3Parser#rdfLiteral.
     def exitRdfLiteral(self, ctx:n3Parser.RdfLiteralContext):
-        # lex = self.text(ctx.String())
-        # lng = self.text(ctx.LANGTAG())
+        # (include quotes for now)
+        lex = self.text(ctx.String()) # self.string(ctx.String())
+        lng = self.text(ctx.LANGTAG())[1:] if ctx.LANGTAG() is not None else None
         
-        self.state.path_item = Literal(self.text(ctx.String()))
+        dt = self.state.dt if self.state.dt is not None else None
+        self.state.iri_mode = None; self.state.dt = None
+        
+        self.state.path_item = Literal(lex, dt, lng)
 
     # Enter a parse tree produced by n3Parser#iri.
     def enterIri(self, ctx:n3Parser.IriContext):
@@ -313,7 +385,8 @@ class n3Creator(n3Listener):
         iri_ref = ctx.IRIREF()
         
         if iri_ref is not None:
-            self.state.path_item = Iri(self.text(iri_ref)[1:-1])
+            iri_ref = Iri(self.iri(iri_ref))
+            self.process_iri(iri_ref)
 
 
     # Enter a parse tree produced by n3Parser#prefixedName.
@@ -324,6 +397,7 @@ class n3Creator(n3Listener):
     def exitPrefixedName(self, ctx:n3Parser.PrefixedNameContext):
         pname_ln = ctx.PNAME_LN()
         
+        iri_ref = None
         if pname_ln is not None:
             pname_ln = pname_ln.getText().strip()
             
@@ -332,10 +406,7 @@ class n3Creator(n3Listener):
             if ns is not None:
                 ns = self.state.prefixes[prefix]
                 iri = ns + name
-                self.state.path_item = Iri(iri)
-                
-            # self.state.path_item = Iri(pname_ln, True)
-                
+                iri_ref = Iri(iri)
         else:
             pname_ns = ctx.PNAME_NS().getText().strip()
             
@@ -343,10 +414,20 @@ class n3Creator(n3Listener):
             ns = self.resolve_prefix(prefix)
             if ns is not None:
                 ns = self.state.prefixes[prefix]
-                self.state.path_item = Iri(ns)
-                
-            # self.state.path_item = Iri(pname_ns, True)
-            
+                iri_ref = Iri(ns)
+        
+        if iri_ref is not None:
+            self.process_iri(iri_ref)
+
+    def process_iri(self, iri_ref):
+        match self.state.iri_mode:
+            case 'ipl': # use iri as subject for properties in ipl
+                self.state.triple[0] = iri_ref
+                self.state.iri_mode = None
+            case 'rdflit': # use iri as datatype
+                self.state.dt = iri_ref
+                self.state.iri_mode = None
+            case None: self.state.path_item = iri_ref
 
     # Enter a parse tree produced by n3Parser#blankNode.
     def enterBlankNode(self, ctx:n3Parser.BlankNodeContext):
@@ -354,10 +435,13 @@ class n3Creator(n3Listener):
 
     # Exit a parse tree produced by n3Parser#blankNode.
     def exitBlankNode(self, ctx:n3Parser.BlankNodeContext):
-        name = None if ctx.BLANK_NODE_LABEL() is None else self.text(ctx.BLANK_NODE_LABEL())
+        if ctx.BLANK_NODE_LABEL() is not None:
+            label = self.text(ctx.BLANK_NODE_LABEL())
+            label = label[2:]
+        else:
+            label = None
         
-        self.state.path_item = Var(var_types.EXISTENTIAL, name)
-
+        self.state.path_item = self.state.bnode(label)
 
     # Enter a parse tree produced by n3Parser#quickVar.
     def enterQuickVar(self, ctx:n3Parser.QuickVarContext):
@@ -368,7 +452,7 @@ class n3Creator(n3Listener):
         name = ctx.QuickVarName()
         
         if name is not None:
-            self.state.path_item = Var(var_types.UNIVERSAL, self.text(name)[1:])
+            self.state.path_item = Var(self.text(name)[1:])
     
     # custom methods
     
@@ -391,7 +475,42 @@ class n3Creator(n3Listener):
         return txt == 'true'
     
     def text(self, node):
+        if node is None:
+            return None
         return node.getText().strip()
+    
+    def iri(self, node):
+        iri = self.text(node)[1:-1]
+        
+        # (quick heuristic to avoid expensive checks each time)
+        if iri.startswith("http") or iri.startswith("//"):
+            return iri
+        
+        if uritools.isrelpath(iri):
+            if self.state.base is None:
+                raise n3ParseError("found relative IRI without base IRI set: self.text(node)")
+            return uritools.urijoin(self.state.base, iri)
+        else:
+            return iri
+    
+    def string(self, node):
+        if node is None:
+            return ""
+        
+        text = self.text(node)
+        if text.startswith("\"\"\""):
+            return text[3:-3]
+        else:
+            return text[1:-1]
+        
+    def int(self, lex):
+        return int(self.text(lex))
+    
+    def double(self, lex):
+        return float(self.text(lex))
+    
+    def decimal(self, lex):
+        return float(self.text(lex))
         
     def emitTriple(self):
         triple = self.state.triple

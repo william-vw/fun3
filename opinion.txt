@@ -1,8 +1,8 @@
-(sorry for the length of this email!)
+(sorry for the length of this email)
 
 For the last few weeks have been hacking away at a different way (at least, for me) to reason over N3 rules.
 
-A bit of background: as you know, I was ultimately disappointed in my work on jen3 since it ended up being so terribly slow. (But, I don't regret working on it because I learned a lot about the reasoning process, at least for bottom-up reasoning.) As a side project, I worked with a blockchain researcher to get rule-based reasoning to work in a smart contract (Solidity). We essentially compiled RDF data and ontologies into a set of classes (typical way: ontology classes -> classes, with properties based on domains & ranges). We then implemented source-to-source compilation to generate procedural (Solidity) code from the rules; essentially, series of if-then checks that refer to class properties to do comparisons & variable assignments. Ex:
+A bit of background: Firstly, as you know, I was ultimately disappointed in my work on jen3 since it ended up being so terribly slow. But, I don't regret working on it because I learned a lot about the reasoning process, at least for bottom-up reasoning. Secondly, as a side project, I worked with a blockchain researcher to get rule-based reasoning to work in a smart contract (Solidity). We essentially compiled RDF data and ontologies into a set of classes (typical way: ontology classes -> classes, with properties based on domains & ranges). We then implemented source-to-source compilation to generate procedural (Solidity) code from the rules; essentially, series of if-then checks that refer to class properties to do comparisons & variable assignments. Ex:
 
 { ?req :immunoTherapyItem ?med . ?med :eligibleTransplant ?proc ; fhir:patient ?p .
    ?cov fhir:policyHolder ?p ; fhir:class ?class . ?class list:in (:PartB :PartD).
@@ -11,14 +11,15 @@ A bit of background: as you know, I was ultimately disappointed in my work on je
 ->
 
 if req.immunoTherapyItem exists and req.immunoTherapyItem.eligibleTransplant exists
-     and req.patient exists and req.patient.policyHolderOf exists
-     and req.patient.policyHolderOf.class in ('PartB', 'PartD')
+     and req.patient exists and req.patient.policyHolderOf exists and req.patient.policyHolderOf.class in ('PartB', 'PartD')
 then
      v = CoverageEligibilityResponse(request: req.immunoTherapyItem, outcome: 'complete')
 
-(There's more going on behind the scenes, e.g., to deal with multi-valued properties.) We did it in this way because executing blockchain code costs cryptocurrency; unbounded loops, recursive calls, etc., which are rampant in reasoners AFAIK, are frowned upon for that reason. There's many issues with this work - RDF data needs to be shoehorned into classes, it is not very expressive re unification - so I feel it was a throwaway effort in the end.
+(There's more going on behind the scenes, e.g., to deal with multi-valued properties.) We did it in this way because executing blockchain code costs cryptocurrency; unbounded loops, recursive calls, etc., which are rampant in reasoners, are frowned upon for that reason. There's many issues with this work - RDF data needs to be shoehorned into classes, it is not very expressive (e.g., re unification, recursion) - so I feel it was a throwaway effort in the end. (No worries, there's a reason why I'm mentioning all this.)
 
-Recently, I've wanted to build a top-down N3 reasoner as it is closer to how I am currently using N3 (i.e., more in a logical programming sense). And I understand Jos's concerns about eye being the only usable N3 reasoner out there. I looked at jena's LP implementation of a WAM but it looked quite complicated to implement :-( (with the instruction set, variable stack, continuations, etc.). So, I looked again at source-to-source complication, but this time, implementing mimicking the rules more closely in the procedural host language; rules as functions with continuations. Aside from the work on curry [1] and some very early work [2, 3], I couldn't find a lot of work on this. On the one hand, this makes me think that it's a dumb idea, since knowledgeable people simply reject it out of hand :-) On the other hand, I couldn't think of many reasons why it would be very slow. It avoids the "overhead" of a WAM with its virtual instruction set, variable stack, and frames; instead it directly re-uses similar constructs from the host language. E.g.:
+Recently, I've wanted to build a top-down N3 reasoner as it is closer to how I am currently using N3 (i.e., more in a logical programming sense). And I understand Jos's concerns about eye being the only usable N3 reasoner out there. I looked at jena's LP implementation of a WAM but it looked quite complicated to implement (with the instruction set, variable stack, continuations, etc.) :-( So, I looked again at source-to-source complication, but this time, with more expressivity by mimicking the rules more closely in the procedural host language: i.e., rules as functions with continuations. 
+
+Aside from the work on curry [1] and some very early work [2, 3], I couldn't find a lot of work on this. On the one hand, this makes me think that it's a dumb idea, since knowledgeable people simply reject it out of hand :-) On the other hand, I couldn't think of many reasons why it would be very slow. It avoids the "overhead" of a WAM with its virtual instruction set, variable stack, frames, etc; it instead re-uses similar constructs directly from the host language. E.g.:
 
 @prefix : <http://example.org/> . 
 { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
@@ -36,15 +37,19 @@ def rule_0_1(p, data, state, ctu):
 def rule_0_2(p, a, data, state, ctu):
     data.find(a, Iri('http://example.org/country'), Literal('"CA"'), state, lambda t, state: ctu(p, state))
 
-
-In rule_0, for each triple result, the next function rule_0_1 is called with a value for the 'p' variable; in rule_0_1, Face value is used for finding triples; the next rule_0_2 is called with a value for 'p' and 'a' variables; etc. This is a simple example - rules as the ones below can be supported as well:
+In rule_0, for each triple result, the next function rule_0_1 is called with a value for the 'p' variable; in rule_0_1, p's value is used for finding triples; the next rule_0_2 is then called with a value for 'p' and 'a' variables; etc. This is a simple example, rules as the ones below can be supported as well:
 
 @prefix : <http://example.org/> . 
 { ?desc :ancestor ?anc } <= { ?desc :parent ?parent . ?parent :ancestor ?anc } .
 { ?desc :ancestor ?desc } <= true .
 
-(you can find for procedural code here: ...)
+(you can find procedural code for this example here)
 
-My original plan was to do this in Rust for performance, but I quickly changed my mind (at least for now), because it's much easier to do source-to-source compilation in Python, and it's generally a much easier language to work with. The compilation code isn't that easy to understand, but it's also not exactly rocket science - currently it fits in about 400 lines.
+My original plan was to do this in Rust for performance, but I quickly changed my mind (at least for now) because it's much easier to do source-to-source compilation in Python, and it's just a much easier language to work with. The compilation code isn't that easy to understand but it's also not rocket science - it currently fits in about 400 lines (sans builtins, lists and graph terms). The end goal is still to do this in Rust once the general compilation algorithm is sorted out.
 
 At this point, I'd like to hear your opinion. Could this be a way forward to build an N3 reasoner?
+
+
+[1] https://www.cambridge.org/core/journals/theory-and-practice-of-logic-programming/article/from-logic-to-functional-logic-programs/AB29BDA26F960E605C4B6C74384ADD21 
+[2] https://dl.acm.org/doi/pdf/10.1145/53990.54019 
+[3] https://dl.acm.org/doi/pdf/10.1145/382076.382646 
