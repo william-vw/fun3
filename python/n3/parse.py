@@ -224,7 +224,8 @@ class n3Creator(n3Listener):
     # Exit a parse tree produced by n3Parser#literal.
     def exitLiteral(self, ctx:n3Parser.LiteralContext):
         lit = ctx.BooleanLiteral()
-        self.state.path_item = Literal(self.bool(lit))
+        if lit is not None:
+            self.state.path_item = Literal(self.bool(lit))
 
     # Enter a parse tree produced by n3Parser#blankNodePropertyList.
     def enterBlankNodePropertyList(self, ctx:n3Parser.BlankNodePropertyListContext):
