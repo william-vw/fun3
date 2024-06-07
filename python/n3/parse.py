@@ -17,6 +17,9 @@ class state:
     # iri_mode (None/'ipl'/'rdflit')
     # dt
     # collection
+    # path_cnt
+    # path_step
+    # path_dir
     
     # base
     # prefixes
@@ -30,6 +33,9 @@ class state:
         self.iri_mode = None
         self.dt = None
         self.collection = None
+        self.path_cnt = 0
+        self.path_step = None
+        self.path_dir = None
         
         # always copy base & prefixes
         if parent is not None:
@@ -78,7 +84,6 @@ class state:
     def end_collect(self):
         ret = self.collection
         self.collection = None
-        
         return ret
         
 class n3ParseError(Exception):
@@ -238,7 +243,11 @@ class n3Creator(n3Listener):
             self.state.collect(self.state.path_item)
         else:
             self.state.triple.o = self.state.path_item
-            self.emitTriple()
+            
+            triple = self.state.triple
+            self.emit_triple(triple)
+            # so predicateLists etc work
+            self.state.triple = triple.clone()
 
 
     # Enter a parse tree produced by n3Parser#expression.
@@ -253,12 +262,43 @@ class n3Creator(n3Listener):
     # TODO
     # Enter a parse tree produced by n3Parser#path.
     def enterPath(self, ctx:n3Parser.PathContext):
-        pass
+        print("enterPath", self.state.path_cnt)
+        
+        if self.state.path_cnt > 0: # in a path, unfortunately
+            
+            if self.state.path_cnt == 1: # but, don't have enough yet
+                # current path_item will be first step
+                # next path_item (still unknown) will be predicate
+                self.state.path_step = self.state.path_item
+            
+            else: # have enough now; current path_item will be predicate
+                # from now on, next step will be blank node object
+                self.state.path_step = self.emit_path()
+                
+        self.state.path_dir = self.text(ctx.parentCtx.getChild(1))
+        self.state.path_cnt += 1
 
     # Exit a parse tree produced by n3Parser#path.
     def exitPath(self, ctx:n3Parser.PathContext):
-        pass
+        print("exitPath", self.state.path_cnt)
+            
+        # had ourselves a path here
+        if self.state.path_cnt > 1: # complete last path step
+            # rest will continue from blank node object
+            self.state.path_item = self.emit_path()
+        
+        self.state.path_cnt = 0
 
+    def emit_path(self):
+        prior_step = self.state.path_step
+        pred = self.state.path_item
+        next_step = BlankNode()
+        if self.state.path_dir == "!":
+            self.emit_triple(Triple(prior_step, pred, next_step))
+        else:
+            self.emit_triple(Triple(next_step, pred, prior_step))
+        return next_step
+        
 
     # Enter a parse tree produced by n3Parser#path_item.
     def enterPathItem(self, ctx:n3Parser.PathItemContext):
@@ -266,6 +306,7 @@ class n3Creator(n3Listener):
 
     # Exit a parse tree produced by n3Parser#path_item.
     def exitPathItem(self, ctx:n3Parser.PathItemContext):
+        # print("pathItem:", self.state.path_item)
         pass
 
 
@@ -512,15 +553,11 @@ class n3Creator(n3Listener):
     def decimal(self, lex):
         return float(self.text(lex))
         
-    def emitTriple(self):
-        triple = self.state.triple
-        
+    def emit_triple(self, triple):
         self.state.model.add(triple)
+        
         if triple.p.type() == term_types.IRI and (triple.p == n3Log['implies'] or triple.p == n3Log['impliedBy']):
             self.state.rules.append(triple)
-            
-        # so predicateLists etc work
-        self.state.triple = triple.clone()
         
     def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
         raise n3ParseError(msg) from None

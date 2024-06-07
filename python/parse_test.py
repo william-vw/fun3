@@ -7,15 +7,15 @@ from n3.terms import Iri
 def main():
     data = """@base <http://base.org/> .
 @prefix : <http://example.org/> . 
-# iri
-<http://example.org/wil> a :Person .
-<#dor> a :Person .
-:this :is { @base <http://base2.org> . @prefix : <http://example2.org/> . <wil> a :Person } .
+# # iri
+# <http://example.org/wil> a :Person .
+# <#dor> a :Person .
+# :this :is { @base <http://base2.org> . @prefix : <http://example2.org/> . <wil> a :Person } .
     
-# bnodes, bnode prp lst, iri prp lst
-:wil :address [ :street "street" ; :country "CA" ] ; :age _:b1 .
-:dor :address [ :street "strasse" ; :country "DE" ] ; :age _:b1 .
-:this :has { :will :age _:b1 } .
+# # bnodes, bnode prp lst, iri prp lst
+# :wil :address [ :street "street" ; :country "CA" ] ; :age _:b1 .
+# :dor :address [ :street "strasse" ; :country "DE" ] ; :age _:b1 .
+# :this :has { :will :age _:b1 } .
 
 # :wil [ :street "street" ; :country "CA" ] :address .
 # :dor [ :street "strasse" ; :country "DE" ] :address .
@@ -42,6 +42,13 @@ def main():
 
 # # collections
 # :will :names ('will' 'edward'^^xsd:string 'elbert') .
+
+# PATHS
+# :john^:father!:father^:father a :Person .
+# :john :father!:father^:father :Person .
+# :john :father :will!:father^:father.
+:john^:father!:father^:father :mother!:mother^:mother :will!:father^:father .
+:a :b :c .
 # """
 
     # parse
