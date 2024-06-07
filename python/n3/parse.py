@@ -230,6 +230,8 @@ class n3Creator(n3Listener):
 
     # Exit a parse tree produced by n3Parser#predicate.
     def exitPredicate(self, ctx:n3Parser.PredicateContext):
+        # TODO
+        # state.invPred = text(ctx.getStart()).equals("<-");
         pass
 
 
@@ -259,7 +261,6 @@ class n3Creator(n3Listener):
         pass
 
 
-    # TODO
     # Enter a parse tree produced by n3Parser#path.
     def enterPath(self, ctx:n3Parser.PathContext):
         print("enterPath", self.state.path_cnt)
