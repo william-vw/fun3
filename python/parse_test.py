@@ -47,7 +47,12 @@ def main():
 # :john^:father!:father^:father a :Person .
 # :john :father!:father^:father :Person .
 # :john :father :will!:father^:father.
-:john^:father!:father^:father :mother!:mother^:mother :will!:father^:father .
+# :john^:father!:father^:father :mother!:mother^:mother :will!:father^:father .
+# :a :b :c .
+
+# invert
+:john <-:father :paul , :victor ; has :grandfather :edward .
+:will is :alias of :edward .
 :a :b :c .
 # """
 

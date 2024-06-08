@@ -20,6 +20,7 @@ class state:
     # path_cnt
     # path_step
     # path_dir
+    # inv_pred
     
     # base
     # prefixes
@@ -36,6 +37,7 @@ class state:
         self.path_cnt = 0
         self.path_step = None
         self.path_dir = None
+        self.inv_pred = False
         
         # always copy base & prefixes
         if parent is not None:
@@ -188,6 +190,7 @@ class n3Creator(n3Listener):
 
     # Exit a parse tree produced by n3Parser#objectList.
     def exitObjectList(self, ctx:n3Parser.ObjectListContext):
+        self.state.inv_pred = False
         pass
 
 
@@ -197,15 +200,15 @@ class n3Creator(n3Listener):
 
     # Exit a parse tree produced by n3Parser#verb.
     def exitVerb(self, ctx:n3Parser.VerbContext):
+        # all these tokens use expression production, not predicate
         if ctx.predicate() is None:
             token = ctx.start.text.strip()
             
-            # self.state.path_item = Iri(token, True)
-            
-            # TODO has, is
             predicate = None
+            # 'has' has no side-effects
             match token:
                 case 'a': predicate = rdf['type']
+                case 'is': self.state.inv_pred = True
                 case '=': predicate = owl['sameAs']
                 case '=>': predicate = n3Log["implies"]
                 case '<=': predicate = n3Log["impliedBy"]
@@ -230,9 +233,10 @@ class n3Creator(n3Listener):
 
     # Exit a parse tree produced by n3Parser#predicate.
     def exitPredicate(self, ctx:n3Parser.PredicateContext):
-        # TODO
-        # state.invPred = text(ctx.getStart()).equals("<-");
-        pass
+        token = ctx.start.text.strip()
+        
+        if token == "<-":
+            self.state.inv_pred = True # disabled in exitObjectList
 
 
     # Enter a parse tree produced by n3Parser#object.
@@ -263,7 +267,6 @@ class n3Creator(n3Listener):
 
     # Enter a parse tree produced by n3Parser#path.
     def enterPath(self, ctx:n3Parser.PathContext):
-        print("enterPath", self.state.path_cnt)
         
         if self.state.path_cnt > 0: # in a path, unfortunately
             
@@ -281,8 +284,6 @@ class n3Creator(n3Listener):
 
     # Exit a parse tree produced by n3Parser#path.
     def exitPath(self, ctx:n3Parser.PathContext):
-        print("exitPath", self.state.path_cnt)
-            
         # had ourselves a path here
         if self.state.path_cnt > 1: # complete last path step
             # rest will continue from blank node object
@@ -555,6 +556,9 @@ class n3Creator(n3Listener):
         return float(self.text(lex))
         
     def emit_triple(self, triple):
+        if self.state.inv_pred:
+            triple = Triple(triple.o, triple.p, triple.s)
+        
         self.state.model.add(triple)
         
         if triple.p.type() == term_types.IRI and (triple.p == n3Log['implies'] or triple.p == n3Log['impliedBy']):
