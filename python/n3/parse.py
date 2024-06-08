@@ -31,6 +31,7 @@ class state:
     def __init__(self, parent=None, new_scope=False):        
         self.parent = parent
         self.path_item = None
+        self.triple = Triple()
         self.iri_mode = None
         self.dt = None
         self.collection = None
@@ -48,11 +49,9 @@ class state:
             self.base = None; self.prefixes = {}
         
         if parent is None or new_scope:
-            self.triple = Triple()
             self.data = Model()
             self.bnodes = {}
         else:
-            self.triple = parent.triple.clone()
             self.data = parent.data
             self.bnodes = parent.bnodes
            
@@ -267,8 +266,10 @@ class n3Creator(n3Listener):
 
     # Enter a parse tree produced by n3Parser#path.
     def enterPath(self, ctx:n3Parser.PathContext):
+        # print("enterPath", self.state.path_item)
         
-        if self.state.path_cnt > 0: # in a path, unfortunately
+        # in a path, unfortunately
+        if self.state.path_cnt > 0 and self.state.path_item is not None:
             
             if self.state.path_cnt == 1: # but, don't have enough yet
                 # current path_item will be first step
@@ -284,6 +285,7 @@ class n3Creator(n3Listener):
 
     # Exit a parse tree produced by n3Parser#path.
     def exitPath(self, ctx:n3Parser.PathContext):
+        # print("exitPath")
         # had ourselves a path here
         if self.state.path_cnt > 1: # complete last path step
             # rest will continue from blank node object
@@ -295,6 +297,7 @@ class n3Creator(n3Listener):
         prior_step = self.state.path_step
         pred = self.state.path_item
         next_step = BlankNode()
+        print(prior_step, pred, next_step)
         if self.state.path_dir == "!":
             self.emit_triple(Triple(prior_step, pred, next_step))
         else:
@@ -308,7 +311,6 @@ class n3Creator(n3Listener):
 
     # Exit a parse tree produced by n3Parser#path_item.
     def exitPathItem(self, ctx:n3Parser.PathItemContext):
-        # print("pathItem:", self.state.path_item)
         pass
 
 
@@ -358,11 +360,16 @@ class n3Creator(n3Listener):
 
     # Enter a parse tree produced by n3Parser#collection.
     def enterCollection(self, ctx:n3Parser.CollectionContext):
+        self.state = self.state.sub()
+        
         self.state.start_collect()
 
     # Exit a parse tree produced by n3Parser#collection.
     def exitCollection(self, ctx:n3Parser.CollectionContext):
-        self.state.path_item = Collection(self.state.end_collect())
+        collection = Collection(self.state.end_collect())
+        self.state = self.state.parent
+        
+        self.state.path_item = collection
 
 
     # Enter a parse tree produced by n3Parser#formula.

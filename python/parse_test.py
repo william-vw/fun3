@@ -40,20 +40,24 @@ def main():
 # :wil :name "william"^^xsd:string .
 # :dor :name "doerthe"@de .
 
-# # collections
-# :will :names ('will' 'edward'^^xsd:string 'elbert') .
-
-# PATHS
+# # PATHS
 # :john^:father!:father^:father a :Person .
 # :john :father!:father^:father :Person .
 # :john :father :will!:father^:father.
 # :john^:father!:father^:father :mother!:mother^:mother :will!:father^:father .
 # :a :b :c .
 
-# invert
-:john <-:father :paul , :victor ; has :grandfather :edward .
-:will is :alias of :edward .
-:a :b :c .
+# # invert
+# :john <-:father :paul , :victor ; has :grandfather :edward .
+# :will is :alias of :edward .
+# :a :b :c .
+
+# collections
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> . 
+# :will :names ('will' 'edward'^^xsd:string 'elbert') .
+#( :x!:y [ :b 1 ; :c 2 ] :d ) . # crazy
+{ :will :aliasNames ( ?xn ?yn ) } <= { :wil :alias ( ?x ?y ) . ?x :name ?xn . ?y :name ?yn } .
+
 # """
 
     # parse

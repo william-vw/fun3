@@ -2,7 +2,6 @@ from ast import dump, unparse
 
 from n3.parse import parse_n3
 from n3.fun.gen import gen_py
-from n3.terms import Iri
 
 class State : 
     def __init__(self, stop):
@@ -39,16 +38,24 @@ def fun3():
 # :soc :name "Socrates" ; :address :addr1 .
 # """
 
-# ex 2
-    rules =  """@prefix log: <http://www.w3.org/2000/10/swap/log#> .
-@prefix : <http://example.org/> . 
-{ ?desc :ancestor ?anc } <= { ?desc :parent ?parent . ?parent :ancestor ?anc } .
-{ ?desc :ancestor ?desc } <= true .
+# # ex 2
+#     rules =  """@prefix log: <http://www.w3.org/2000/10/swap/log#> .
+# @prefix : <http://example.org/> . 
+# { ?desc :ancestor ?anc } <= { ?desc :parent ?parent . ?parent :ancestor ?anc } .
+# { ?desc :ancestor ?desc } <= true .
+# """
+#     data = """@prefix : <http://example.org/> . 
+# :c :parent :b . :b :parent :a .
+# """
+
+# ex 3
+    rules =  """@prefix : <http://example.org/> . 
+{ :will :aliasNames ( ?xn ?yn ) } <= { :wil :alias ( ?x ?y :elb ) . ?x :name ?xn . ?y :name ?yn } .
 """
     data = """@prefix : <http://example.org/> . 
-:c :parent :b . :b :parent :a .
+:wil :alias ( :wil :edw :elb ) . :wil :name "wil" . :edw :name "edward" . :elb :name "elbert" .
 """
-    
+
     # parse
     
     result = parse_n3(rules)
@@ -81,9 +88,9 @@ def fun3():
     
     print("run -")
     # ex 1
-    # rule_fn(None, data, state, result_fn)
+    rule_fn(None, data, state, result_fn)
     # ex 2
-    rule_fn(None, None, data, state, result_fn)
+    # rule_fn(None, None, data, state, result_fn)
     
     
 def unparse_with_lineno(ast):

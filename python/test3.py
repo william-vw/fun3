@@ -29,26 +29,13 @@ def rule_1(desc0, desc1, data, state, ctu):
             if desc0 == desc1:ctu(desc0, desc1, state)
         else:ctu(desc0, desc0, state)
     elif desc1 is not None:ctu(desc1, desc1, state)
-
-# def rule_1(desc0, desc1, data, state, ctu):
-#     print("rule_1", desc0, desc1)
-
-#     if desc0 is not None:
-#         if desc1 is None:
-#             ctu(desc0, desc0, state)
-#     elif desc0 is None:
-#         if desc1 is not None:
-#             ctu(desc1, desc1, state)
-#     elif desc0 is not None and desc1 is not None:
-#         if desc0 == desc1:
-#             ctu(desc0, desc1, state)
             
             
 def main():
     data = """@prefix : <http://example.org/> . 
 :c :parent :b . :b :parent :a .
 """
-    data = parse_n3(data).model
+    data = parse_n3(data).data
     print("model:\n", data, "\n")
     
     rule_0(None, None, data, State(False), result_fn)
