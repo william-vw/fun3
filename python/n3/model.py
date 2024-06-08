@@ -9,7 +9,6 @@ class Model:
         self.__triples.append(triple)
         
     def done(self):
-        # TODO: support for graph terms
         self.df = pd.DataFrame([ [ t[0].idx_val(), t[1].idx_val(), t[2].idx_val(), t ] for t in self.__triples if not t.has_graph() ], columns=list("spot"))
         self.triples = None
         

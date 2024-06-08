@@ -78,13 +78,15 @@ class Literal:
         return self.value == other.value
         
     def __str__(self):
-        suffix = None
+        value = self.value; suffix = None
         if isinstance(self.value, str):
+            quote = "\"" if "\n" not in self.value else "\"\"\""
+            value = quote + value + quote
             if self.lng is not None:
                 suffix = f"@{self.lng}"
             elif self.dt is not None:
                 suffix = f"^^{self.dt}"
-        return str(self.value) + (suffix if suffix is not None else "")
+        return value + (suffix if suffix is not None else "")
     def __repr__(self):
         return self.__str__()
 

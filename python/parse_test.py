@@ -52,12 +52,16 @@ def main():
 # :will is :alias of :edward .
 # :a :b :c .
 
-# collections
-@prefix xsd: <http://www.w3.org/2001/XMLSchema#> . 
-# :will :names ('will' 'edward'^^xsd:string 'elbert') .
-#( :x!:y [ :b 1 ; :c 2 ] :d ) . # crazy
-{ :will :aliasNames ( ?xn ?yn ) } <= { :wil :alias ( ?x ?y ) . ?x :name ?xn . ?y :name ?yn } .
+# # collections
+# @prefix xsd: <http://www.w3.org/2001/XMLSchema#> . 
+# # :will :names ('will' 'edward'^^xsd:string 'elbert') .
+# #( :x!:y [ :b 1 ; :c 2 ] :d ) . # crazy
+# { :will :aliasNames ( ?xn ?yn ) } <= { :wil :alias ( ?x ?y ) . ?x :name ?xn . ?y :name ?yn } .
 
+# strings
+:will :names \"\"\"edward, 
+elbert\"\"\" .
+:will :names ( "wil" "edw" "elb" ) .
 # """
 
     # parse

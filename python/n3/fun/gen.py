@@ -190,8 +190,9 @@ class GenPython:
         call_args = []
         for r in clause:
             if isinstance(r, Var):
-                if r.name in in_params:
-                    call_args.append(self.__var_ref(r.name))
+                varname = self.__safe_var(r.name)
+                if varname in in_params:
+                    call_args.append(self.__var_ref(varname))
                 else:
                     call_args.append(self.__builder.cnst(None))
             else:
@@ -348,8 +349,12 @@ class GenPython:
                 yield spo[i], self.__safe_var(r.name)
                 
     def __safe_var(self, n):
-        # TODO others as well (data, state, ctu, etc)
-        return "tt" if n == "t" else n
+        match n:
+            case 't': return 'tt'
+            case 'data': return 'ddata'
+            case 'state': return 'sstate'
+            case 'ctu': return 'cctu'
+            case _: return n
 
     # def __cnstr_call(self, r):
     #     match r.type():

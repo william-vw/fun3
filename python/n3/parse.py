@@ -417,8 +417,7 @@ class n3Creator(n3Listener):
 
     # Exit a parse tree produced by n3Parser#rdfLiteral.
     def exitRdfLiteral(self, ctx:n3Parser.RdfLiteralContext):
-        # (include quotes for now)
-        lex = self.text(ctx.String()) # self.string(ctx.String())
+        lex = self.string(ctx.String())
         lng = self.text(ctx.LANGTAG())[1:] if ctx.LANGTAG() is not None else None
         
         dt = self.state.dt if self.state.dt is not None else None

@@ -43,7 +43,6 @@ class PyBuilder:
         return ret
 
     def cnst(self, value):
-        # TODO escape strings
         ret = ast.Constant(value=value)
         ast.fix_missing_locations(ret)
         
