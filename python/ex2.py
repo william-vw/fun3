@@ -33,7 +33,7 @@ def main():
 :c :parent :b . :b :parent :a .
 """
     
-    data = parse_n3(data).model
+    data = parse_n3(data).data
     print("data:\n", data, "\n")
     
     state = State(False)

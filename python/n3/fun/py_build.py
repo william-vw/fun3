@@ -50,7 +50,10 @@ class PyBuilder:
         return ret
 
     def attr_ref(self, var, attr):
-        ret = ast.Attribute(value=self.ref(var), attr=attr, ctx=ast.Load())
+        return self.attr_ref_expr(self.ref(var), attr)
+    
+    def attr_ref_expr(self, expr, attr):
+        ret = ast.Attribute(value=expr, attr=attr, ctx=ast.Load())
         ast.fix_missing_locations(ret)
         
         return ret

@@ -169,7 +169,7 @@ class GenPython:
         # arguments to be passed to ctu
         # if next is clause: ex: att_ref(t.s), ref(r), att_ref(t.o)
         # if next is head: ex: att_ref(t.s)
-        var_args = [self.__builder.attr_ref('t', clause_vars[p]) if p in clause_vars else self.__builder.ref(p)
+        var_args = [self.__triple_val('t', clause_vars[p]) if p in clause_vars else self.__builder.ref(p)
                      for p in ctu_params]
 
         # model.find will call a lambda
@@ -191,11 +191,11 @@ class GenPython:
         for r in clause:
             if isinstance(r, Var):
                 if r.name in in_params:
-                    call_args.append(self.__builder.ref(r.name))
+                    call_args.append(self.__var_ref(r.name))
                 else:
                     call_args.append(self.__builder.cnst(None))
             else:
-                call_args.append(self.__cnstr_call(r))
+                call_args.append(self.__val(r))
 
         call_args += [self.__builder.ref('state'), lmbda]
         search_call = self.__builder.fn_call(
@@ -240,23 +240,22 @@ class GenPython:
                         clause_varname = self.__safe_var(clause_r.name)
                         # add runtime check, if possible
                         if clause_varname in in_params:
-                            cmp1 = self.__builder.comp(self.__builder.ref(
-                                clause_varname), 'is', self.__builder.cnst(None))
-                            cmp2 = self.__builder.comp(self.__builder.ref(
-                                clause_varname)), 'eq', self.__cnstr_call(match_r)
+                            cmp1 = self.__builder.comp(self.__var_ref(clause_varname), 
+                                                       'is', self.__builder.cnst(None))
+                            cmp2 = self.__builder.comp(self.__var_ref(clause_varname), 'eq', self.__val(match_r))
                             match_conds.append(self.__builder.disj([cmp1, cmp2]))
 
                         # clause has variable; match rule has concrete value
                         # if successful, pass concrete value to ctu (ex 3), if needed
                         # (get arg index from ctu_params)
                         if clause_varname in ctu_params:
-                            call_args[ctu_params.index(clause_varname)] = self.__cnstr_call(match_r)
+                            call_args[ctu_params.index(clause_varname)] = self.__val(match_r)
                 
                 else: # values will be passed as lambda parameters
                     if clause_r.is_concrete():
                         # not a variable so is not needed in ctu
                         lmbda_params.append('_')
-                        match_args.append(self.__cnstr_call(clause_r)) # Iri(Person)
+                        match_args.append(self.__val(clause_r))
                     else:
                         clause_varname = self.__safe_var(clause_r.name)
                         # ex 1-4 (p<>p, p<>pe, t<>ty)
@@ -265,7 +264,7 @@ class GenPython:
                         # (use our var's name, as it is same as ctu_param)
                         lmbda_params.append(clause_varname)
                         if clause_varname in in_params:
-                            match_args.append(self.__builder.ref(clause_varname))
+                            match_args.append(self.__var_ref(clause_varname))
                         else: # ex 4
                             match_args.append(self.__builder.cnst(None))
 
@@ -352,20 +351,24 @@ class GenPython:
         # TODO others as well (data, state, ctu, etc)
         return "tt" if n == "t" else n
 
-    def __cnstr_call(self, r):
-        match r.type():
-            case term_types.IRI:
-                cls = "Iri"
-                arg = r.iri
-            case term_types.VAR:
-                cls = "Var"
-                arg = r.name
-            case term_types.LITERAL:
-                cls = "Literal"
-                arg = r.value
-            case _: print("inconceivable")
+    # def __cnstr_call(self, r):
+    #     match r.type():
+    #         case term_types.IRI: cls = "Iri"
+    #         case term_types.VAR: cls = "Var"
+    #         case term_types.LITERAL: cls = "Literal"
+    #         case _: print("inconceivable")
+    #     arg = r.idx_val()
 
-        return self.__builder.fn_call(fn=self.__builder.ref(cls), args=[self.__builder.cnst(arg)])
+    #     return self.__builder.fn_call(fn=self.__builder.ref(cls), args=[self.__builder.cnst(arg)])
+
+    def __val(self, r):
+        return self.__builder.cnst(r.idx_val())
+    
+    def __var_ref(self, name):
+        return self.__builder.ref(name)
+    
+    def __triple_val(self, t, spo):
+        return self.__builder.fn_call(self.__builder.attr_ref_expr(self.__builder.attr_ref(t, spo), 'idx_val'))
 
     def __fn_name(self, rule_no, clause_no):
         if clause_no == 0:

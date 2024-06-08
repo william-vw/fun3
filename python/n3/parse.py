@@ -49,11 +49,11 @@ class state:
         
         if parent is None or new_scope:
             self.triple = Triple()
-            self.model = Model()
+            self.data = Model()
             self.bnodes = {}
         else:
             self.triple = parent.triple.clone()
-            self.model = parent.model
+            self.data = parent.data
             self.bnodes = parent.bnodes
            
         self.rules = []
@@ -371,7 +371,7 @@ class n3Creator(n3Listener):
 
     # Exit a parse tree produced by n3Parser#formula.
     def exitFormula(self, ctx:n3Parser.FormulaContext):
-        graph_model = self.state.model
+        graph_model = self.state.data
         
         self.state = self.state.parent
         self.state.path_item = GraphTerm(graph_model)
@@ -559,7 +559,7 @@ class n3Creator(n3Listener):
         if self.state.inv_pred:
             triple = Triple(triple.o, triple.p, triple.s)
         
-        self.state.model.add(triple)
+        self.state.data.add(triple)
         
         if triple.p.type() == term_types.IRI and (triple.p == n3Log['implies'] or triple.p == n3Log['impliedBy']):
             self.state.rules.append(triple)
@@ -579,7 +579,9 @@ class n3Creator(n3Listener):
 class n3ParseResult:
     
     def __init__(self, state):
-        self.model = state.model
+        self.data = state.data
+        self.data.done()
+        
         self.rules = state.rules
 
 def parse_n3(str):

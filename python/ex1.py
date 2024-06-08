@@ -34,7 +34,7 @@ def main():
 :soc :name "Socrates" ; :address :addr1 .
 """
     
-    data = parse_n3(data).model
+    data = parse_n3(data).data
     print("data:\n", data, "\n")
     
     state = State(False)

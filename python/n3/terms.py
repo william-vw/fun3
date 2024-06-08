@@ -178,7 +178,10 @@ class Triple:
         
     def clone(self):
         return Triple(self.s, self.p, self.o)
-        
+    
+    def has_graph(self):
+        return any(r.type() == term_types.GRAPH for r in self)
+    
     def __iter__(self):
         return TripleIt(self)
     
