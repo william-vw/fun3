@@ -74,13 +74,10 @@ class state:
             return self.bnodes[label]
         
     def start_collect(self):
-        self.collection = []
+        self.collection = Collection()
         
     def is_collecting(self):
         return self.collection is not None
-    
-    def collect(self, object):
-        self.collection.append(object)
         
     def end_collect(self):
         ret = self.collection
@@ -245,7 +242,7 @@ class n3Creator(n3Listener):
     # Exit a parse tree produced by n3Parser#object.
     def exitObject(self, ctx:n3Parser.ObjectContext):
         if self.state.is_collecting():
-            self.state.collect(self.state.path_item)
+            self.state.collection._parsed_el(self.state.path_item)
         else:
             self.state.triple.o = self.state.path_item
             
@@ -366,7 +363,7 @@ class n3Creator(n3Listener):
 
     # Exit a parse tree produced by n3Parser#collection.
     def exitCollection(self, ctx:n3Parser.CollectionContext):
-        collection = Collection(self.state.end_collect())
+        collection = self.state.end_collect()
         self.state = self.state.parent
         
         self.state.path_item = collection
@@ -493,7 +490,7 @@ class n3Creator(n3Listener):
         self.state.path_item = self.state.bnode(label)
 
     # Enter a parse tree produced by n3Parser#quickVar.
-    def enterQuickVar(self, ctx:n3Parser.QuickVarContext):
+    def enterQuickVar(self, ctx:n3Parser.QuickVarContext):        
         pass
 
     # Exit a parse tree produced by n3Parser#quickVar.
@@ -501,7 +498,11 @@ class n3Creator(n3Listener):
         name = ctx.QuickVarName()
         
         if name is not None:
-            self.state.path_item = Var(self.text(name)[1:])
+            var = Var(self.text(name)[1:])
+            self.state.path_item = var
+            
+            if self.state.is_collecting():
+                self.state.collection._parsed_var(var)
     
     # custom methods
     

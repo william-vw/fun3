@@ -340,7 +340,15 @@ class GenPython:
     # helper functions
 
     def __vars_graph(self, graph):
-        return [v for t in graph.model.triples() for _, v in self.__vars_triple(t)]
+        ret = []
+        for t in graph.model.triples():
+            for r in t:
+                match (r.type()):
+                    case term_types.VAR: 
+                        ret.append(self.__safe_var(r.name))
+                    case term_types.COLLECTION: 
+                        ret.extend(self.__safe_var(v.name) for v in r._vars())
+        return ret
 
     def __vars_triple(self, t):
         spo = ['s', 'p', 'o']

@@ -86,15 +86,21 @@ class Literal:
                 suffix = f"@{self.lng}"
             elif self.dt is not None:
                 suffix = f"^^{self.dt}"
-        return value + (suffix if suffix is not None else "")
+        return str(value) + (suffix if suffix is not None else "")
     def __repr__(self):
         return self.__str__()
 
 
 class Collection:
     
-    def __init__(self, elements):
-        self.elements = tuple(elements) # immutable
+    # __elements
+    # __vars
+    # __max_depth
+    
+    def __init__(self):
+        self.__elements = []
+        self.__vars = []
+        self.__max_depth = 1
     
     def type(self):
         return term_types.COLLECTION
@@ -103,15 +109,36 @@ class Collection:
         return True
     
     def idx_val(self):
-        return self.elements
+        return self.__to_nested_tuples()
+    
+    def __to_nested_tuples(self):
+        return tuple(e.__to_nested_tuples() if e.type() == term_types.COLLECTION else e for e in self.__elements)
+    
+    def _parsed_el(self, el):
+        self.__elements.append(el)
+        if el.type() == term_types.COLLECTION:
+            self.__vars.extend(el.__vars)
+            self.__max_depth += el.__max_depth
         
+    def _parsed_var(self, var):
+        self.__vars.append(var)
+    
+    def _vars(self):
+        return self.__vars
+    
+    def _max_depth(self):
+        return self.__max_depth
+    
+    def __iter__(self):
+        return self.__elements.__iter__()
+    
     def __eq__(self, other): 
         if not isinstance(other, Collection):
             return NotImplemented
-        return self.elements == other.elements
+        return self.__elements == other.__elements
         
     def __str__(self):
-        return str(self.elements)
+        return "( " + " ".join(str(e) for e in self.__elements) + " )"
     def __repr__(self):
         return self.__str__()
 

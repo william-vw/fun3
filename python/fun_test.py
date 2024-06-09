@@ -13,30 +13,30 @@ def result_fn(*args):
 
 
 def fun3():
-# ex 1
-    rules =  """@prefix : <http://example.org/> . 
-# -
-{ ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
-{ ?pe a :Person } <= { ?pe :ability :think } .
-{ ?pe a :Belgian } <= { ?pe :ability :drink } .
-# -
+# # ex 1
+#     rules =  """@prefix : <http://example.org/> . 
+# # -
 # { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
-# { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
-# -
-# { ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
-# { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
-# -
-# { ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
-#  { ?pe a :Person } <= { ?pe :ability :think } .
-#  { ?p a ?t } <= { ?p :name "Socrates" } .
-"""
-    data = """@prefix : <http://example.org/> . 
-:will a :Person ; :address :addr1 . :addr1 :country "CA" .
-:ed :ability :think ; :address :addr1 ; :describedAs :Person .
-:el :ability :drink ; :address :addr1 ; :describedAs :Belgian .
-:dor :ability :think ; :address :addr2 ; :describedAs :German .
-:soc :name "Socrates" ; :address :addr1 .
-"""
+# { ?pe a :Person } <= { ?pe :ability :think } .
+# { ?pe a :Belgian } <= { ?pe :ability :drink } .
+# # -
+# # { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
+# # { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
+# # -
+# # { ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
+# # { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
+# # -
+# # { ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
+# #  { ?pe a :Person } <= { ?pe :ability :think } .
+# #  { ?p a ?t } <= { ?p :name "Socrates" } .
+# """
+#     data = """@prefix : <http://example.org/> . 
+# :will a :Person ; :address :addr1 . :addr1 :country "CA" .
+# :ed :ability :think ; :address :addr1 ; :describedAs :Person .
+# :el :ability :drink ; :address :addr1 ; :describedAs :Belgian .
+# :dor :ability :think ; :address :addr2 ; :describedAs :German .
+# :soc :name "Socrates" ; :address :addr1 .
+# """
 
 # # ex 2
 #     rules =  """@prefix log: <http://www.w3.org/2000/10/swap/log#> .
@@ -49,13 +49,15 @@ def fun3():
 # """
 
 # TODO XD
-# # ex 3
-#     rules =  """@prefix : <http://example.org/> . 
-# { :will :aliasNames ( ?xn ?yn ) } <= { :wil :alias ( ?x ?y :elb ) . ?x :name ?xn . ?y :name ?yn } .
-# """
-#     data = """@prefix : <http://example.org/> . 
-# :wil :alias ( :wil :edw :elb ) . :wil :name "wil" . :edw :name "edward" . :elb :name "elbert" .
-# """
+# ex 3
+    rules =  """@prefix : <http://example.org/> . 
+{ :will :aliasNames ( ?xn ?yn ) } <= { :wil :alias ?x , ?y . ?x :name ?xn . ?y :name ?yn } .
+"""
+    data = """@prefix : <http://example.org/> . 
+# :wil :alias ( :wil :edw :elb ) . 
+:wil :alias :edw , :elb .
+:edw :name "edward" . :elb :name "elbert" .
+"""
 
     # parse
     
@@ -89,9 +91,9 @@ def fun3():
     
     print("run -")
     # ex 1
-    rule_fn(None, data, state, result_fn)
-    # # ex 2
-    # rule_fn(None, None, data, state, result_fn)
+    # rule_fn(None, data, state, result_fn)
+    # ex 2
+    rule_fn(None, None, data, state, result_fn)
     
     
 def unparse_with_lineno(ast):
