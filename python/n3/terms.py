@@ -132,6 +132,12 @@ class Collection:
     def __iter__(self):
         return self.__elements.__iter__()
     
+    def __len__(self):
+        return len(self.__elements)
+    
+    def __getitem__(self, key):
+        return self.__elements[key]
+    
     def __eq__(self, other): 
         if not isinstance(other, Collection):
             return NotImplemented

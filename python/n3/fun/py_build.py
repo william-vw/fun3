@@ -56,6 +56,12 @@ class PyBuilder:
         ast.fix_missing_locations(ret)
         
         return ret
+    
+    def index(self, expr, nr):
+        ret = ast.Subscript(expr, slice=self.cnst(nr))
+        ast.fix_missing_locations(ret)
+        
+        return ret
 
     def fn_call(self, fn, args=[]):
         ret = ast.Call(func=fn, args=args, keywords=[])
@@ -87,11 +93,22 @@ class PyBuilder:
         match cmp:
             case 'eq': cmp = ast.Eq()
             case 'neq': cmp = ast.NotEq()
+            case 'gt': cmp = ast.Gt()
+            case 'gte': cmp = ast.GtE()
+            case 'lt': cmp = ast.Lt()
+            case 'lte': cmp = ast.LtE()
             case 'is': cmp = ast.Is()
             case 'is not': cmp = ast.IsNot()
             case _: print("inconceivable"); return
 
         ret = ast.Compare(left=op1, ops=[cmp], comparators=[op2])
+        ast.fix_missing_locations(ret)
+        
+        return ret
+    
+    def assn(self, var, expr):
+        ret = ast.Assign(targets=[ast.Name(id=var, ctx=ast.Store())], 
+                   value=expr)
         ast.fix_missing_locations(ret)
         
         return ret

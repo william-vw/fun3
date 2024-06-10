@@ -24,7 +24,7 @@ class state:
     
     # base
     # prefixes
-    # model
+    # data
     # bnodes
     # rules
     
@@ -443,9 +443,12 @@ class n3Creator(n3Listener):
     def exitPrefixedName(self, ctx:n3Parser.PrefixedNameContext):
         pname_ln = ctx.PNAME_LN()
         
+        # TODO optimize this code
+        
         iri_ref = None
         if pname_ln is not None:
             pname_ln = pname_ln.getText().strip()
+            # iri_ref = Iri(pname_ln)
             
             (prefix, name) = pname_ln.split(":", 1)
             ns = self.resolve_prefix(prefix)
@@ -455,6 +458,7 @@ class n3Creator(n3Listener):
                 iri_ref = Iri(iri)
         else:
             pname_ns = ctx.PNAME_NS().getText().strip()
+            # iri_ref = Iri(pname_ns)
             
             prefix = pname_ns[:-1]
             ns = self.resolve_prefix(prefix)
@@ -587,14 +591,22 @@ class n3ParseResult:
     
     def __init__(self, state):
         self.data = state.data
-        self.data.done()
-        
         self.rules = state.rules
 
-def parse_n3(str):
+import time
+def parse_n3_file(path):
+    start = time.time()
+    string = open(path, 'r').read()
+    end = time.time()
+    print("read time:", (end-start))
+    
+    return parse_n3(string)
+
+def parse_n3(string):
+    # start = time.time()
     creator = n3Creator()
     
-    lexer = n3Lexer(InputStream(str))
+    lexer = n3Lexer(InputStream(string))
     stream = CommonTokenStream(lexer)
     parser = n3Parser(stream)
     parser.addParseListener(creator)
@@ -603,4 +615,13 @@ def parse_n3(str):
     _ = parser.n3Doc()
     # print(tree.toStringTree(recog=parser))
     
-    return n3ParseResult(creator.state)
+    # end = time.time()
+    # print("parse time:", (end-start))
+    
+    # start = time.time()
+    ret =  n3ParseResult(creator.state)
+    ret.data.done()
+    # end = time.time()
+    # print("load time:", (end-start))
+    
+    return ret
