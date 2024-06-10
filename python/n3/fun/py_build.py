@@ -1,9 +1,6 @@
 import ast
 
 class PyBuilder:
-
-    def __init__(self):
-        pass
     
     def module(self, body):
         return ast.Module(body=body, type_ignores=[])
@@ -58,7 +55,7 @@ class PyBuilder:
         return ret
     
     def index(self, expr, nr):
-        ret = ast.Subscript(expr, slice=self.cnst(nr))
+        ret = ast.Subscript(expr, slice=self.cnst(nr), ctx=ast.Load())
         ast.fix_missing_locations(ret)
         
         return ret
@@ -100,6 +97,7 @@ class PyBuilder:
             case 'is': cmp = ast.Is()
             case 'is not': cmp = ast.IsNot()
             case _: print("inconceivable"); return
+        ast.fix_missing_locations(cmp)
 
         ret = ast.Compare(left=op1, ops=[cmp], comparators=[op2])
         ast.fix_missing_locations(ret)
@@ -131,11 +129,11 @@ class PyBuilder:
         
         return ret
 
-    def iif(self, cond, body, ellse=[]):
+    def iif(self, cond, body, ellse=None):
         ret = ast.If(
             test=cond,
             body=body,
-            orelse=ellse)
+            orelse=ellse if ellse is not None else [])
         ast.fix_missing_locations(ret)
         
         return ret

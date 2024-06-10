@@ -13,12 +13,12 @@ def result_fn(*args):
 
 
 def fun3():
-# # ex 1
+# ex 1
 #     rules =  """@prefix : <http://example.org/> . 
 # # -
-# { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
-# { ?pe a :Person } <= { ?pe :ability :think } .
-# { ?pe a :Belgian } <= { ?pe :ability :drink } .
+# # { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
+# # { ?pe a :Person } <= { ?pe :ability :think } .
+# # { ?pe a :Belgian } <= { ?pe :ability :drink } .
 # # -
 # # { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
 # # { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
@@ -26,9 +26,9 @@ def fun3():
 # # { ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
 # # { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
 # # -
-# # { ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
-# #  { ?pe a :Person } <= { ?pe :ability :think } .
-# #  { ?p a ?t } <= { ?p :name "Socrates" } .
+# { ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
+#  { ?pe a :Person } <= { ?pe :ability :think } .
+#  { ?p a ?t } <= { ?p :name "Socrates" } .
 # """
 #     data = """@prefix : <http://example.org/> . 
 # :will a :Person ; :address :addr1 . :addr1 :country "CA" .
@@ -48,14 +48,14 @@ def fun3():
 # :c :parent :b . :b :parent :a .
 # """
 
-# TODO XD
+# TODO
 # ex 3
     rules =  """@prefix : <http://example.org/> . 
-{ :will :aliasNames ( ?xn ?yn ) } <= { :wil :alias ?x , ?y . ?x :name ?xn . ?y :name ?yn } .
+{ ?z :aliasNames ( ?xn ?yn ) } <= { ?z :alias ( ?x ?y ) . ?x :name ?xn . ?y :name ?yn } .
 """
     data = """@prefix : <http://example.org/> . 
-# :wil :alias ( :wil :edw :elb ) . 
-:wil :alias :edw , :elb .
+:wil :alias ( :edw :elb ) . 
+# :wil :alias :edw , :elb .
 :edw :name "edward" . :elb :name "elbert" .
 """
 
@@ -90,10 +90,10 @@ def fun3():
     state = State(False)
     
     print("run -")
-    # ex 1
+    # # ex 1
     # rule_fn(None, data, state, result_fn)
     # ex 2
-    rule_fn(None, None, data, state, result_fn)
+    rule_fn(None, None, None, data, state, result_fn)
     
     
 def unparse_with_lineno(ast):
