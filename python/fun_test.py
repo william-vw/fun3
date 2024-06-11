@@ -51,11 +51,12 @@ def fun3():
 # TODO
 # ex 3
     rules =  """@prefix : <http://example.org/> . 
-{ ?z :aliasNames ( ?xn ?yn ) } <= { ?z :alias ( ?x ?y ) . ?x :name ?xn . ?y :name ?yn } .
+# { ?z :aliasNames ( ?xn ?yn ) } <= { ?z :alias ( ?x ?y ) . ?x :name ?xn . ?y :name ?yn } .
+{ ?z :aliasNames ( ?xn ?yn ) } <= { ( ?z ) :alias ( ( ?x ) ( ?y ?q ) ) . ?x :name ?xn . ?y :name ?yn } .
 """
     data = """@prefix : <http://example.org/> . 
-:wil :alias ( :edw :elb ) . 
-# :wil :alias :edw , :elb .
+# :wil :alias ( :edw :elb ) . 
+( :wil ) :alias ( ( :edw ) ( :elb :wil ) ) .  # ( ( :edw ) :elb )
 :edw :name "edward" . :elb :name "elbert" .
 """
 

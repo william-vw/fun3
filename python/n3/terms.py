@@ -24,6 +24,9 @@ class Iri:
     def is_concrete(self):
         return True
     
+    def is_grounded(self):
+        return True
+    
     def idx_val(self):
         return self.iri
     
@@ -69,6 +72,9 @@ class Literal:
     def is_concrete(self):
         return True
     
+    def is_grounded(self):
+        return True
+    
     def idx_val(self):
         return self.value
         
@@ -107,6 +113,9 @@ class Collection:
     
     def is_concrete(self):
         return True
+    
+    def is_grounded(self):
+        return len(self.__vars) == 0
     
     def idx_val(self):
         return self.__to_nested_tuples()
@@ -160,6 +169,9 @@ class Var:
     def is_concrete(self):
         return False
     
+    def is_grounded(self):
+        return False
+    
     def idx_val(self):
         return self.name
         
@@ -188,6 +200,9 @@ class BlankNode:
     def is_concrete(self):
         return False
     
+    def is_grounded(self):
+        return False
+    
     def idx_val(self):
         return self.label
         
@@ -201,6 +216,26 @@ class BlankNode:
     def __repr__(self):
         return self.__str__()
     
+    
+class GraphTerm:
+    
+    def __init__(self, model=None):
+        self.model = model if model is not None else Model()
+        
+    def type(self):
+        return term_types.GRAPH
+        
+    def is_concrete(self):
+        return True
+    
+    def is_grounded(self):
+        return True # TODO
+        
+    def __str__(self):
+        return "{ "  + "".join([ str(t) for t in self.model.triples() ])[:-2] + " }"
+    def __repr__(self):
+        return self.__str__()
+
 
 class Triple:
     
@@ -258,16 +293,3 @@ class TripleIt:
             case 1: return self.__t.p
             case 2: return self.__t.o
             case _: raise StopIteration
-    
-class GraphTerm:
-    
-    def __init__(self, model=None):
-        self.model = model if model is not None else Model()
-        
-    def type(self):
-        return term_types.GRAPH
-        
-    def __str__(self):
-        return "{ "  + "".join([ str(t) for t in self.model.triples() ])[:-2] + " }"
-    def __repr__(self):
-        return self.__str__()

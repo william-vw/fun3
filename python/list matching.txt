@@ -1,9 +1,0 @@
-{ :will :aliasNames ( ?xn ?yn ) } <= { :wil :alias ( ?x ?y ) . ?x :name ?xn . ?y :name ?yn } .
-
-search_params..
-if coll.type() == term_types.COLLECTION:
-    search_params.append(None if len(coll._vars())>0 else coll)
-    # .. possibility to still search on coll (if all coll's vars are given in cur_params)
-    # if any(v in cur_params for v in coll.get_vars()): unify_coll_input(coll, cur_params)
-
-    
