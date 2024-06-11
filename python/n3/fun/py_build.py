@@ -1,5 +1,7 @@
 import ast
 
+# TODO check that we don't recursively call fix_missing_locations a million times per element
+
 class PyBuilder:
     
     def module(self, body):
@@ -41,6 +43,12 @@ class PyBuilder:
 
     def cnst(self, value):
         ret = ast.Constant(value=value)
+        ast.fix_missing_locations(ret)
+        
+        return ret
+    
+    def lst(self, elts):
+        ret = ast.List(elts = elts, ctx = ast.Load())
         ast.fix_missing_locations(ret)
         
         return ret

@@ -13,7 +13,7 @@ def result_fn(*args):
 
 
 def fun3():
-# ex 1
+# # ex 1
 #     rules =  """@prefix : <http://example.org/> . 
 # # -
 # # { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
@@ -48,15 +48,46 @@ def fun3():
 # :c :parent :b . :b :parent :a .
 # """
 
-# TODO
-# ex 3
+# # ex 3
+#     rules =  """@prefix : <http://example.org/> . 
+# # { ?z :aliasNames ( ?xn ?yn ) } <= { ?z :alias ( ?x ?y ) . ?x :name ?xn . ?y :name ?yn } .
+# { ?z :aliasNames ( ?xn ?yn ) } <= { ( ?z ) :alias ( ( ?x ) ( ?y ?q ) ) . ?x :name ?xn . ?y :name ?yn } .
+# """
+#     data = """@prefix : <http://example.org/> . 
+# # :wil :alias ( :edw :elb ) . 
+# ( :wil ) :alias ( ( :edw ) ( :elb :wil ) ) .  # ( ( :edw ) :elb )
+# :edw :name "edward" . :elb :name "elbert" .
+# """
+
+# # ex 4
+#     rules =  """@prefix : <http://example.org/> . 
+# { ?z :aliasNames ( ?xn ?yn ) } <= { ?z :aliasPair ( :edw ?x ) . ?x :name ?xn . ?y :name ?yn } .
+# # { ?z :aliasPair ( :edw :elb ) } <= { ?z :alias ( :edw :elb ) } .
+# # { ?z :aliasPair ( :edw ?a ) } <= { ?z :alias ( :edw ?a ) } .
+# { ?z :aliasPair ( ?a ?b ) } <= { ?z :alias ( ?a ?b ) } .
+# """
+#     data = """@prefix : <http://example.org/> . 
+# :wil :alias ( :edw :elb ) . 
+# :edw :name "edward" . :elb :name "elbert" .
+# """
+
+# # ex 5
+#     rules =  """@prefix : <http://example.org/> . 
+# { ?z :aliasNames ( ?xn ?yn ) } <= { ?z :aliasPair ?a . ?x :name ?xn . ?y :name ?yn } .
+# { ?z :aliasPair ( ?x ?y ) } <= { ?z :alias ( ?x ?y ) } .
+# """
+#     data = """@prefix : <http://example.org/> . 
+# :wil :alias ( :edw :elb ) . 
+# :edw :name "edward" . :elb :name "elbert" .
+# """
+
+# ex 6
     rules =  """@prefix : <http://example.org/> . 
-# { ?z :aliasNames ( ?xn ?yn ) } <= { ?z :alias ( ?x ?y ) . ?x :name ?xn . ?y :name ?yn } .
-{ ?z :aliasNames ( ?xn ?yn ) } <= { ( ?z ) :alias ( ( ?x ) ( ?y ?q ) ) . ?x :name ?xn . ?y :name ?yn } .
+{ ?z :aliases ( ?x ?y ) } <= { ?z :aliasPair ( ?x ?y ) . ?x :name ?xn . ?y :name ?yn } .
+{ ?z :aliasPair ?a } <= { ?z :alias :k , :l } .
 """
     data = """@prefix : <http://example.org/> . 
-# :wil :alias ( :edw :elb ) . 
-( :wil ) :alias ( ( :edw ) ( :elb :wil ) ) .  # ( ( :edw ) :elb )
+:wil :alias ( :edw :elb ) . 
 :edw :name "edward" . :elb :name "elbert" .
 """
 
@@ -93,7 +124,11 @@ def fun3():
     print("run -")
     # # ex 1
     # rule_fn(None, data, state, result_fn)
-    # ex 2
+    # # ex 2
+    # rule_fn(None, None, data, state, result_fn)
+    # # ex 3
+    # rule_fn(None, None, None, data, state, result_fn)
+    # ex 4, 5
     rule_fn(None, None, None, data, state, result_fn)
     
     

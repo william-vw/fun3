@@ -103,8 +103,8 @@ class Collection:
     # __vars
     # __max_depth
     
-    def __init__(self):
-        self.__elements = []
+    def __init__(self, elements=None):
+        self.__elements = [] if elements is None else elements
         self.__vars = []
         self.__max_depth = 1
     
@@ -121,7 +121,7 @@ class Collection:
         return self.__to_nested_tuples()
     
     def __to_nested_tuples(self):
-        return tuple(e.__to_nested_tuples() if e.type() == term_types.COLLECTION else e for e in self.__elements)
+        return tuple(e.__to_nested_tuples() if e.type() == term_types.COLLECTION else e.idx_val() for e in self.__elements)
     
     def _parsed_el(self, el):
         self.__elements.append(el)
