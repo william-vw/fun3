@@ -105,7 +105,7 @@ class Collection:
     
     def __init__(self, elements=None):
         self.__elements = [] if elements is None else elements
-        self.__vars = []
+        self.__vars = {}
         self.__max_depth = 1
     
     def type(self):
@@ -126,11 +126,11 @@ class Collection:
     def _parsed_el(self, el):
         self.__elements.append(el)
         if el.type() == term_types.COLLECTION:
-            self.__vars.extend(el.__vars)
+            self.__vars.update(el.__vars)
             self.__max_depth += el.__max_depth
         
-    def _parsed_var(self, var):
-        self.__vars.append(var)
+    def _parsed_vars(self, vars):
+        self.__vars.update(vars)
     
     def _vars(self):
         return self.__vars
@@ -219,8 +219,12 @@ class BlankNode:
     
 class GraphTerm:
     
+    # model
+    # __vars
+    
     def __init__(self, model=None):
         self.model = model if model is not None else Model()
+        self.__vars = set()
         
     def type(self):
         return term_types.GRAPH
@@ -230,6 +234,12 @@ class GraphTerm:
     
     def is_grounded(self):
         return True # TODO
+    
+    def _parsed_vars(self, vars):
+        self.__vars.update(vars)
+    
+    def _vars(self):
+        return self.__vars
         
     def __str__(self):
         return "{ "  + "".join([ str(t) for t in self.model.triples() ])[:-2] + " }"

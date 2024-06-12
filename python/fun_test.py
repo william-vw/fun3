@@ -83,13 +83,23 @@ def fun3():
 
 # ex 6
     rules =  """@prefix : <http://example.org/> . 
-{ ?z :aliases ( ?x ?y ) } <= { ?z :aliasPair ( ?x ?y ) . ?x :name ?xn . ?y :name ?yn } .
-{ ?z :aliasPair ?a } <= { ?z :alias :k , :l } .
+{ ?z :aliasNames ( ?a ?x ) } <= { ?z :aliasPair ( ?a ?x ) } .
+{ ?z :aliasPair ( ( ?x ?y ) ?k ) } <= { ?z :alias ( ?x ?y ) } .
 """
     data = """@prefix : <http://example.org/> . 
 :wil :alias ( :edw :elb ) . 
 :edw :name "edward" . :elb :name "elbert" .
 """
+
+# # ex 7
+#     rules =  """@prefix : <http://example.org/> . 
+# { ?z :aliases ( ?x ?y ) } <= { ?z :aliasPair ( ( ?x ?y ) ?k ) . ?x :name ?xn . ?y :name ?yn } .
+# { ?z :aliasPair ( ?a ?k ) } <= { ?z :alias :k , :l } .
+# """
+#     data = """@prefix : <http://example.org/> . 
+# :wil :alias ( :edw :elb ) . 
+# :edw :name "edward" . :elb :name "elbert" .
+# """
 
     # parse
     
@@ -128,9 +138,10 @@ def fun3():
     # rule_fn(None, None, data, state, result_fn)
     # # ex 3
     # rule_fn(None, None, None, data, state, result_fn)
-    # ex 4, 5
+    # # ex 4, 5
+    # rule_fn(None, None, None, data, state, result_fn)
+    # ex 6
     rule_fn(None, None, None, data, state, result_fn)
-    
     
 def unparse_with_lineno(ast):
     code = unparse(ast)

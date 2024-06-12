@@ -20,7 +20,8 @@ class GenPython:
     # __fn_prefix
     # __pred_idx
     # __cur_vars
-    # __extra_params
+    # __inner_fn_params (+ __inner_fn_args)
+    # __rule_fn_params (+ __rule_fn_args)
 
     def __init__(self):
         self.__builder = PyBuilder()
@@ -28,7 +29,6 @@ class GenPython:
         
         self.__inner_fn_params = [ 'data', 'state', 'ctu' ]
         self.__rule_fn_params = [ 'state' ]
-        
         self.__inner_fn_args = [self.__builder.ref(v) for v in self.__inner_fn_params]
         self.__rule_fn_args = [self.__builder.ref(v) for v in self.__rule_fn_params]
 
@@ -51,6 +51,8 @@ class GenPython:
         return self.__builder.imports('n3.terms', ['Iri', 'Var', 'Literal', 'Collection', 'term_types'])
 
     def __gen_rule(self, rule_no, head, body):
+        self.__setup_rule_vars(head, body)
+        
         if head.type() == term_types.GRAPH:
             self.__cur_vars = self.__vars_graph(head)
 
@@ -61,8 +63,13 @@ class GenPython:
             elif body.type() == term_types.LITERAL and body.value == True:
                 self.__gen_clause(rule_no, head, None, 0)
 
+    def __setup_rule_vars(self, head, body):
+        self.__all_rule_vars = { v: True for v in head._vars() }
+        
+        if body is not None and body.type() == term_types.GRAPH:
+            self.__all_rule_vars.update({ v: True for v in body._vars() })
 
-    def __gen_clause(self, rule_no, head, body, clause_no):
+    def __gen_clause(self, rule_no, head, body, clause_no):        
         # unification taking place in rule head
         # (may modify self.__cur_vars)
         do_unify_head = clause_no == 0 and len(self.__cur_vars) != len(set(self.__cur_vars))
@@ -181,7 +188,7 @@ class GenPython:
             match r.type():
                 
                 case term_types.VAR:
-                    varname = self.__safe_var(r.name)
+                    varname = self.__safe_int_var(r.name)
                     if varname in in_vars:
                         call_args.append(self.__var_ref(varname))
                     else:
@@ -337,7 +344,7 @@ class GenPython:
             
             for pos in range(3):
                 match_r = match_clause[pos]; clause_r = clause[pos]
-                print(f"{match_r} <> {clause_r}")
+                # print(f"{match_r} <> {clause_r}")
                 
                 # (ungrounded-collections)
                 if match_r.type() == term_types.COLLECTION and not match_r.is_grounded() or \
@@ -384,7 +391,7 @@ class GenPython:
                     print("compile-time check: nok")
                     return False
             else:
-                clause_varname = self.__safe_var(clause_r.name)
+                clause_varname = self.__safe_int_var(clause_r.name)
                 # add runtime check, if possible
                 if clause_varname in in_vars:
                     cmp1 = self.__builder.comp(self.__var_ref(clause_varname), 
@@ -399,12 +406,11 @@ class GenPython:
         
         else: # pass data as arguments; get results as lambda parameters
             if clause_r.is_concrete():
-                match_varname = self.__safe_var(match_r.name)
-                # TODO could conflict with clause var names
+                match_varname = self.__safe_ext_var(match_r.name)
                 lmbda_params.append(match_varname)
                 match_args.append(self.__val(clause_r))
             else:
-                clause_varname = self.__safe_var(clause_r.name)
+                clause_varname = self.__safe_int_var(clause_r.name)
                 # always get value from match clause / find call; 
                 # either we gave None, or it is the same as what we gave
                 lmbda_params.append(clause_varname)
@@ -417,36 +423,45 @@ class GenPython:
         return True
         
     # (ungrounded-collections)
-    # TODO cope with match_coll actually being a variable
-    def __match_call_coll(self, match_coll, clause_r, in_vars, ctu_vars, ctu_args, match_conds, match_args, lmbda_params):
+    def __match_call_coll(self, match_r, clause_r, in_vars, ctu_vars, ctu_args, match_conds, match_args, lmbda_params):
         # (clause_r is none if there was nothing left to check consistency with)
         if clause_r is not None:
-            # clause_r also needs to be a collection, with length same as match_coll
-            if (clause_r.type() == term_types.COLLECTION and len(match_coll) != len(clause_r)):
+            # if both are collections, require same length as match_r
+            if (match_r.type() == term_types.COLLECTION and clause_r.type() == term_types.COLLECTION and len(match_r) != len(clause_r)):
                 return False
             
-            # if clause_r is var, need to unify with _grounded collection_ from match fn
+            # if clause_r is var, match_r was ungrounded coll: 
+            # need to unify with _grounded collection_ from match fn
             if not clause_r.is_concrete():
                 # we'll do this based on var values passed by match fn
-                clause_varname = self.__safe_var(clause_r.name)
+                clause_varname = self.__safe_int_var(clause_r.name)
                 if clause_varname in ctu_vars: # only if this var is actually used, lol
-                    ctu_args[ctu_vars.index(clause_varname)] = self.__reconstr(match_coll)
+                    ctu_args[ctu_vars.index(clause_varname)] = self.__reconstr(match_r, ext_vars=True)
                     
-                # after, still need to process match_coll (i.e., pass None's, collect its vars)
+                # (after, still need to process match_r (i.e., pass None's, collect its vars))
         
-        for i, match_r2 in enumerate(match_coll):
+            # if match_r is var, clause_r was ungrounded coll: 
+            # need to pass _grounded collection_ to match fn
+            # TODO ensure full grounding by skolemization or whatever
+            elif not match_r.is_concrete():
+                match_varname = self.__safe_ext_var(match_r.name)
+                lmbda_params.append(match_varname)
+                match_args.append(self.__reconstr(clause_r))
+                return True # nothing left to do
+        
+        for i, match_r2 in enumerate(match_r):
             clause_r2 = clause_r[i] if (clause_r is not None and clause_r.type() == term_types.COLLECTION) else None
             
             # nested collection-with-vars; call fn recursively
-            if match_r2.type() == term_types.COLLECTION and not match_r2.is_grounded():
+            if (match_r2.type() == term_types.COLLECTION and not match_r2.is_grounded()) or \
+                (clause_r2 is not None and clause_r2.type() == term_types.COLLECTION and not clause_r2.is_grounded()):
                 if not self.__match_call_coll(match_r2, clause_r2, in_vars, ctu_vars, ctu_args, match_conds, match_args, lmbda_params):
                     return False
             
             # if no consistency to be checked, add empty arguments (None) for coll var param
             elif clause_r2 is None:
                 if not match_r2.is_concrete():
-                    match_varname = self.__safe_var(match_r2.name)
-                    # TODO could conflict with clause var names
+                    match_varname = self.__safe_ext_var(match_r2.name)
                     lmbda_params.append(match_varname)
                     match_args.append(self.__builder.cnst(None))
             else:
@@ -506,9 +521,9 @@ class GenPython:
             for r in t:
                 match (r.type()):
                     case term_types.VAR: 
-                        ret.append(self.__safe_var(r.name))
+                        ret.append(self.__safe_int_var(r.name))
                     case term_types.COLLECTION: 
-                        ret.extend(self.__safe_var(v.name) for v in r._vars())
+                        ret.extend(self.__safe_int_var(v) for v in r._vars())
         return ret
 
     def __vars_triple_spo(self, t):
@@ -516,17 +531,17 @@ class GenPython:
         for i, r in enumerate(t):
             match r.type():
                 case term_types.VAR:
-                    yield spo[i], self.__safe_var(r.name)
+                    yield spo[i], self.__safe_int_var(r.name)
 
     def __vars_triple(self, t):
         for i, r in enumerate(t):
             match r.type():
                 case term_types.VAR:
-                    yield self.__safe_var(r.name)
+                    yield self.__safe_int_var(r.name)
                 
                 case term_types.COLLECTION:
                     for coll_var in r._vars():
-                        yield self.__safe_var(coll_var.name)
+                        yield self.__safe_int_var(coll_var)
                         
     def __coll_with_vars_spo(self, t):
         spo = ['s', 'p', 'o']
@@ -535,14 +550,30 @@ class GenPython:
                 case term_types.COLLECTION:
                     if not r.is_grounded():
                         yield r, spo[i]
-                
-    def __safe_var(self, n):
+    
+    # NOTE code below assumes this does not occur often
+    # (else, possibility for optimizing this)
+    
+    def __safe_var(self, n, ext_vars=False):
+        return self.__safe_ext_var(n) if ext_vars else self.__safe_int_var(n)
+    
+    def __safe_int_var(self, n):
+        n2 = None
         match n:
-            case 't': return 'tt'
-            case 'data': return 'ddata'
-            case 'state': return 'sstate'
-            case 'ctu': return 'cctu'
+            case 't': n2 = 'tt'
+            case 'data': n2 = 'dataa'
+            case 'state': n2 = 'statee'
+            case 'ctu': n2 = 'ctuu'
             case _: return n
+        
+        # ensure that new var does not occur in this rule
+        return self.__safe_ext_var(n2)
+        
+    def __safe_ext_var(self, n):
+        if n not in self.__all_rule_vars:
+            return n
+        
+        return self.__safe_ext_var(n + "2")
 
     def __val(self, r):
         return self.__builder.cnst(r.idx_val())
@@ -570,7 +601,7 @@ class GenPython:
         my_args = args + (self.__rule_fn_args if fn_name == 'ctu' else self.__inner_fn_args)
         return self.__builder.fn_call(self.__builder.ref(fn_name), my_args)
             
-    def __reconstr(self, r):
+    def __reconstr(self, r, ext_vars=False):
         match r.type():
             case term_types.IRI: 
                 cls = "Iri"; arg = r.iri
@@ -578,9 +609,9 @@ class GenPython:
                 cls = "Literal"; arg = r.value
             case term_types.COLLECTION: 
                 cls = "Collection"
-                arg = self.__builder.lst([ self.__reconstr(e) for e in r ])
+                arg = self.__builder.lst([ self.__reconstr(e, ext_vars) for e in r ])
             case term_types.VAR: 
-                return self.__var_ref(self.__safe_var(r.name))
+                return self.__var_ref(self.__safe_var(r.name, ext_vars))
             case _: print("inconceivable")
 
         return self.__builder.fn_call(fn=self.__builder.ref(cls), args=[arg])

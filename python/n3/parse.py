@@ -17,6 +17,8 @@ class state:
     # iri_mode (None/'ipl'/'rdflit')
     # dt
     # collection
+    # formula
+    # var_sink
     # path_cnt
     # path_step
     # path_dir
@@ -26,15 +28,17 @@ class state:
     # prefixes
     # data
     # bnodes
-    # rules
+    # rules    
     
-    def __init__(self, parent=None, new_scope=False):        
+    def __init__(self, parent=None, new_scope=False):
         self.parent = parent
         self.path_item = None
         self.triple = Triple()
         self.iri_mode = None
         self.dt = None
         self.collection = None
+        self.formula = None
+        self.var_sink = None
         self.path_cnt = 0
         self.path_step = None
         self.path_dir = None
@@ -75,14 +79,34 @@ class state:
         
     def start_collect(self):
         self.collection = Collection()
+        self.var_sink = self.collection
         
     def is_collecting(self):
         return self.collection is not None
         
-    def end_collect(self):
+    def end_collect(self):        
         ret = self.collection
         self.collection = None
+        self.var_sink = None
         return ret
+    
+    def start_formula(self):
+        self.formula = GraphTerm(self.data)
+        self.var_sink = self.formula
+        
+    def end_formula(self):
+        ret = self.formula
+        self.formula = None
+        self.var_sink = None
+        return ret
+    
+    def parsed_var(self, var):
+        if self.var_sink is not None:
+            self.var_sink._parsed_vars({var.name: True})
+    
+    def parsed_vars(self, vars):
+        if self.var_sink is not None:
+            self.var_sink._parsed_vars(vars)
         
 class n3ParseError(Exception):
     pass
@@ -366,19 +390,25 @@ class n3Creator(n3Listener):
         collection = self.state.end_collect()
         self.state = self.state.parent
         
+        self.state.parsed_vars(collection._vars())
+        
         self.state.path_item = collection
 
 
     # Enter a parse tree produced by n3Parser#formula.
     def enterFormula(self, ctx:n3Parser.FormulaContext):
         self.state = self.state.sub(new_scope=True)
+        
+        self.state.start_formula()
 
     # Exit a parse tree produced by n3Parser#formula.
     def exitFormula(self, ctx:n3Parser.FormulaContext):
-        graph_model = self.state.data
-        
+        graph_term = self.state.end_formula()
         self.state = self.state.parent
-        self.state.path_item = GraphTerm(graph_model)
+        
+        self.state.parsed_vars(graph_term._vars())
+        
+        self.state.path_item = graph_term
         
 
     # Enter a parse tree produced by n3Parser#formulaContent.
@@ -505,8 +535,7 @@ class n3Creator(n3Listener):
             var = Var(self.text(name)[1:])
             self.state.path_item = var
             
-            if self.state.is_collecting():
-                self.state.collection._parsed_var(var)
+            self.state.parsed_var(var)
     
     # custom methods
     
