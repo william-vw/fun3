@@ -288,9 +288,15 @@ class GenPython:
         return self.__rule_fn_call(unify_fn.name, unify_fn_args)
     
     # (ungrounded-collections)
-    def __unify_coll(self, clause_coll_val, pos, match_coll_expr, clause_fn, conds, assns):
+    # 1/ add conditions for element-by-element comparisons
+    # 2/ add assignments of match coll values to clause vars 
+    # clause_coll_term: corresp. term in clause_coll
+    # match_coll_expr: corresp. selection in match_coll (e.g., coll[0][1] etc.)
+    # pos: current (nested) position in collection (e.g., [0, 1] for 2nd el in 1st el)
+    def __unify_coll(self, clause_coll_term, pos, match_coll_expr, clause_fn, conds, assns):
         bld = self.__builder
         
+        # match_coll needs to be collection of same length
         conds.append(
             bld.comp(
                 bld.fn_call(bld.attr_ref_expr(match_coll_expr, 'type')),
@@ -298,10 +304,11 @@ class GenPython:
         )        
         conds.append(
             bld.comp(bld.fn_call(bld.ref('len'), [ match_coll_expr ]),
-                                'eq', bld.cnst(len(clause_coll_val)))
+                                'eq', bld.cnst(len(clause_coll_term)))
         )
         
-        for i, clause_el_val in enumerate(clause_coll_val):
+        # compare coll's element-by-element
+        for i, clause_el_val in enumerate(clause_coll_term):
             cur_pos = pos + [ i ]
             match_el_expr = bld.index(match_coll_expr, i)
             
@@ -311,15 +318,18 @@ class GenPython:
                 
                 case term_types.VAR:
                     # TODO only need assignment is var is None
+                    # either var was not provided, or it is equal to value from match_coll
                     if clause_el_val.idx_val() in clause_fn.in_vars:
                         conds.append(bld.disj([
                             bld.comp(bld.ref(clause_el_val.name), 'is', bld.cnst(None)),
                             bld.comp(bld.ref(clause_el_val.name), 'eq', self.__term_val(match_el_expr))
                         ]))
+                    # assign match_coll value to clause var
                     assns.append(
                         bld.assn(clause_el_val.name, self.__term_val(match_el_expr)))
                     
                 case _:
+                    # add comparison condition for concrete values
                     conds.append(
                         bld.comp(self.__term_val(match_el_expr), 'eq', bld.cnst(clause_el_val.idx_val())))
 
@@ -370,9 +380,8 @@ class GenPython:
                     clause_r.type() == term_types.COLLECTION and not clause_r.is_grounded():
                     # check consistency between match_r's coll & clause_r
                     
-                    # returns false if match_r coll is not consistent with clause_r
-                    # else; note that rule fns will have separate params for each of its coll var
-                    # so, fn passes appropriate arguments for these params based on clause_r
+                    # check consistency between match_r and clause_r
+                    # (also, pass appropriate arguments to match rule fn)
                     if not self.__match_call_coll(match_r, clause_r, clause_fn, ctu_fn, match_fn):
                         return False
                 else:
@@ -400,7 +409,8 @@ class GenPython:
         #     print()
         
         return True
-        
+    
+    # unify clause term with match clause term
     def __match_call_terms(self, match_r, clause_r, clause_fn, ctu_fn, match_fn):
         if match_r.is_concrete():
             if clause_r.is_concrete():
@@ -441,6 +451,9 @@ class GenPython:
         return True
         
     # (ungrounded-collections)
+    # returns false if match_r coll is not consistent with clause_r
+    # also, fn passes appropriate arguments for these params based on clause_r
+    # (note that rule fns will have separate params for each of its coll var)
     def __match_call_coll(self, match_r, clause_r, clause_fn, ctu_fn, match_fn):
         # (clause_r is none if there was nothing left to check consistency with)
         if clause_r is not None:
@@ -467,6 +480,7 @@ class GenPython:
                 match_fn.in_args.append(self.__reconstr(clause_r))
                 return True # nothing left to do
         
+        # compare element-by-element
         for i, match_r2 in enumerate(match_r):
             clause_r2 = clause_r[i] if (clause_r is not None and clause_r.type() == term_types.COLLECTION) else None
             
