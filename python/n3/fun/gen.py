@@ -28,6 +28,7 @@ class GenPython:
         self.__fn_prefix = "rule"
         
         self.__unify_head = UnifyCoref_Head()
+        self.__unify_body = UnifyCoref_Body()
         
         self.__inner_fn_params = [ 'data', 'state', 'ctu' ]
         self.__rule_fn_params = [ 'state' ]
@@ -53,26 +54,25 @@ class GenPython:
         return self.__builder.imports('n3.terms', ['Iri', 'Var', 'Literal', 'Collection', 'term_types'])
 
     def __gen_rule(self, rule_no, head, body):
-        first_fn = RuleFn(None, head._vars(), None)
-        self.__unify_head.unify_head(head, first_fn)
+        fns = [ RuleFn() for _ in range(0, len(body)) ]
+        fns[0].in_vars = head._vars()
         
-        self.__setup_rule_vars(head, body)
+        self.__unify_head.unify_head(head, fns[0])
+        self.__unify_body.unify_body(body, fns)
         
-        if head.type() == term_types.GRAPH:
-            self.__cur_vars = self.__vars_graph(head)
-
-            if body.type() == term_types.GRAPH:
-                for i, _ in enumerate(body.model.triples()):
-                    self.__gen_clause(rule_no, head, body, i)
-
-            elif body.type() == term_types.LITERAL and body.value == True:
-                self.__gen_clause(rule_no, head, None, 0)
-
-    def __setup_rule_vars(self, head, body):
-        self.__all_rule_vars = { v: True for v in head._vars() }
+        self.__setup_rule_vars(fns)
         
-        if body is not None and body.type() == term_types.GRAPH:
-            self.__all_rule_vars.update({ v: True for v in body._vars() })        
+        self.__cur_vars = fns[0].in_vars
+
+        if body.type() == term_types.GRAPH:
+            for i, _ in enumerate(body.model.triples()):
+                self.__gen_clause(rule_no, head, body, i)
+
+        elif body.type() == term_types.LITERAL and body.value == True:
+            self.__gen_clause(rule_no, head, None, 0)
+
+    def __setup_rule_vars(self, fns):
+        self.__all_rule_vars = { v: True for fn in fns for v in fn.in_vars }
 
     # TODO head unification - rename *all* assoc. rule variables (desc -> desc0, desc1, ..)
 
@@ -725,6 +725,9 @@ class UnifyCoref_Head:
         
 class UnifyCoref_Body:
     
+    def __init__(self, util):
+        self.util = util
+    
     def unify_body(self, body):
         counts = Counter(body._vars())
         dupl_vars = { v:0 for v, c in counts if c > 1 }
@@ -735,7 +738,7 @@ class UnifyCoref_Body:
     def __unify_it(self, it, dupl_vars):
         for pos in range(0, len(it)):
             term = it[pos]
-            match term.type():    
+            match term.type():
                 case term_types.VAR:
                     if term.name in dupl_vars:
                         it[pos] = Var(f"{term.name}_{dupl_vars[term.name]}")

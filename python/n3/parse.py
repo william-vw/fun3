@@ -601,7 +601,8 @@ class n3Creator(n3Listener):
         
         self.state.data.add(triple)
         
-        if triple.p.type() == term_types.IRI and (triple.p == n3Log['implies'] or triple.p == n3Log['impliedBy']):
+        if triple.s.type() == term_types.GRAPH and \
+            triple.p.type() == term_types.IRI and (triple.p == n3Log['implies'] or triple.p == n3Log['impliedBy']):
             self.state.rules.append(triple)
         
     def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
