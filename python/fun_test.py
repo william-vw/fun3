@@ -37,7 +37,7 @@ def fun3():
 # :dor :ability :think ; :address :addr2 ; :describedAs :German .
 # :soc :name "Socrates" ; :address :addr1 .
 # """
-#     call = lambda: rule_fn(None, data, state, result_fn)
+#     call = lambda data, state, rule_fn: rule_fn(None, data, state, result_fn)
 
 
 # # ex 2
@@ -49,7 +49,7 @@ def fun3():
 #     data = """@prefix : <http://example.org/> . 
 # :c :parent :b . :b :parent :a .
 # """
-#     call = lambda: rule_fn(None, None, data, state, result_fn)
+#     call = lambda data, state, rule_fn: rule_fn(None, None, data, state, result_fn)
 
 # # ex 3
 #     rules =  """@prefix : <http://example.org/> . 
@@ -61,7 +61,7 @@ def fun3():
 # ( :wil ) :alias ( ( :edw ) ( :elb :wil ) ) .  # ( ( :edw ) :elb )
 # :edw :name "edward" . :elb :name "elbert" .
 # """
-#     call = lambda: rule_fn(None, None, None, data, state, result_fn)
+#     call = lambda data, state, rule_fn: rule_fn(None, None, None, data, state, result_fn)
 
 # # ex 4
 #     rules =  """@prefix : <http://example.org/> . 
@@ -74,7 +74,7 @@ def fun3():
 # :wil :alias ( :edw :elb ) . 
 # :edw :name "edward" . :elb :name "elbert" .
 # """
-#     call = lambda: rule_fn(None, None, data, state, result_fn)
+#     call = lambda data, state, rule_fn: rule_fn(None, None, data, state, result_fn)
 
 # # ex 5
 #     rules =  """@prefix : <http://example.org/> . 
@@ -85,7 +85,7 @@ def fun3():
 # :wil :alias ( :edw :elb ) . 
 # :edw :name "edward" . :elb :name "elbert" .
 # """
-#     call = lambda: rule_fn(None, None, data, state, result_fn)
+#     call = lambda data, state, rule_fn: rule_fn(None, None, data, state, result_fn)
 
 # # ex 6
 #     rules =  """@prefix : <http://example.org/> . 
@@ -96,7 +96,7 @@ def fun3():
 # :wil :alias ( :edw :elb ) . 
 # :edw :name "edward" . :elb :name "elbert" .
 # """
-#     call = lambda: rule_fn(None, None, None, data, state, result_fn)
+#     call = lambda data, state, rule_fn: rule_fn(None, None, None, data, state, result_fn)
 
 # # ex 7
 #     rules =  """@prefix : <http://example.org/> . 
@@ -107,7 +107,23 @@ def fun3():
 # :wil :alias ( :edw :elb ) . 
 # :edw :name "edward" . :elb :name "elbert" .
 # """
-#     call = lambda: rule_fn(None, None, None, data, state, result_fn)
+#     call = lambda data, state, rule_fn: rule_fn(None, None, None, data, state, result_fn)
+
+# TODO
+# . extra lambda params for 2nd, 3rd.. occurrence of duplicate var
+# . separate function for unifying these vars
+# . avoid potential name conflicts
+#   update self.__all_rule_vars/params with renamed lambda params, unify-head's fn params
+
+# # ex 8
+#     rules =  """@prefix : <http://example.org/> . 
+# { ?x :lonerName ?xn } <= { ?x :onlyFriend ?x . ?x :name ?xn } .
+# """
+#     data = """@prefix : <http://example.org/> . 
+# :edw :onlyFriend :wil .
+# :wil :name "wil" . :edw :name "edw" .
+# """
+#     call = lambda data, state, rule_fn: rule_fn(None, None,  data, state, result_fn)
 
 
     # parse
@@ -141,7 +157,7 @@ def fun3():
     state = State(False)
     
     print("run -")
-    call()
+    call(data, state, rule_fn)
 
     
 def unparse_with_lineno(ast):

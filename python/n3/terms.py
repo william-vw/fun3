@@ -97,67 +97,6 @@ class Literal:
         return self.__str__()
 
 
-class Collection:
-    
-    # __elements
-    # __vars
-    # __max_depth
-    
-    def __init__(self, elements=None):
-        self.__elements = [] if elements is None else elements
-        self.__vars = {}
-        self.__max_depth = 1
-    
-    def type(self):
-        return term_types.COLLECTION
-    
-    def is_concrete(self):
-        return True
-    
-    def is_grounded(self):
-        return len(self.__vars) == 0
-    
-    def idx_val(self):
-        return self.__to_nested_tuples()
-    
-    def __to_nested_tuples(self):
-        return tuple(e.__to_nested_tuples() if e.type() == term_types.COLLECTION else e.idx_val() for e in self.__elements)
-    
-    def _parsed_el(self, el):
-        self.__elements.append(el)
-        if el.type() == term_types.COLLECTION:
-            self.__vars.update(el.__vars)
-            self.__max_depth += el.__max_depth
-        
-    def _parsed_vars(self, vars):
-        self.__vars.update(vars)
-    
-    def _vars(self):
-        return self.__vars
-    
-    def _max_depth(self):
-        return self.__max_depth
-    
-    def __iter__(self):
-        return self.__elements.__iter__()
-    
-    def __len__(self):
-        return len(self.__elements)
-    
-    def __getitem__(self, key):
-        return self.__elements[key]
-    
-    def __eq__(self, other): 
-        if not isinstance(other, Collection):
-            return NotImplemented
-        return self.__elements == other.__elements
-        
-    def __str__(self):
-        return "( " + " ".join(str(e) for e in self.__elements) + " )"
-    def __repr__(self):
-        return self.__str__()
-
-
 class Var:
     
     def __init__(self, name):
@@ -217,29 +156,83 @@ class BlankNode:
         return self.__str__()
     
     
-class GraphTerm:
+class VarContainer:
+    
+    def __init__(self):
+        self.__vars = {}
+        
+    def is_grounded(self):
+        return len(self.__vars) == 0    
+    
+    def _parsed_vars(self, vars):
+        self.__vars.update(vars)
+        
+    def _ren_vars(self, orig, ren):
+        for v in orig:
+            del self.__vars[v]
+            
+        self.__vars.update(ren)
+    
+    def _vars(self):
+        return self.__vars
+
+class Collection(VarContainer):
+    
+    # __elements
+    
+    def __init__(self, elements=None):
+        self.__elements = [] if elements is None else elements
+    
+    def type(self):
+        return term_types.COLLECTION
+    
+    def is_concrete(self):
+        return True
+    
+    def idx_val(self):
+        return self.__to_nested_tuples()
+    
+    def __to_nested_tuples(self):
+        return tuple(e.__to_nested_tuples() if e.type() == term_types.COLLECTION else e.idx_val() for e in self.__elements)
+    
+    def _parsed_el(self, el):
+        self.__elements.append(el)
+    
+    def __iter__(self):
+        return self.__elements.__iter__()
+    
+    def __len__(self):
+        return len(self.__elements)
+    
+    def __getitem__(self, key):
+        return self.__elements[key]
+    
+    def __setitem__(self, key, value):
+        self.__elements[key] = value
+    
+    def __eq__(self, other): 
+        if not isinstance(other, Collection):
+            return NotImplemented
+        return self.__elements == other.__elements
+        
+    def __str__(self):
+        return "( " + " ".join(str(e) for e in self.__elements) + " )"
+    def __repr__(self):
+        return self.__str__()
+    
+class GraphTerm(VarContainer):
     
     # model
-    # __vars
     
     def __init__(self, model=None):
         self.model = model if model is not None else Model()
-        self.__vars = set()
+        self.__vars = {}
         
     def type(self):
         return term_types.GRAPH
         
     def is_concrete(self):
         return True
-    
-    def is_grounded(self):
-        return True # TODO
-    
-    def _parsed_vars(self, vars):
-        self.__vars.update(vars)
-    
-    def _vars(self):
-        return self.__vars
         
     def __str__(self):
         return "{ "  + "".join([ str(t) for t in self.model.triples() ])[:-2] + " }"
@@ -261,6 +254,9 @@ class Triple:
     
     def has_graph(self):
         return any(r.type() == term_types.GRAPH for r in self)
+    
+    def __len__(self):
+        return 3
     
     def __iter__(self):
         return TripleIt(self)
