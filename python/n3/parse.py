@@ -102,7 +102,7 @@ class state:
     
     def parsed_var(self, var):
         if self.var_sink is not None:
-            self.var_sink._parsed_vars({var.name: True})
+            self.var_sink._parsed_var(var.name)
     
     def parsed_vars(self, vars):
         if self.var_sink is not None:

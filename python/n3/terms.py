@@ -164,14 +164,21 @@ class VarContainer:
     def is_grounded(self):
         return len(self.__vars) == 0    
     
+    def _parsed_var(self, var):
+        self.__vars[var] = True
+    
     def _parsed_vars(self, vars):
         self.__vars.update(vars)
         
-    def _ren_vars(self, orig, ren):
-        for v in orig:
-            del self.__vars[v]
-            
-        self.__vars.update(ren)
+    def _rename_vars(self, ren_vars):
+        # NOTE no longer valid (but also don't need it anymore)
+        self.__vars = None 
+        
+        var_its = { to_repl: repl.__iter__() for to_repl, repl in ren_vars.items() }
+        self._rename_vars_recurs(var_its)
+    
+    def _rename_vars_recurs(self, ren_vars):
+        pass # to be implemented by subclasses
     
     def _vars(self):
         return self.__vars
@@ -197,6 +204,18 @@ class Collection(VarContainer):
     
     def _parsed_el(self, el):
         self.__elements.append(el)
+        
+    def _rename_vars_recurs(self, ren_vars):
+        for i in range(0, len(self)):
+            el = self[i]
+            match el.type():
+                case term_types.VAR:
+                    if el.name in ren_vars: 
+                        self[i] = Var(ren_vars[el.name].__next__())
+                case term_types.COLLECTION:
+                    el._rename_vars_recurs(ren_vars)
+                case term_types.GRAPH:
+                    el._rename_vars_recurs(ren_vars)
     
     def __iter__(self):
         return self.__elements.__iter__()
@@ -220,19 +239,32 @@ class Collection(VarContainer):
     def __repr__(self):
         return self.__str__()
     
+    
 class GraphTerm(VarContainer):
     
     # model
     
     def __init__(self, model=None):
         self.model = model if model is not None else Model()
-        self.__vars = {}
         
     def type(self):
         return term_types.GRAPH
         
     def is_concrete(self):
         return True
+    
+    def _rename_vars_recurs(self, ren_vars):
+        for t in self.model.triples():
+            for i in range(0, len(t)):
+                el = t[i]
+                match el.type():
+                    case term_types.VAR:
+                        if el.name in ren_vars: 
+                            t[i] = Var(ren_vars[el.name].__next__())
+                    case term_types.COLLECTION:
+                        el._rename_vars_recurs(ren_vars)
+                    case term_types.GRAPH:
+                        el._rename_vars_recurs(ren_vars)
         
     def __str__(self):
         return "{ "  + "".join([ str(t) for t in self.model.triples() ])[:-2] + " }"

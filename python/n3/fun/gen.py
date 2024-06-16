@@ -54,49 +54,42 @@ class GenPython:
         return self.__builder.imports('n3.terms', ['Iri', 'Var', 'Literal', 'Collection', 'term_types'])
 
     def __gen_rule(self, rule_no, head, body):
-        fns = [ RuleFn() for _ in range(0, len(body)) ]
-        fns[0].in_vars = head._vars()
+        fn_0 = RuleFn(in_vars=head._vars())
+
+        self.__unify_head.unify_head(head, body, fn_0)
         
-        self.__unify_head.unify_head(head, fns[0])
-        self.__unify_body.unify_body(body, fns)
-        
-        self.__setup_rule_vars(fns)
-        
-        self.__cur_vars = fns[0].in_vars
+        self.__cur_vars = fn_0.in_vars
 
         if body.type() == term_types.GRAPH:
             for i, _ in enumerate(body.model.triples()):
-                self.__gen_clause(rule_no, head, body, i)
+                self.__gen_clause(rule_no, head, body, i, fn_0)
 
         elif body.type() == term_types.LITERAL and body.value == True:
-            self.__gen_clause(rule_no, head, None, 0)
+            self.__gen_clause(rule_no, head, None, 0, fn_0)
 
-    def __setup_rule_vars(self, fns):
-        self.__all_rule_vars = { v: True for fn in fns for v in fn.in_vars }
 
     # TODO head unification - rename *all* assoc. rule variables (desc -> desc0, desc1, ..)
 
-    def __gen_clause(self, rule_no, head, body, clause_no):        
-        # in case unification takes place in rule head
-        # (may modify self.__cur_vars)
-        do_unify_head = clause_no == 0 and len(self.__cur_vars) != len(set(self.__cur_vars))
-        unify_stmts = self.__unify_head() if do_unify_head else None
-        
+    def __gen_clause(self, rule_no, head, body, clause_no, fn):
         # incoming parameters representing variables
         in_vars = self.__cur_vars
+        
+        # adt representing clause fn
+        fn = fn if fn is not None else RuleFn()
+        fn.in_vars = in_vars
+        fn.name = self.__fn_name(rule_no, clause_no)
 
-        # function representing this clause
-        clause_fn = self.__rule_fn_def(self.__fn_name(rule_no, clause_no), in_vars)
-        self.__code.append(clause_fn)
-        if unify_stmts is not None:
-            self.__builder.fn_body_stmts(clause_fn, unify_stmts)
+        # fn ast representing this clause
+        clause_fn = self.__rule_fn_def(fn.name, in_vars)
+        fn.fn = clause_fn
+        self.__code.append(clause_fn) # add to generated code
 
         # running example: clause = ?p :address ?a ; cur_vars = [ p, r ] ; head = ?p a :Person
 
         # e.g., boolean as body
         if body is None:
             if len(clause_fn.body) == 0:
-                self.__builder.fn_body_stmt(clause_fn, self.__builder.pss())
+                fn.fill_in_call(self.__builder.pss(), self.__builder)
             return
 
         clause = body.model.triple_at(clause_no)
@@ -116,7 +109,6 @@ class GenPython:
             # at the last clause, so call the original ctu
             ctu_fn_name = 'ctu'
 
-        clause_fn = RuleFn(clause_fn.name, in_vars, clause_fn)
         ctu_fn = RuleFn(ctu_fn_name, ctu_vars, None)
         
         # self.__unify_coref_vars(clause_fn, ctu_fn, own_vars)
@@ -127,7 +119,6 @@ class GenPython:
         self.__find_triple_call(clause, clause_fn, ctu_fn)
         self.__match_rule_calls(clause, clause_fn, ctu_fn)
     
-        
     
     # START find triple
     
@@ -595,22 +586,33 @@ class GenPython:
 class RuleFn:
     
     # name (string)
-    
     # in_vars (strings; incoming parameters representing variables)
     # in_args (ast; arguments for in_vars)
     # clause_vars (strings)
     # fn (ast)
-    # body
-    # call_pls
-    # ctu_pls
+    # body (body statements to add, if any)
+    # call_pls (placeholder(s) for calls (data.find/match calls))
+    # ctu_pls (placeholder(s) for ctu)
     
-    def __init__(self, name, in_vars, fn):
+    def __init__(self, name=None, in_vars=None, fn=None):
         self.name = name
         self.in_vars = in_vars
         self.fn = fn
         self.body = None
         self.call_pls = None
         self.ctu_pls = None
+    
+    def fill_in_call(self, stmt, bld):
+        if self.call_pls is None:
+            bld.fn_body_stmt(self.fn, stmt)
+        else:
+            for pls in self.call_pls:
+                pls.append(stmt)
+            bld.fn_body_stmts(self.fn, self.body)
+            
+    def fill_in_ctu(self, stmts, bld):
+        for pls in self.ctu_pls:
+            pls.extend(stmts)
     
 class MatchRuleFn:
     
@@ -651,38 +653,51 @@ class UnifyCoref_Head:
     # we do 2 things here:
     # 1/ ok if all _provided_ (de-)duplicated vars are same
     # 2/ pass provided var values for non-provided vars
-    def unify_head(self, head, clause_fn):
+    def unify_head(self, head, body, clause_fn):
         orig_vars = head._vars()
         # no need to unify here!
         if len(orig_vars) == len(set(orig_vars)): 
             return
         
         # darn!
-        ( dupl_vars, ren_vars ) = self.__deduplicate_vars(orig_vars)
+        ( new_vars, ren_vars ) = self.__deduplicate_vars(orig_vars)
         # print("dedupl:", dupl_vars, ren_vars)
         
-        # safely renamed variables will be input var param
-        clause_fn.in_vars = ren_vars
-        head._ren_vars(orig_vars, ren_vars)
+        # safely renamed vars will be input var param
+        clause_fn.in_vars = new_vars
+        
+        # rename vars in head clause
+        # e.g., ?desc :parent ?desc -> ?desc0 :parent ?desc1 
+        # stmts in body will check desc0 = desc1 etc
+        head._rename_vars(ren_vars)
 
-        clause_fn.body = []
-        clause_fn.call_pls = []
-        self.__unify_head_vars(dupl_vars, 0, [], [], clause_fn.body, clause_fn.call_pls)
+        # rename vars in body clause
+        # (nrs don't matter; desc0, desc1, will all be None or equal here)
+        # e.g., ?desc :abc ?desc -> ?desc0 :abc ?desc1
+        body._rename_vars(ren_vars)
+
+        clause_fn.body = [] # will have if-else statements
+        clause_fn.call_pls = [] # placeholders for calls
+        
+        in_vars = [ v for v in ren_vars ]
+        self.__unify_head_vars(in_vars, 0, [], [], clause_fn.body, clause_fn.call_pls)
 
     # returns:
-    # ( renamed duplicate vars, all vars incl. renamed ones)
-    #  e.g., (p, p, s) -> duplicates=(p0, p1), cur_vars=(p0, p1, s)
+    # ( list of new (de-duplicated, if needed) variables, map from original var -> list of renamed vars)
+    #  e.g., (p, p, s) -> new_vars=(p0, p1, s), ren_vars={p: [ p0, p1 })
     def __deduplicate_vars(self, vars):
-        counts = Counter(vars)
-        ren_vars = []; dupl_vars = []
-        for p in vars:
-            if counts[p] > 1:
-                np = self.util.__safe_extn_var(f"{p}{len(dupl_vars)}")
-                ren_vars.append(np); dupl_vars.append(np)
-            else:
-                ren_vars.append(p)
+        counts = { v:0 for v, c in Counter(vars).items() if c > 1 }
         
-        return ( dupl_vars, ren_vars )
+        new_vars = []; ren_vars = { v: [] for v in counts }
+        for v in vars:
+            if v in counts:
+                nv = self.util.__safe_extn_var(f"{v}{len(counts[v])}")
+                counts[v] += 1
+                new_vars.append(nv); ren_vars[v].append(nv)
+            else:
+                new_vars.append(v)
+        
+        return ( new_vars, ren_vars )
     
     # bound: vars that are bound at this point; unbound: idem for unbound vars
     def __unify_head_vars(self, vars, idx, bound, unbound, body, pls):
@@ -700,7 +715,7 @@ class UnifyCoref_Head:
             if_body2 = []
             if_body.append(bld.iif(bld.comp(bld.ref(bound[-1]), 'eq', bld.ref(var)), if_body2))
             if_body = if_body2 # add the rest to this if's body!
-            
+        
         # (var is not None, so add to bound)
         bound.append(var)
         if idx+1 < len(vars):
