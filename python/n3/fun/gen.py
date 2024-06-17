@@ -29,7 +29,7 @@ class GenPython:
         
         self.__unify_head = UnifyCoref_Head()
         self.__unify_body = UnifyCoref_Body()
-        self.__unify_coll = UnifyColl()
+        self.__unify_data_coll = UnifyDataColl()
         
         self.__inner_fn_params = [ 'data', 'state', 'ctu' ]
         self.__rule_fn_params = [ 'state' ]
@@ -69,7 +69,6 @@ class GenPython:
 
         elif body.type() == term_types.LITERAL and body.value == True:
             self.__gen_clause(rule_no, head, None, 0)
-
 
     def __gen_clause(self, rule_no, head, body, clause_no):
         # incoming parameters representing variables
@@ -119,7 +118,7 @@ class GenPython:
     # START find triple
     
     def __find_data_call(self, clause, clause_fn, ctu_fn):
-        self.__unify_coll.unify(clause, clause_fn, ctu_fn)
+        clause = self.__unify_data_coll.unify(clause, clause_fn, ctu_fn)
         
         #  arguments for data.find call
 
@@ -175,21 +174,6 @@ class GenPython:
         
     # END find triple    
     
-    def __gen_separ_ctu_fn(self, clause_fn, ctu_fn):
-        ctu_fn.name = f"{clause_fn.name}_unify"
-        
-        new_fn = self._rule_fn_def(ctu_fn.name, ctu_fn.in_vars)
-        self.__code.append(new_fn)
-        
-        to_add = ctu_fn.body
-        if len(ctu_fn.conds) > 0:
-            to_add = self.__builder.iif(
-                self.__builder.conj(ctu_fn.conds),
-                ctu_fn.body
-            )
-        
-        self.__builder.fn_body_stmts(new_fn, to_add)
-    
     # START match call
     
     def __match_rule_calls(self, clause, clause_fn, ctu_fn):
@@ -230,6 +214,11 @@ class GenPython:
                 else:
                     if not self.__match_call_terms(match_r, clause_r, clause_fn, ctu_fn, match_fn):
                         return False
+
+            # build the ctu call
+
+            if ctu_fn.req_separ_fn():
+                self.__gen_separ_ctu_fn(clause_fn, ctu_fn)
 
             ctu_call = self._rule_fn_call(ctu_fn.name, ctu_fn.in_args)
 
@@ -380,6 +369,21 @@ class GenPython:
             i += 1
             
     # END match call
+    
+    def __gen_separ_ctu_fn(self, clause_fn, ctu_fn):
+        ctu_fn.name = f"{clause_fn.name}_unify"
+        
+        new_fn = self._rule_fn_def(ctu_fn.name, ctu_fn.in_vars)
+        self.__code.append(new_fn)
+        
+        to_add = ctu_fn.body
+        if len(ctu_fn.conds) > 0:
+            to_add = self.__builder.iif(
+                self.__builder.conj(ctu_fn.conds),
+                ctu_fn.body
+            )
+        
+        self.__builder.fn_body_stmts(new_fn, to_add)
             
     # def __is_builtin(self, clause):
     #     return clause.p.type() == term_types.IRI and clause.p.ns.startswith(swapNs.iri)
@@ -651,7 +655,7 @@ class UnifyCoref_Body(UnifyCoref):
         
 
 
-class UnifyColl(UnifyCoref):
+class UnifyDataColl(UnifyCoref):
     
     def __init__(self, gen):
         super().__init__(gen)
@@ -666,6 +670,8 @@ class UnifyColl(UnifyCoref):
         # e.g., :x :y ( 1 2 ?z )
         
         # darn :-(
+            
+        clause = clause.clone() # shallow copy
         
         if_test = []; if_body = []    
         for i, (pos, coll) in enumerate(ungr_colls):
@@ -681,6 +687,8 @@ class UnifyColl(UnifyCoref):
         
         # z = coll0[2]
         ctu_fn.body.extend(if_body)
+        
+        return clause
 
     # 1/ add conditions for element-by-element comparisons
     # 2/ add assignments of match coll values to clause vars 
