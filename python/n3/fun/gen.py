@@ -29,6 +29,7 @@ class GenPython:
         
         self.__unify_head = UnifyCoref_Head()
         self.__unify_body = UnifyCoref_Body()
+        self.__unify_coll = UnifyColl()
         
         self.__inner_fn_params = [ 'data', 'state', 'ctu' ]
         self.__rule_fn_params = [ 'state' ]
@@ -54,82 +55,73 @@ class GenPython:
         return self.__builder.imports('n3.terms', ['Iri', 'Var', 'Literal', 'Collection', 'term_types'])
 
     def __gen_rule(self, rule_no, head, body):
-        fn_0 = RuleFn(in_vars=head._vars())
-
-        self.__unify_head.unify_head(head, body, fn_0)
+        in_vars = head._vars()
         
-        self.__cur_vars = fn_0.in_vars
+        self.__clause_fn = RuleFn(in_vars=in_vars)
+        
+        self.__unify_head.unify(head, body, self.__clause_fn, self.__ctu_fn) 
+        
+        self.__cur_vars = in_vars
 
         if body.type() == term_types.GRAPH:
             for i, _ in enumerate(body.model.triples()):
-                self.__gen_clause(rule_no, head, body, i, fn_0)
+                self.__gen_clause(rule_no, head, body, i)
 
         elif body.type() == term_types.LITERAL and body.value == True:
-            self.__gen_clause(rule_no, head, None, 0, fn_0)
+            self.__gen_clause(rule_no, head, None, 0)
 
 
-    # TODO head unification - rename *all* assoc. rule variables (desc -> desc0, desc1, ..)
-
-    def __gen_clause(self, rule_no, head, body, clause_no, fn):
+    def __gen_clause(self, rule_no, head, body, clause_no):
         # incoming parameters representing variables
         in_vars = self.__cur_vars
         
         # adt representing clause fn
-        fn = fn if fn is not None else RuleFn()
-        fn.in_vars = in_vars
-        fn.name = self.__fn_name(rule_no, clause_no)
+        self.__clause_fn = self.__clause_fn if self.__clause_fn is not None else RuleFn()
+        self.__clause_fn.in_vars = in_vars
+        self.__clause_fn.name = self.__fn_name(rule_no, clause_no)
+        
+        self.__ctu_fn = RuleFn(name=(self.__fn_name(rule_no, clause_no+1) if clause_no < body.model.len() - 1 else 'ctu'))
 
         # fn ast representing this clause
-        clause_fn = self.__rule_fn_def(fn.name, in_vars)
-        fn.fn = clause_fn
-        self.__code.append(clause_fn) # add to generated code
+        self.__clause_fn.fn = self._rule_fn_def(self.__clause_fn.name, in_vars)
+        self.__code.append(self.__clause_fn.fn) # add to generated code
 
         # running example: clause = ?p :address ?a ; cur_vars = [ p, r ] ; head = ?p a :Person
 
         # e.g., boolean as body
         if body is None:
-            if len(clause_fn.body) == 0:
-                fn.fill_in_call(self.__builder.pss(), self.__builder)
+            if len(self.__clause_fn.body) == 0:
+                self.__builder.fn_body_stmt(self.__clause_fn.fn, self.__builder.pss())
             return
-
+        
         clause = body.model.triple_at(clause_no)
 
+        self.__unify_body.unify(clause, self.__clause_fn, self.__ctu_fn)
+
         # ex: [ p, a ]
-        own_vars = [v for v in self.__vars_triple(clause)]
+        own_vars = clause._vars()
 
         if clause_no < body.model.len() - 1:
             # parameters for the ctu function; unique(prior + own vars) ; ex: p, r, a
-            ctu_vars = list(dict.fromkeys(self.__cur_vars + own_vars)) # (keep order)
-            self.__cur_vars = ctu_vars
-            # call next clause fn
-            ctu_fn_name = self.__fn_name(rule_no, clause_no+1)
+            self.__ctu_fn.in_vars = list(dict.fromkeys(self.__cur_vars + own_vars)) # (keep order)
+            self.__cur_vars = self.__ctu_fn.in_vars
         else:
             # only pass var needed by original ctu fn (head vars!) ; ex: p
-            ctu_vars = self.__vars_graph(head)
-            # at the last clause, so call the original ctu
-            ctu_fn_name = 'ctu'
-
-        ctu_fn = RuleFn(ctu_fn_name, ctu_vars, None)
-        
-        # self.__unify_coref_vars(clause_fn, ctu_fn, own_vars)
+            self.__ctu_fn.in_vars = head._vars()
 
         # if self.__is_builtin(clause):
         #     self.__run_builtin(clause_fn, clause, in_vars, ctu_fn, ctu_vars)
         # else:
-        self.__find_triple_call(clause, clause_fn, ctu_fn)
-        self.__match_rule_calls(clause, clause_fn, ctu_fn)
-    
+        self.__find_data_call(clause, self.__clause_fn, self.__ctu_fn)
+        self.__match_rule_calls(clause, self.__clause_fn, self.__ctu_fn)
+
     
     # START find triple
     
-    def __find_triple_call(self, clause, clause_fn, ctu_fn):
-        # first, build the ctu call
-        ctu_call = self.__gen_find_ctu(clause, clause_fn, ctu_fn)
+    def __find_data_call(self, clause, clause_fn, ctu_fn):
+        self.__unify_coll.unify(clause, clause_fn, ctu_fn)
         
-        # then, create lambda with as body the ctu call
-        lmbda = self.__builder.lmbda(['t', 'state'], ctu_call)
-
-        # finally, create model.find call
+        #  arguments for data.find call
 
         # s, p, o from clause will be search terms
         #   if variable: if provided as argument, refer to the function argument, else None
@@ -142,141 +134,61 @@ class GenPython:
                 case term_types.VAR:
                     varname = self.__safe_intn_var(r.name)
                     # when given as var, can pass it
-                    call_args.append(self.__var_ref(varname) if varname in clause_fn.in_vars else self.__builder.cnst(None))
+                    call_args.append(self._var_ref(varname) if varname in clause_fn.in_vars else self.__builder.cnst(None))
                 
                 # TODO if possible, unify collection and pass in search
                 case term_types.COLLECTION: # (ungrounded-collections)
-                    call_args.append(self.__builder.cnst(None) if not r.is_grounded() else self.__val(r))
+                    call_args.append(self.__builder.cnst(None) if not r.is_grounded() else self._val(r))
                 
-                case _: call_args.append(self.__val(r))
+                case _: call_args.append(self._val(r))
+                
+        # build the ctu call
+        ctu_call = self.__find_data_ctu(clause, clause_fn, ctu_fn)
+        
+        # then, create lambda with as body the ctu call
+        lmbda = self.__builder.lmbda(['t', 'state'], ctu_call)
 
+        # finally, create data.find call
         call_args += [self.__builder.ref('state'), lmbda]
         search_call = self.__builder.fn_call(
             self.__builder.attr_ref('data', 'find'), call_args)
 
         self.__builder.fn_body_stmt(
             clause_fn.fn, self.__builder.stmt(search_call))
-        
-        
-    def __gen_find_ctu(self, clause, clause_fn, ctu_fn):
-        # (ungrounded-collections)
-        colls_with_vars = [ (coll, spo) for (coll, spo) in self.__coll_with_vars_spo(clause) ]
-        
-        # coll with vars need to be unified separately
-        # returned ctu will point to the unification function
-        if len(colls_with_vars) > 0:
-            ctu_fn.in_args = [self.__builder.ref(v) for v in ctu_fn.in_vars]
-            return self.__unifycoll_find_ctu(colls_with_vars, clause, clause_fn, ctu_fn)
-        else:
-            return self.__default_find_ctu(clause, ctu_fn)
     
-    # (ungrounded-collections)
-    def __unifycoll_find_ctu(self, colls_with_vars, clause, clause_fn, ctu_fn):
-        unify_fn_params = []; unify_fn_args = []
-        
-        if_test = []; if_body = []
-        # for each rule's coll with vars, attempt to unify with data coll
-        #   if_test = comparisons between rule coll's constants and data coll's elements
-        #   if_body = assignments of data coll's elements to rule coll's variables 
-        for i, (coll, spo) in enumerate(colls_with_vars):
-            coll_param = self.__builder.ref(f'coll_{i}')
-            
-            # add param for coll
-            unify_fn_params.append(coll_param.id)
-            # get arg for coll param from triple
-            unify_fn_args.append(self.__builder.attr_ref('t', spo))
-            
-            self.__unify_coll(coll, [], coll_param, clause_fn, if_test, if_body)
-        
-        if_test = self.__builder.conj(if_test) if len(if_test) > 1 else if_test[0]
-        
-        # all individual (non-nested) vars in clause, with spo position
-        clause_vars = {v: i for i, v in self.__vars_triple_spo(clause)}
-        
-        # also fn params: distinct incoming & indiv clause vars
-        unify_fn_vars = list(dict.fromkeys(clause_fn.in_vars + [v for v in clause_vars])) # (keep order)
-        unify_fn_params += unify_fn_vars
-        
-        # get args for these extra vars
-        unify_fn_args += [self.__triple_val('t', clause_vars[v]) if v in clause_vars else self.__builder.ref(v) for v in unify_fn_vars]
-        
-        # print("params/args", unify_fn_params, unify_fn_args)
-        
-        # create our unification function
-        unify_fn = self.__rule_fn_def(clause_fn.name + "_unify_coll", unify_fn_params)
-        self.__code.append(unify_fn)
-                
-        # add call to original continuation in if_body
-        if_body.append(self.__builder.stmt(self.__rule_fn_call(ctu_fn.name, ctu_fn.in_args)))
-        
-        # create if stmt based on if_test & if_body
-        self.__builder.fn_body_stmt(unify_fn, self.__builder.iif(if_test, if_body))
-        
-        # call our unify_fn as ctu from original rule fn
-        return self.__rule_fn_call(unify_fn.name, unify_fn_args)
-    
-    # (ungrounded-collections)
-    # 1/ add conditions for element-by-element comparisons
-    # 2/ add assignments of match coll values to clause vars 
-    # clause_coll_term: term in clause_coll
-    # match_coll_expr: corresp. select in match_coll (e.g., coll[0][1])
-    # pos: (nested) position (e.g., [0, 1] for 2nd el in 1st el)
-    def __unify_coll(self, clause_coll_term, pos, match_coll_expr, clause_fn, conds, assns):
-        bld = self.__builder
-        
-        # match_coll needs to be collection of same length
-        conds.append(
-            bld.comp(
-                bld.fn_call(bld.attr_ref_expr(match_coll_expr, 'type')),
-                'eq', bld.attr_ref('term_types', 'COLLECTION'))
-        )        
-        conds.append(
-            bld.comp(bld.fn_call(bld.ref('len'), [ match_coll_expr ]),
-                                'eq', bld.cnst(len(clause_coll_term)))
-        )
-        
-        # compare coll's element-by-element
-        for i, clause_el_val in enumerate(clause_coll_term):
-            cur_pos = pos + [ i ]
-            match_el_expr = bld.index(match_coll_expr, i)
-            
-            match clause_el_val.type():
-                case term_types.COLLECTION:
-                    self.__unify_coll(clause_el_val, cur_pos, match_el_expr, clause_fn, conds, assns)
-                
-                case term_types.VAR:
-                    # TODO only need assignment is var is None
-                    # either var was not provided, or it is equal to value from match_coll
-                    if clause_el_val.idx_val() in clause_fn.in_vars:
-                        conds.append(bld.disj([
-                            bld.comp(bld.ref(clause_el_val.name), 'is', bld.cnst(None)),
-                            bld.comp(bld.ref(clause_el_val.name), 'eq', self.__term_val(match_el_expr))
-                        ]))
-                    # assign match_coll value to clause var
-                    assns.append(
-                        bld.assn(clause_el_val.name, self.__term_val(match_el_expr)))
-                    
-                case _:
-                    # add comparison condition for concrete values
-                    conds.append(
-                        bld.comp(self.__term_val(match_el_expr), 'eq', bld.cnst(clause_el_val.idx_val())))
-
-    
-    def __default_find_ctu(self, clause, ctu_fn):
+    def __find_data_ctu(self, clause, clause_fn, ctu_fn):
         # ex: { 'p' : 's', 'a': 'o' }
-        clause_vars = {v: i for i, v in self.__vars_triple_spo(clause)}
+        clause_vars = {v:['s', 'p', 'o'][i] for i, v in enumerate(clause)}
 
         # arguments to be passed to ctu
-        ctu_fn.in_args = [self.__triple_val('t', clause_vars[v]) if v in clause_vars else self.__builder.ref(v)
+        ctu_fn.in_args = [self._triple_val('t', clause_vars[v]) if v in clause_vars else self.__builder.ref(v)
                      for v in ctu_fn.in_vars]
 
         # model.find will call a lambda
         # this lambda will itself call a ctu
+        
+        if ctu_fn.req_separ_fn():
+            self.__gen_separ_ctu_fn(clause_fn, ctu_fn)
 
         # ex: ctu_fn = rule0_1 or ctu (original parameter)
-        return self.__rule_fn_call(ctu_fn.name, ctu_fn.in_args)
+        return self._rule_fn_call(ctu_fn.name, ctu_fn.in_args)
         
-    # END find triple
+    # END find triple    
+    
+    def __gen_separ_ctu_fn(self, clause_fn, ctu_fn):
+        ctu_fn.name = f"{clause_fn.name}_unify"
+        
+        new_fn = self._rule_fn_def(ctu_fn.name, ctu_fn.in_vars)
+        self.__code.append(new_fn)
+        
+        to_add = ctu_fn.body
+        if len(ctu_fn.conds) > 0:
+            to_add = self.__builder.iif(
+                self.__builder.conj(ctu_fn.conds),
+                ctu_fn.body
+            )
+        
+        self.__builder.fn_body_stmts(new_fn, to_add)
     
     # START match call
     
@@ -319,7 +231,7 @@ class GenPython:
                     if not self.__match_call_terms(match_r, clause_r, clause_fn, ctu_fn, match_fn):
                         return False
 
-            ctu_call = self.__rule_fn_call(ctu_fn.name, ctu_fn.in_args)
+            ctu_call = self._rule_fn_call(ctu_fn.name, ctu_fn.in_args)
 
             # lambda params: vars we want from match rule fn (+ extra params)
             lmbda_params = match_fn.get_vars + ['state' ]
@@ -353,21 +265,21 @@ class GenPython:
                 clause_varname = self.__safe_intn_var(clause_r.name)
                 # add runtime check, if possible
                 if clause_varname in clause_fn.in_vars:
-                    cmp1 = self.__builder.comp(self.__var_ref(clause_varname), 
+                    cmp1 = self.__builder.comp(self._var_ref(clause_varname), 
                                                 'is', self.__builder.cnst(None))
-                    cmp2 = self.__builder.comp(self.__var_ref(clause_varname), 'eq', self.__val(match_r))
+                    cmp2 = self.__builder.comp(self._var_ref(clause_varname), 'eq', self._val(match_r))
                     match_fn.conds.append(self.__builder.disj([cmp1, cmp2]))
 
                 # clause has variable; match rule has concrete value
                 # if successful, pass concrete value to ctu, if needed
                 if clause_varname in ctu_fn.in_vars:
-                    ctu_fn.in_args[ctu_fn.in_vars.index(clause_varname)] = self.__val(match_r)
+                    ctu_fn.in_args[ctu_fn.in_vars.index(clause_varname)] = self._val(match_r)
         
         else: # pass data as arguments; get results as lambda parameters
             if clause_r.is_concrete():
                 match_varname = self.__safe_extn_var(match_r.name)
                 match_fn.get_vars.append(match_varname)
-                match_fn.in_args.append(self.__val(clause_r))
+                match_fn.in_args.append(self._val(clause_r))
             else:
                 clause_varname = self.__safe_intn_var(clause_r.name)
                 # always get value from match clause / find call; 
@@ -375,7 +287,7 @@ class GenPython:
                 match_fn.get_vars.append(clause_varname)
                 if clause_varname in clause_fn.in_vars:
                     # pass var to rule fn call, if given as input
-                    match_fn.in_args.append(self.__var_ref(clause_varname))
+                    match_fn.in_args.append(self._var_ref(clause_varname))
                 else: # else, pass None
                     match_fn.in_args.append(self.__builder.cnst(None))
                     
@@ -398,7 +310,7 @@ class GenPython:
                 # we'll do this based on var values passed by match fn
                 clause_varname = self.__safe_intn_var(clause_r.name)
                 if clause_varname in ctu_fn.in_vars: # only if this var is actually used, lol
-                    ctu_fn.in_args[ctu_fn.in_vars.index(clause_varname)] = self.__reconstr(match_r, ext_vars=True)
+                    ctu_fn.in_args[ctu_fn.in_vars.index(clause_varname)] = self._reconstr(match_r, ext_vars=True)
                     
                 # (after, still need to process match_r (i.e., pass None's, collect its vars))
         
@@ -408,7 +320,7 @@ class GenPython:
             elif not match_r.is_concrete():
                 match_varname = self.__safe_extn_var(match_r.name)
                 match_fn.get_vars.append(match_varname)
-                match_fn.in_args.append(self.__reconstr(clause_r))
+                match_fn.in_args.append(self._reconstr(clause_r))
                 return True # nothing left to do
         
         # compare element-by-element
@@ -478,43 +390,48 @@ class GenPython:
     #         case _: raise GenError(f"unsupported builtin: '{clause.p.ln}'")
          
     # helper functions
-
-    def __vars_graph(self, graph):
-        ret = []
-        for t in graph.model.triples():
-            for r in t:
-                match (r.type()):
-                    case term_types.VAR: 
-                        ret.append(self.__safe_intn_var(r.name))
-                    case term_types.COLLECTION: 
-                        ret.extend(self.__safe_intn_var(v) for v in r._vars())
-        return ret
-
-    def __vars_triple_spo(self, t):
-        spo = ['s', 'p', 'o']
-        for i, r in enumerate(t):
-            match r.type():
-                case term_types.VAR:
-                    yield spo[i], self.__safe_intn_var(r.name)
-
-    def __vars_triple(self, t):
-        for i, r in enumerate(t):
-            match r.type():
-                case term_types.VAR:
-                    yield self.__safe_intn_var(r.name)
-                
-                case term_types.COLLECTION:
-                    for coll_var in r._vars():
-                        yield self.__safe_intn_var(coll_var)
-                        
-    def __coll_with_vars_spo(self, t):
-        spo = ['s', 'p', 'o']
-        for i, r in enumerate(t):
-            match r.type():
-                case term_types.COLLECTION:
-                    if not r.is_grounded():
-                        yield r, spo[i]
     
+    def __fn_name(self, rule_no, clause_no):
+        if clause_no == 0:
+            return f"{self.__fn_prefix}_{rule_no}"
+        else:
+            return f"{self.__fn_prefix}_{rule_no}_{clause_no}"
+
+    def _val(self, r):
+        return self.__builder.cnst(r.idx_val())
+    
+    def _var_ref(self, name):
+        return self.__builder.ref(name)
+    
+    def _triple_val(self, t, spo):
+        return self.__builder.fn_call(self.__builder.attr_ref_expr(self.__builder.attr_ref(t, spo), 'idx_val'))
+
+    def _term_val(self, expr):
+        return self.__builder.fn_call(self.__builder.attr_ref_expr(expr, 'idx_val'))
+        
+    def _rule_fn_def(self, fn_name, params):
+        my_params = params + self.__inner_fn_params
+        return self.__builder.fn(fn_name, my_params)
+        
+    def _rule_fn_call(self, fn_name, args):
+        my_args = args + (self.__rule_fn_args if fn_name == 'ctu' else self.__inner_fn_args)
+        return self.__builder.fn_call(self.__builder.ref(fn_name), my_args)
+            
+    def _reconstr(self, r, ext_vars=False):
+        match r.type():
+            case term_types.IRI: 
+                cls = "Iri"; arg = r.iri
+            case term_types.LITERAL: 
+                cls = "Literal"; arg = r.value
+            case term_types.COLLECTION: 
+                cls = "Collection"
+                arg = self.__builder.lst([ self._reconstr(e, ext_vars) for e in r ])
+            case term_types.VAR: 
+                return self._var_ref(self.__safe_var(r.name, ext_vars))
+            case _: print("inconceivable")
+
+        return self.__builder.fn_call(fn=self.__builder.ref(cls), args=[arg])
+
     # NOTE code assumes this does not occur often
     # (else, optimize this)
     # consider simply renaming all unique vars to unique names 
@@ -541,47 +458,6 @@ class GenPython:
         else:
             return self.__safe_extn_var(n + "2")
 
-    def __val(self, r):
-        return self.__builder.cnst(r.idx_val())
-    
-    def __var_ref(self, name):
-        return self.__builder.ref(name)
-    
-    def __triple_val(self, t, spo):
-        return self.__builder.fn_call(self.__builder.attr_ref_expr(self.__builder.attr_ref(t, spo), 'idx_val'))
-
-    def __term_val(self, expr):
-        return self.__builder.fn_call(self.__builder.attr_ref_expr(expr, 'idx_val'))
-
-    def __fn_name(self, rule_no, clause_no):
-        if clause_no == 0:
-            return f"{self.__fn_prefix}_{rule_no}"
-        else:
-            return f"{self.__fn_prefix}_{rule_no}_{clause_no}"
-        
-    def __rule_fn_def(self, fn_name, params):
-        my_params = params + self.__inner_fn_params
-        return self.__builder.fn(fn_name, my_params)
-        
-    def __rule_fn_call(self, fn_name, args):
-        my_args = args + (self.__rule_fn_args if fn_name == 'ctu' else self.__inner_fn_args)
-        return self.__builder.fn_call(self.__builder.ref(fn_name), my_args)
-            
-    def __reconstr(self, r, ext_vars=False):
-        match r.type():
-            case term_types.IRI: 
-                cls = "Iri"; arg = r.iri
-            case term_types.LITERAL: 
-                cls = "Literal"; arg = r.value
-            case term_types.COLLECTION: 
-                cls = "Collection"
-                arg = self.__builder.lst([ self.__reconstr(e, ext_vars) for e in r ])
-            case term_types.VAR: 
-                return self.__var_ref(self.__safe_var(r.name, ext_vars))
-            case _: print("inconceivable")
-
-        return self.__builder.fn_call(fn=self.__builder.ref(cls), args=[arg])
-
 
 class RuleFn:
     
@@ -590,29 +466,21 @@ class RuleFn:
     # in_args (ast; arguments for in_vars)
     # clause_vars (strings)
     # fn (ast)
-    # body (body statements to add, if any)
-    # call_pls (placeholder(s) for calls (data.find/match calls))
-    # ctu_pls (placeholder(s) for ctu)
+    
+    # cond
+    # body
     
     def __init__(self, name=None, in_vars=None, fn=None):
         self.name = name
         self.in_vars = in_vars
         self.fn = fn
-        self.body = None
-        self.call_pls = None
-        self.ctu_pls = None
+        
+        self.cond = []
+        self.body = []
+        
+    def req_separ_fn(self):
+        return len(self.cond) > 0 or len(self.body) > 0
     
-    def fill_in_call(self, stmt, bld):
-        if self.call_pls is None:
-            bld.fn_body_stmt(self.fn, stmt)
-        else:
-            for pls in self.call_pls:
-                pls.append(stmt)
-            bld.fn_body_stmts(self.fn, self.body)
-            
-    def fill_in_ctu(self, stmts, bld):
-        for pls in self.ctu_pls:
-            pls.extend(stmts)
     
 class MatchRuleFn:
     
@@ -643,27 +511,56 @@ class FnIdxEntry:
 
 # unify hooks
 
-class UnifyCoref_Head:
+class UnifyCoref:
     
-    # util
+    # gen, bld
+        
+    def __init__(self, gen):
+        self.gen = gen
+        self.bld = gen.__builder
+        
+    # returns:
+    # ( list of de-duplicated, unique variables; map from original var -> list of renamed vars)
+    #  e.g., (p, p, s) -> new_vars=(p0, p1, s), ren_vars={p: [ p0, p1 })
+    def _deduplicate_vars(self, vars):
+        counts = { v:0 for v, c in Counter(vars).items() if c > 1 }
+        
+        new_vars = []; ren_vars = { v: [] for v in counts }
+        for v in vars:
+            if v in counts:
+                nv = f"{v}{len(counts[v])}"
+                counts[v] += 1
+                new_vars.append(nv); ren_vars[v].append(nv)
+            else:
+                new_vars.append(v)
+        
+        return ( new_vars, ren_vars )
     
-    def __init__(self, util):
-        self.util = util
+
+class UnifyCoref_Head(UnifyCoref) :
+    
+    # gen, bld
+    
+    def __init__(self, gen):
+        super().__init__(gen)
     
     # we do 2 things here:
     # 1/ ok if all _provided_ (de-)duplicated vars are same
     # 2/ pass provided var values for non-provided vars
-    def unify_head(self, head, body, clause_fn):
+    def unify(self, head, body, clause_fn):
         orig_vars = head._vars()
-        # no need to unify here!
+        
+        # whew, no need to unify!
         if len(orig_vars) == len(set(orig_vars)): 
             return
         
-        # darn!
-        ( new_vars, ren_vars ) = self.__deduplicate_vars(orig_vars)
+        # darn :-(
+        # start with renaming variables so each are unique
+        # (also, keep map from original to renamed vars)
+        ( new_vars, ren_vars ) = self._deduplicate_vars(orig_vars)
         # print("dedupl:", dupl_vars, ren_vars)
         
-        # safely renamed vars will be input var param
+        # unique vars will be input var params
         clause_fn.in_vars = new_vars
         
         # rename vars in head clause
@@ -675,55 +572,36 @@ class UnifyCoref_Head:
         # (nrs don't matter; desc0, desc1, will all be None or equal here)
         # e.g., ?desc :abc ?desc -> ?desc0 :abc ?desc1
         body._rename_vars(ren_vars)
-
-        clause_fn.body = [] # will have if-else statements
-        clause_fn.call_pls = [] # placeholders for calls
         
         in_vars = [ v for v in ren_vars ]
-        self.__unify_head_vars(in_vars, 0, [], [], clause_fn.body, clause_fn.call_pls)
+        self.__unify_head_vars(in_vars, 0, [], [], clause_fn.body)
 
-    # returns:
-    # ( list of new (de-duplicated, if needed) variables, map from original var -> list of renamed vars)
-    #  e.g., (p, p, s) -> new_vars=(p0, p1, s), ren_vars={p: [ p0, p1 })
-    def __deduplicate_vars(self, vars):
-        counts = { v:0 for v, c in Counter(vars).items() if c > 1 }
-        
-        new_vars = []; ren_vars = { v: [] for v in counts }
-        for v in vars:
-            if v in counts:
-                nv = self.util.__safe_extn_var(f"{v}{len(counts[v])}")
-                counts[v] += 1
-                new_vars.append(nv); ren_vars[v].append(nv)
-            else:
-                new_vars.append(v)
-        
-        return ( new_vars, ren_vars )
     
     # bound: vars that are bound at this point; unbound: idem for unbound vars
-    def __unify_head_vars(self, vars, idx, bound, unbound, body, pls):
-        bld = self.__builder; var = vars[idx]
+    def __unify_head_vars(self, vars, idx, bound, unbound, body):
+        var = vars[idx]
         
         if_body = []; else_body = []
         
         # IF: var is not None
         
-        body.append(bld.iif(bld.comp(bld.ref(var), 'is not', bld.cnst(None)), if_body, else_body))
+        body.append(self.bld.iif(self.bld.comp(self.bld.ref(var), 'is not', self.bld.cnst(None)), if_body, else_body))
         # add stuff to if's body from here
         
         # compare the last two bound vars
         if len(bound) > 0:
             if_body2 = []
-            if_body.append(bld.iif(bld.comp(bld.ref(bound[-1]), 'eq', bld.ref(var)), if_body2))
+            if_body.append(self.bld.iif(self.bld.comp(self.bld.ref(bound[-1]), 'eq', self.bld.ref(var)), if_body2))
             if_body = if_body2 # add the rest to this if's body!
         
         # (var is not None, so add to bound)
         bound.append(var)
         if idx+1 < len(vars):
             # for case where this var is bound, process next var
-            self.__unify_head_vars(vars, idx+1, bound[:], unbound[:], if_body, pls)
+            self.__unify_head_vars(vars, idx+1, bound[:], unbound[:], if_body)
         else:
             # if last var, then we made it!
-            pls.append(if_body)
+            if_body.append(self.bld.stmt(self.gen._rule_fn_call(self.bld.ref('ctu'), self.__ctu_args(vars, bound))))
         
         # ELSE: (so, var is None)
         
@@ -732,31 +610,117 @@ class UnifyCoref_Head:
         
         if idx+1 < len(vars):
             # here, this var is _not_ bound; process next var
-            self.__unify_head_vars(vars, idx+1, bound[:], unbound[:], else_body, pls)
+            self.__unify_head_vars(vars, idx+1, bound[:], unbound[:], else_body)
         elif len(bound) > 0:
             # if last var, we made it!
-            pls.append(else_body)
+            else_body.append(self.bld.stmt(self.gen._rule_fn_call(self.bld.ref('ctu'), self.__ctu_args(vars, bound))))
+            
+    def __ctu_args(self, vars, bound):
+        # (if a var was not provided, pass one of the bound vars instead)
+        return [ self.bld.ref(var) if var in bound else self.bld.ref(bound[0]) for var in vars ] + [ self.bld.ref('state') ]
         
         
-class UnifyCoref_Body:
+class UnifyCoref_Body(UnifyCoref):
     
-    def __init__(self, util):
-        self.util = util
+    # gen, bld
     
-    def unify_body(self, body):
-        counts = Counter(body._vars())
-        dupl_vars = { v:0 for v, c in counts if c > 1 }
+    def __init__(self, gen):
+        super().__init__(gen)
+    
+    def unify(self, clause, clause_fn, ctu_fn):
+        orig_vars = clause._vars()
+        (new_vars, ren_vars) = self._deduplicate_vars(clause._vars())
         
-        for t in body.model.triples():
-            self.__unify_it(t, dupl_vars)
-                    
-    def __unify_it(self, it, dupl_vars):
-        for pos in range(0, len(it)):
-            term = it[pos]
-            match term.type():
-                case term_types.VAR:
-                    if term.name in dupl_vars:
-                        it[pos] = Var(f"{term.name}_{dupl_vars[term.name]}")
-                        dupl_vars[term.name] += 1
+        # e.g., x -> x1, x2
+        
+        clause._rename_vars(self, ren_vars)
+        
+        # x1 = x; x2 = x        
+        clause_fn.body.extend([ self.bld.assn(ren_var, self.bld.ref(orig_var)) for orig_var in ren_vars for ren_var in ren_vars[orig_var] ])
+        
+        # x1 == x2
+        ctu_fn.cond.extend(self.bld.comps('eq', [ ren_var for orig_var in ren_vars for ren_var in ren_vars[orig_var] ]))
+        
+        # x = x1 (x1, x2 are guaranteed the same at this point)
+        ctu_fn.body.extend([ self.bld.assn(orig_var, self.bld.ref(ren_vars[orig_var][0])) for orig_var in ren_vars ])
+        
+        # vars for the "original" ctu call (which we substituted)
+        origin_ctu_vars = list(dict.fromkeys(clause_fn.in_vars + orig_vars))
+        # create call to original ctu
+        ctu_fn.body.append(self.gen._rule_fn_call(ctu_fn.name, [ self.bld.ref(v) for v in origin_ctu_vars ]))
+        
+
+
+class UnifyColl(UnifyCoref):
+    
+    def __init__(self, gen):
+        super().__init__(gen)
+        
+    def unify(self, clause, clause_fn, ctu_fn):
+        ungr_colls = [ (pos, term) for pos, term in enumerate(clause) if term.type() == term_types.COLLECTION and not term.is_grounded()]
+        
+        # whew, no need to unify!
+        if len(ungr_colls) == 0:
+            return
+        
+        # e.g., :x :y ( 1 2 ?z )
+        
+        # darn :-(
+        
+        if_test = []; if_body = []    
+        for i, (pos, coll) in enumerate(ungr_colls):
+            coll_var = self.bld.ref(f'coll_{i}')
+            
+            # replace ungrounded collections with variables
+            clause[pos] = coll_var # TODO var-conflicts
+
+            self.__unify_coll(coll, [], coll_var, clause_fn, if_test, if_body)
+            
+        # coll0[0]==1 and coll0[1]==2
+        ctu_fn.cond.append(self.bld.conj(if_test) if len(if_test) > 1 else if_test[0])
+        
+        # z = coll0[2]
+        ctu_fn.body.extend(if_body)
+
+    # 1/ add conditions for element-by-element comparisons
+    # 2/ add assignments of match coll values to clause vars 
+    # clause_coll_term: term in clause_coll
+    # match_coll_expr: corresp. select in match_coll (e.g., coll[0][1])
+    # pos: (nested) position (e.g., [0, 1] for 2nd el in 1st el)
+    def __unify_coll(self, clause_coll_term, pos, match_coll_expr, clause_fn, conds, assns):
+        # match_coll needs to be collection of same length
+        conds.append(
+            self.bld.comp(
+                self.gen._rule_fn_call(self.bld.attr_ref_expr(match_coll_expr, 'type')),
+                'eq', self.bld.attr_ref('term_types', 'COLLECTION'))
+        )        
+        conds.append(
+            self.bld.comp(self.gen._rule_fn_call(self.bld.ref('len'), [ match_coll_expr ]),
+                                'eq', self.bld.cnst(len(clause_coll_term)))
+        )
+        
+        # compare coll's element-by-element
+        for i, clause_el_val in enumerate(clause_coll_term):
+            cur_pos = pos + [ i ]
+            match_el_expr = self.bld.index(match_coll_expr, i)
+            
+            match clause_el_val.type():
                 case term_types.COLLECTION:
-                    self.__unify_it(term, dupl_vars)
+                    self.__unify_coll(clause_el_val, cur_pos, match_el_expr, clause_fn, conds, assns)
+                
+                case term_types.VAR:
+                    # TODO only need assignment is var is None
+                    # either var was not provided, or it is equal to value from match_coll
+                    if clause_el_val.idx_val() in clause_fn.in_vars:
+                        conds.append(self.bld.disj([
+                            self.bld.comp(self.bld.ref(clause_el_val.name), 'is', self.bld.cnst(None)),
+                            self.bld.comp(self.bld.ref(clause_el_val.name), 'eq', self.gen._term_val(match_el_expr))
+                        ]))
+                    # assign match_coll value to clause var
+                    assns.append(
+                        self.bld.assn(clause_el_val.name, self._term_val(match_el_expr)))
+                    
+                case _:
+                    # add comparison condition for concrete values
+                    conds.append(
+                        self.bld.comp(self.gen._term_val(match_el_expr), 'eq', self.bld.cnst(clause_el_val.idx_val())))

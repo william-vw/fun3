@@ -117,7 +117,8 @@ def fun3():
 
 # # ex 8
 #     rules =  """@prefix : <http://example.org/> . 
-# { ?x :lonerName ?xn } <= { ?x :onlyFriend ?x . ?x :name ?xn } .
+# # { ?x :lonerName ?xn } <= { ?x :onlyFriend ?x . ?x :name ?xn } .
+# # { ?x :blah ( ?y ?y ) } <= { ?x :onlyFriend ?x } .
 # """
 #     data = """@prefix : <http://example.org/> . 
 # :edw :onlyFriend :wil .

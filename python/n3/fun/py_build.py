@@ -95,6 +95,9 @@ class PyBuilder:
         return ret
 
     def comp(self, op1, cmp, op2):
+        self.comps(cmp, [op1, op2])
+    
+    def comps(self, cmp, ops):
         match cmp:
             case 'eq': cmp = ast.Eq()
             case 'neq': cmp = ast.NotEq()
@@ -107,7 +110,7 @@ class PyBuilder:
             case _: print("inconceivable"); return
         ast.fix_missing_locations(cmp)
 
-        ret = ast.Compare(left=op1, ops=[cmp], comparators=[op2])
+        ret = ast.Compare(left=ops[0], ops=[cmp], comparators=ops[1:])
         ast.fix_missing_locations(ret)
         
         return ret

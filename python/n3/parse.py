@@ -100,13 +100,13 @@ class state:
         self.var_sink = None
         return ret
     
-    def parsed_var(self, var):
-        if self.var_sink is not None:
-            self.var_sink._parsed_var(var.name)
+    # def parsed_var(self, var):
+    #     if self.var_sink is not None:
+    #         self.var_sink._parsed_var(var.name)
     
-    def parsed_vars(self, vars):
-        if self.var_sink is not None:
-            self.var_sink._parsed_vars(vars)
+    # def parsed_vars(self, vars):
+    #     if self.var_sink is not None:
+    #         self.var_sink._parsed_vars(vars)
         
 class n3ParseError(Exception):
     pass
@@ -211,7 +211,6 @@ class n3Creator(n3Listener):
     # Exit a parse tree produced by n3Parser#objectList.
     def exitObjectList(self, ctx:n3Parser.ObjectListContext):
         self.state.inv_pred = False
-        pass
 
 
     # Enter a parse tree produced by n3Parser#verb.
@@ -390,7 +389,7 @@ class n3Creator(n3Listener):
         collection = self.state.end_collect()
         self.state = self.state.parent
         
-        self.state.parsed_vars(collection._vars())
+        # self.state.parsed_vars(collection._vars())
         
         self.state.path_item = collection
 
@@ -406,7 +405,7 @@ class n3Creator(n3Listener):
         graph_term = self.state.end_formula()
         self.state = self.state.parent
         
-        self.state.parsed_vars(graph_term._vars())
+        # self.state.parsed_vars(graph_term._vars())
         
         self.state.path_item = graph_term
         
@@ -535,7 +534,7 @@ class n3Creator(n3Listener):
             var = Var(self.text(name)[1:])
             self.state.path_item = var
             
-            self.state.parsed_var(var)
+            # self.state.parsed_var(var)
     
     # custom methods
     
