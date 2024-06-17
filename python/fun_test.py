@@ -3,6 +3,21 @@ from ast import dump, unparse
 from n3.parse import parse_n3
 from n3.fun.gen import gen_py
 
+# def test():
+#     rule = """@prefix : <http://example.org/> .
+#     { ?p a :Canadian } <= { :x :y { ?x :d ( ?p ?a ?t ) } . ( ?p ?x ) :address ?a . ?a :country "CA" } ."""
+    
+#     result = parse_n3(rule)
+#     # print("rules:\n", result.rules)
+    
+#     rule = result.rules[0]
+#     body = rule.o
+#     print(body._vars())
+    
+#     body._rename_vars({ 'p': [ 'p1', 'p2' ], 'x': [ 'x1', 'x1M' ] })
+#     print(body)
+
+
 class State : 
     def __init__(self, stop):
         self.stop = stop
@@ -13,31 +28,31 @@ def result_fn(*args):
 
 
 def fun3():
-# # ex 1
-#     rules =  """@prefix : <http://example.org/> . 
-# # -
-# # { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
-# # { ?pe a :Person } <= { ?pe :ability :think } .
-# # { ?pe a :Belgian } <= { ?pe :ability :drink } .
-# # -
-# # { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
-# # { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
-# # -
-# # { ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
-# # { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
-# # -
+# ex 1
+    rules =  """@prefix : <http://example.org/> . 
+# -
+# { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
+# { ?pe a :Person } <= { ?pe :ability :think } .
+# { ?pe a :Belgian } <= { ?pe :ability :drink } .
+# -
+# { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
+# { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
+# -
 # { ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
-#  { ?pe a :Person } <= { ?pe :ability :think } .
-#  { ?p a ?t } <= { ?p :name "Socrates" } .
-# """
-#     data = """@prefix : <http://example.org/> . 
-# :will a :Person ; :address :addr1 . :addr1 :country "CA" .
-# :ed :ability :think ; :address :addr1 ; :describedAs :Person .
-# :el :ability :drink ; :address :addr1 ; :describedAs :Belgian .
-# :dor :ability :think ; :address :addr2 ; :describedAs :German .
-# :soc :name "Socrates" ; :address :addr1 .
-# """
-#     call = lambda data, state, rule_fn: rule_fn(None, data, state, result_fn)
+# { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
+# -
+{ ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
+ { ?pe a :Person } <= { ?pe :ability :think } .
+ { ?p a ?t } <= { ?p :name "Socrates" } .
+"""
+    data = """@prefix : <http://example.org/> . 
+:will a :Person ; :address :addr1 . :addr1 :country "CA" .
+:ed :ability :think ; :address :addr1 ; :describedAs :Person .
+:el :ability :drink ; :address :addr1 ; :describedAs :Belgian .
+:dor :ability :think ; :address :addr2 ; :describedAs :German .
+:soc :name "Socrates" ; :address :addr1 .
+"""
+    call = lambda data, state, rule_fn: rule_fn(None, data, state, result_fn)
 
 
 # # ex 2
@@ -109,11 +124,6 @@ def fun3():
 # """
 #     call = lambda data, state, rule_fn: rule_fn(None, None, None, data, state, result_fn)
 
-# TODO
-# . extra lambda params for 2nd, 3rd.. occurrence of duplicate var
-# . separate function for unifying these vars
-# . avoid potential name conflicts
-#   update self.__all_rule_vars/params with renamed lambda params, unify-head's fn params
 
 # # ex 8
 #     rules =  """@prefix : <http://example.org/> . 
@@ -146,19 +156,19 @@ def fun3():
     
     print()
     
-    # compile
+    # # compile
     
-    rule_fn = compile_py(mod)
-    # print(rule_fn)
+    # rule_fn = compile_py(mod)
+    # # print(rule_fn)
     
-    print()
+    # print()
     
-    # test
+    # # test
     
-    state = State(False)
+    # state = State(False)
     
-    print("run -")
-    call(data, state, rule_fn)
+    # print("run -")
+    # call(data, state, rule_fn)
 
     
 def unparse_with_lineno(ast):
@@ -180,3 +190,4 @@ def compile_py(mod):
 
 if __name__ == "__main__":
     fun3()
+    # test()

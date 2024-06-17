@@ -4,6 +4,8 @@ from n3.fun.py_build import PyBuilder
 from n3.terms import Var, term_types
 from n3.ns import n3Log, swapNs
 
+# TODO avoid varname conflicts
+
 
 def gen_py(rules):
     gen = GenPython()
@@ -20,6 +22,11 @@ class GenPython:
     # __fn_prefix
     # __pred_idx
     # __cur_vars
+    
+    # __unify_head
+    # __unify_body
+    # __unify_data_coll
+    
     # __inner_fn_params (+ __inner_fn_args)
     # __rule_fn_params (+ __rule_fn_args)
 
@@ -27,9 +34,9 @@ class GenPython:
         self.__builder = PyBuilder()
         self.__fn_prefix = "rule"
         
-        self.__unify_head = UnifyCoref_Head()
-        self.__unify_body = UnifyCoref_Body()
-        self.__unify_data_coll = UnifyDataColl()
+        self.__unify_head = UnifyCoref_Head(self, self.__builder)
+        self.__unify_body = UnifyCoref_Body(self, self.__builder)
+        self.__unify_data_coll = UnifyDataColl(self, self.__builder)
         
         self.__inner_fn_params = [ 'data', 'state', 'ctu' ]
         self.__rule_fn_params = [ 'state' ]
@@ -55,11 +62,13 @@ class GenPython:
         return self.__builder.imports('n3.terms', ['Iri', 'Var', 'Literal', 'Collection', 'term_types'])
 
     def __gen_rule(self, rule_no, head, body):
-        in_vars = head._vars()
+        self.__head = head
+        self.__body = body
         
+        in_vars = head._vars()
         self.__clause_fn = RuleFn(in_vars=in_vars)
         
-        self.__unify_head.unify(head, body, self.__clause_fn, self.__ctu_fn) 
+        self.__unify_head.unify(head, body, self.__clause_fn) 
         
         self.__cur_vars = in_vars
 
@@ -69,6 +78,9 @@ class GenPython:
 
         elif body.type() == term_types.LITERAL and body.value == True:
             self.__gen_clause(rule_no, head, None, 0)
+            
+    def __all_rule_vars(self):
+        return set(self.__head._vars() + self.__body._vars())
 
     def __gen_clause(self, rule_no, head, body, clause_no):
         # incoming parameters representing variables
@@ -157,7 +169,7 @@ class GenPython:
     
     def __find_data_ctu(self, clause, clause_fn, ctu_fn):
         # ex: { 'p' : 's', 'a': 'o' }
-        clause_vars = {v:['s', 'p', 'o'][i] for i, v in enumerate(clause)}
+        clause_vars = { v.name: ['s', 'p', 'o'][i] for i, v in enumerate(clause) if v.type() == term_types.VAR }
 
         # arguments to be passed to ctu
         ctu_fn.in_args = [self._triple_val('t', clause_vars[v]) if v in clause_vars else self.__builder.ref(v)
@@ -457,7 +469,7 @@ class GenPython:
         return self.__safe_extn_var(n2)
         
     def __safe_extn_var(self, n):
-        if n not in self.__all_rule_vars:
+        if n not in self.__all_rule_vars():
             return n
         else:
             return self.__safe_extn_var(n + "2")
@@ -519,9 +531,9 @@ class UnifyCoref:
     
     # gen, bld
         
-    def __init__(self, gen):
+    def __init__(self, gen, bld):
         self.gen = gen
-        self.bld = gen.__builder
+        self.bld = bld
         
     # returns:
     # ( list of de-duplicated, unique variables; map from original var -> list of renamed vars)
@@ -545,8 +557,8 @@ class UnifyCoref_Head(UnifyCoref) :
     
     # gen, bld
     
-    def __init__(self, gen):
-        super().__init__(gen)
+    def __init__(self, gen, bld):
+        super().__init__(gen, bld)
     
     # we do 2 things here:
     # 1/ ok if all _provided_ (de-)duplicated vars are same
@@ -628,16 +640,22 @@ class UnifyCoref_Body(UnifyCoref):
     
     # gen, bld
     
-    def __init__(self, gen):
-        super().__init__(gen)
+    def __init__(self, gen, bld):
+        super().__init__(gen, bld)
     
     def unify(self, clause, clause_fn, ctu_fn):
         orig_vars = clause._vars()
-        (new_vars, ren_vars) = self._deduplicate_vars(clause._vars())
+        
+        # whew, no need to unify!
+        if len(orig_vars) == len(set(orig_vars)): 
+            return
+        
+        # darn :-(
+        (_, ren_vars) = self._deduplicate_vars(orig_vars._vars())
         
         # e.g., x -> x1, x2
         
-        clause._rename_vars(self, ren_vars)
+        clause._rename_vars(ren_vars)
         
         # x1 = x; x2 = x        
         clause_fn.body.extend([ self.bld.assn(ren_var, self.bld.ref(orig_var)) for orig_var in ren_vars for ren_var in ren_vars[orig_var] ])
@@ -657,15 +675,15 @@ class UnifyCoref_Body(UnifyCoref):
 
 class UnifyDataColl(UnifyCoref):
     
-    def __init__(self, gen):
-        super().__init__(gen)
+    def __init__(self, gen, bld):
+        super().__init__(gen, bld)
         
     def unify(self, clause, clause_fn, ctu_fn):
         ungr_colls = [ (pos, term) for pos, term in enumerate(clause) if term.type() == term_types.COLLECTION and not term.is_grounded()]
         
         # whew, no need to unify!
         if len(ungr_colls) == 0:
-            return
+            return clause
         
         # e.g., :x :y ( 1 2 ?z )
         

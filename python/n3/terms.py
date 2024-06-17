@@ -159,15 +159,15 @@ class BlankNode:
 class Container:
     
     # implemented by subclasses
-    def _iter_terms(self):
+    def _iter_atomics(self):
         pass
     
     # (called by subclasses)
-    def _iter_term(self, index, term):
+    def _iter_atomic(self, index, term):
         match term.type():
-            case term_types.COLLECTION: term._iter_terms()
-            case term_types.GRAPH: term._iter_terms()
-            case _: yield (index, term)
+            case term_types.COLLECTION: yield from term._iter_atomics()
+            case term_types.GRAPH: yield from term._iter_atomics()
+            case _: yield (index, self, term)
     
     
 class VarContainer(Container):
@@ -191,15 +191,15 @@ class VarContainer(Container):
     def _rename_vars(self, ren_vars):        
         var_its = { to_repl: repl.__iter__() for to_repl, repl in ren_vars.items() }
         
-        for i, term in self._iter_terms():
+        for i, parent, term in self._iter_atomics():
             if term.type() == term_types.VAR and term.name in var_its: 
-                self[i] = Var(ren_vars[term.name].__next__())
+                parent[i] = Var(var_its[term.name].__next__())
     
     def _vars(self):
         # return self.__vars
         
-        for _, term in self._iter_terms():
-            if term.type() == term_types.VAR: yield term
+        # (don't use generator here)
+        return [ v.name for _, _, v in self._iter_atomics() if v.type() == term_types.VAR ]
 
 
 class Collection(VarContainer):
@@ -224,8 +224,8 @@ class Collection(VarContainer):
     def _parsed_el(self, el):
         self.__elements.append(el)
     
-    def _iter_terms(self):
-        for i, el in enumerate(self): self._iter_term(i, el)
+    def _iter_atomics(self):
+        for i, el in enumerate(self): yield from self._iter_atomic(i, el)
     
     def __iter__(self):
         return self.__elements.__iter__()
@@ -263,8 +263,8 @@ class GraphTerm(VarContainer):
     def is_concrete(self):
         return True
     
-    def _iter_terms(self):
-        for t in self.model.triples(): t._iter_terms()
+    def _iter_atomics(self):
+        for t in self.model.triples(): yield from t._iter_atomics()
         
     def __str__(self):
         return "{ "  + "".join([ str(t) for t in self.model.triples() ])[:-2] + " }"
@@ -287,8 +287,8 @@ class Triple(VarContainer):
     def has_graph(self):
         return any(r.type() == term_types.GRAPH for r in self)
     
-    def _iter_terms(self):
-        for i, term in enumerate(self): self._iter_term(i, term)
+    def _iter_atomics(self):
+        for i, term in enumerate(self): yield from self._iter_atomic(i, term)
     
     def __len__(self):
         return 3
