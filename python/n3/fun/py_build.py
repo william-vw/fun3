@@ -68,8 +68,8 @@ class PyBuilder:
         
         return ret
 
-    def fn_call(self, fn, args=[]):
-        ret = ast.Call(func=fn, args=args, keywords=[])
+    def fn_call(self, fn, args=None):
+        ret = ast.Call(func=fn, args=(args if args is not None else []), keywords=[])
         ast.fix_missing_locations(ret)
         
         return ret
@@ -95,7 +95,7 @@ class PyBuilder:
         return ret
 
     def comp(self, op1, cmp, op2):
-        self.comps(cmp, [op1, op2])
+        return self.comps(cmp, [op1, op2])
     
     def comps(self, cmp, ops):
         match cmp:
@@ -129,7 +129,10 @@ class PyBuilder:
         return ret
 
     def conj(self, conds):
-        ret = ast.BoolOp(op=ast.And(), values=conds)
+        if len(conds) > 1:
+            ret = ast.BoolOp(op=ast.And(), values=conds)
+        else: 
+            ret = conds[0]
         ast.fix_missing_locations(ret)
         
         return ret

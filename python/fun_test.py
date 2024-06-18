@@ -28,32 +28,31 @@ def result_fn(*args):
 
 
 def fun3():
-# ex 1
-    rules =  """@prefix : <http://example.org/> . 
-# -
-# { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
-# { ?pe a :Person } <= { ?pe :ability :think } .
-# { ?pe a :Belgian } <= { ?pe :ability :drink } .
-# -
-# { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
-# { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
-# -
+# # ex 1
+#     rules =  """@prefix : <http://example.org/> . 
+# # -
+# # { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
+# # { ?pe a :Person } <= { ?pe :ability :think } .
+# # { ?pe a :Belgian } <= { ?pe :ability :drink } .
+# # -
+# # { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
+# # { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
+# # -
+# # { ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
+# # { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
+# # -
 # { ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
-# { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
-# -
-{ ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
- { ?pe a :Person } <= { ?pe :ability :think } .
- { ?p a ?t } <= { ?p :name "Socrates" } .
-"""
-    data = """@prefix : <http://example.org/> . 
-:will a :Person ; :address :addr1 . :addr1 :country "CA" .
-:ed :ability :think ; :address :addr1 ; :describedAs :Person .
-:el :ability :drink ; :address :addr1 ; :describedAs :Belgian .
-:dor :ability :think ; :address :addr2 ; :describedAs :German .
-:soc :name "Socrates" ; :address :addr1 .
-"""
-    call = lambda data, state, rule_fn: rule_fn(None, data, state, result_fn)
-
+#  { ?pe a :Person } <= { ?pe :ability :think } .
+#  { ?p a ?t } <= { ?p :name "Socrates" } .
+# """
+#     data = """@prefix : <http://example.org/> . 
+# :will a :Person ; :address :addr1 . :addr1 :country "CA" .
+# :ed :ability :think ; :address :addr1 ; :describedAs :Person .
+# :el :ability :drink ; :address :addr1 ; :describedAs :Belgian .
+# :dor :ability :think ; :address :addr2 ; :describedAs :German .
+# :soc :name "Socrates" ; :address :addr1 .
+# """
+#     call = lambda data, state, rule_fn: rule_fn(None, data, state, result_fn)
 
 # # ex 2
 #     rules =  """@prefix log: <http://www.w3.org/2000/10/swap/log#> .
@@ -66,17 +65,17 @@ def fun3():
 # """
 #     call = lambda data, state, rule_fn: rule_fn(None, None, data, state, result_fn)
 
-# # ex 3
-#     rules =  """@prefix : <http://example.org/> . 
-# # { ?z :aliasNames ( ?xn ?yn ) } <= { ?z :alias ( ?x ?y ) . ?x :name ?xn . ?y :name ?yn } .
+# ex 3
+    rules =  """@prefix : <http://example.org/> . 
+{ ?z :aliasNames ( ?xn ?yn ) } <= { ?z :alias ( ?x ?y ) . ?x :name ?xn . ?y :name ?yn } .
 # { ?z :aliasNames ( ?xn ?yn ) } <= { ( ?z ) :alias ( ( ?x ) ( ?y ?q ) ) . ?x :name ?xn . ?y :name ?yn } .
-# """
-#     data = """@prefix : <http://example.org/> . 
-# # :wil :alias ( :edw :elb ) . 
+"""
+    data = """@prefix : <http://example.org/> . 
+:wil :alias ( :edw :elb ) . 
 # ( :wil ) :alias ( ( :edw ) ( :elb :wil ) ) .  # ( ( :edw ) :elb )
-# :edw :name "edward" . :elb :name "elbert" .
-# """
-#     call = lambda data, state, rule_fn: rule_fn(None, None, None, data, state, result_fn)
+:edw :name "edward" . :elb :name "elbert" .
+"""
+    call = lambda data, state, rule_fn: rule_fn(None, None, None, data, state, result_fn)
 
 # # ex 4
 #     rules =  """@prefix : <http://example.org/> . 
@@ -156,19 +155,19 @@ def fun3():
     
     print()
     
-    # # compile
+    # compile
     
-    # rule_fn = compile_py(mod)
-    # # print(rule_fn)
+    rule_fn = compile_py(mod)
+    # print(rule_fn)
     
-    # print()
+    print()
     
-    # # test
+    # test
     
-    # state = State(False)
+    state = State(False)
     
-    # print("run -")
-    # call(data, state, rule_fn)
+    print("run -")
+    call(data, state, rule_fn)
 
     
 def unparse_with_lineno(ast):
