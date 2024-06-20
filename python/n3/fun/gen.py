@@ -29,17 +29,17 @@ class GenPython:
     # __rule_fn_params (+ __rule_fn_args)
 
     def __init__(self):
-        self.__builder = PyBuilder()
+        self.bld = PyBuilder()
         self.__fn_prefix = "rule"
         
-        self.__unify_head = UnifyCoref_Head(self, self.__builder)
-        self.__unify_body = UnifyCoref_Body(self, self.__builder)
-        self.__unify_data_coll = UnifyDataColl(self, self.__builder)
+        self.__unify_head = UnifyCoref_Head(self, self.bld)
+        self.__unify_body = UnifyCoref_Body(self, self.bld)
+        self.__unify_data_coll = UnifyDataColl(self, self.bld)
         
         self.__inner_fn_params = [ 'data', 'state', 'ctu' ]
         self.__rule_fn_params = [ 'state' ]
-        self.__inner_fn_args = [self.__builder.ref(v) for v in self.__inner_fn_params]
-        self.__rule_fn_args = [self.__builder.ref(v) for v in self.__rule_fn_params]
+        self.__inner_fn_args = [self.bld.ref(v) for v in self.__inner_fn_params]
+        self.__rule_fn_args = [self.bld.ref(v) for v in self.__rule_fn_params]
 
     def gen_python(self, rules):
         self.__process_rules(rules)
@@ -53,10 +53,10 @@ class GenPython:
         for i, (head, _, body) in enumerate(rules):
             self.__gen_rule(i, head, body)
 
-        return self.__builder.module(self.__code)
+        return self.bld.module(self.__code)
 
     def __gen_imports(self):
-        return self.__builder.imports('n3.terms', ['Iri', 'Var', 'Literal', 'Collection', 'term_types'])
+        return self.bld.imports('n3.terms', ['Iri', 'Var', 'Literal', 'Collection', 'term_types'])
 
     def __gen_rule(self, rule_no, head, body):                
         in_vars = head._recur_vars()
@@ -90,8 +90,8 @@ class GenPython:
         
         # e.g., boolean as body
         if body is None:
-            self.__builder.fn_body_stmts(clause_fn.fn, clause_fn.body if len(clause_fn.body) > 0 
-                                                                    else [ self.__builder.pss() ])
+            self.bld.fn_body_stmts(clause_fn.fn, clause_fn.body if len(clause_fn.body) > 0 
+                                                                    else [ self.bld.pss() ])
             return
                 
         # current clause
@@ -114,7 +114,7 @@ class GenPython:
 
         # unification operations could have added stuff to clause fn
         if len(clause_fn.body) > 0:
-            self.__builder.fn_body_stmts(clause_fn.fn, clause_fn.body)
+            self.bld.fn_body_stmts(clause_fn.fn, clause_fn.body)
 
         # if self.__is_builtin(clause):
         #     self.__run_builtin(clause_fn, clause, in_vars, ctu_fn, ctu_vars)
@@ -158,11 +158,11 @@ class GenPython:
             match r.type():
                 case term_types.VAR:
                     # when given as var, can pass it
-                    call_args.append(self._var_ref(r.name) if r.name in clause_fn.avail_vars else self.__builder.cnst(None))
+                    call_args.append(self._var_ref(r.name) if r.name in clause_fn.avail_vars else self.bld.cnst(None))
                 
                 # TODO (long-term) if possible, unify collection and pass in search
                 case term_types.COLLECTION: # (ungrounded-collections)
-                    call_args.append(self.__builder.cnst(None) if not r.is_grounded() else self._val(r))
+                    call_args.append(self.bld.cnst(None) if not r.is_grounded() else self._val(r))
                 
                 case _: call_args.append(self._val(r))
         
@@ -170,22 +170,22 @@ class GenPython:
         ctu_call = self.__find_data_ctu(clause, clause_fn, ctu_fn)
         
         # then, create lambda with as body the ctu call
-        lmbda = self.__builder.lmbda(['t', 'state'], ctu_call)
+        lmbda = self.bld.lmbda(['t', 'state'], ctu_call)
 
         # finally, create data.find call
-        call_args += [self.__builder.ref('state'), lmbda]
-        search_call = self.__builder.fn_call(
-            self.__builder.attr_ref('data', 'find'), call_args)
+        call_args += [self.bld.ref('state'), lmbda]
+        search_call = self.bld.fn_call(
+            self.bld.attr_ref('data', 'find'), call_args)
 
-        self.__builder.fn_body_stmt(
-            clause_fn.fn, self.__builder.stmt(search_call))
+        self.bld.fn_body_stmt(
+            clause_fn.fn, self.bld.stmt(search_call))
     
     def __find_data_ctu(self, clause, clause_fn, ctu_fn):
         # ex: { 'p' : [ 's', Var('p') ], 'a': [ 'o', Var('a') ] }
         clause_vars = { v.name: (['s', 'p', 'o'][i], v) for i, v in clause._vars(get_name=False) }
 
         # arguments to be passed to ctu
-        ctu_fn.in_args = [self._triple_val('t', *clause_vars[v]) if v in clause_vars else self.__builder.ref(v)
+        ctu_fn.in_args = [self._triple_val('t', *clause_vars[v]) if v in clause_vars else self.bld.ref(v)
                      for v in ctu_fn.in_vars]
         
         # if there's conds, assns needed; create extra fn
@@ -219,7 +219,7 @@ class GenPython:
             
             # arguments to be passed to ctu
             # (may be updated by code below)
-            ctu_fn.in_args = [ self.__builder.ref(p) for p in ctu_fn.in_vars ]
+            ctu_fn.in_args = [ self.bld.ref(p) for p in ctu_fn.in_vars ]
             
             match_fn = MatchRuleFn()
             
@@ -238,20 +238,20 @@ class GenPython:
 
             # lambda params: vars we want from match rule fn (+ extra params)
             lmbda_params = match_fn.get_vars + ['state' ]
-            lmbda = self.__builder.lmbda(lmbda_params, ctu_call)
+            lmbda = self.bld.lmbda(lmbda_params, ctu_call)
 
             # match args: args we pass to match fn call
             match_args = match_fn.in_args + \
-                    [self.__builder.ref('data'), self.__builder.ref('state'), lmbda]
-            match_call = self.__builder.stmt(self.__builder.fn_call(
-                self.__builder.ref(match.fn_name), match_args))
+                    [self.bld.ref('data'), self.bld.ref('state'), lmbda]
+            match_call = self.bld.stmt(self.bld.fn_call(
+                self.bld.ref(match.fn_name), match_args))
 
             # if needed, wrap in runtime conditional
             if len(match_fn.cond) > 0:
-                match_call = self.__builder.iif(
-                    self.__builder.conj(match_fn.cond), match_call)
+                match_call = self.bld.iif(
+                    self.bld.conj(match_fn.cond), match_call)
 
-            self.__builder.fn_body_stmt(clause_fn.fn, match_call)
+            self.bld.fn_body_stmt(clause_fn.fn, match_call)
         #     print()
     
     def __match_clauses(self, clause, match_clause, clause_fn, ctu_fn, match_fn):
@@ -284,10 +284,10 @@ class GenPython:
             else:
                 # add runtime check, if possible
                 if clause_r.name in clause_fn.avail_vars:
-                    cmp1 = self.__builder.comp(self._var_ref(clause_r.name), 
-                                                'is', self.__builder.cnst(None))
-                    cmp2 = self.__builder.comp(self._var_ref(clause_r.name), 'eq', self._val(match_r))
-                    match_fn.cond.append(self.__builder.disj([cmp1, cmp2]))
+                    cmp1 = self.bld.comp(self._var_ref(clause_r.name), 
+                                                'is', self.bld.cnst(None))
+                    cmp2 = self.bld.comp(self._var_ref(clause_r.name), 'eq', self._val(match_r))
+                    match_fn.cond.append(self.bld.disj([cmp1, cmp2]))
 
                 # clause has variable; match rule has concrete value
                 # if successful, pass concrete value to ctu, if needed
@@ -303,7 +303,7 @@ class GenPython:
                 # either we gave None, or it is the same as what we gave
                 match_fn.get_vars.append(clause_r.name)
                 # when given as var, can pass it
-                match_fn.in_args.append(self._var_ref(clause_r.name) if clause_r.name in clause_fn.avail_vars else self.__builder.cnst(None))
+                match_fn.in_args.append(self._var_ref(clause_r.name) if clause_r.name in clause_fn.avail_vars else self.bld.cnst(None))
                     
         return True
     
@@ -347,7 +347,7 @@ class GenPython:
             elif clause_r2 is None:
                 if not match_r2.is_concrete():
                     match_fn.get_vars.append(match_r2.name)
-                    match_fn.in_args.append(self.__builder.cnst(None))
+                    match_fn.in_args.append(self.bld.cnst(None))
             else:
                 if not self.__match_call_terms(match_r2, clause_r2, clause_fn, ctu_fn, match_fn):
                     return False           
@@ -411,11 +411,11 @@ class GenPython:
         to_add = ctu_fn.body
         # if needed, wrap body in ctu conds
         if len(ctu_fn.cond) > 0:
-            to_add = [ self.__builder.iif(
-                self.__builder.conj(ctu_fn.cond),
+            to_add = [ self.bld.iif(
+                self.bld.conj(ctu_fn.cond),
                 ctu_fn.body) ]
         
-        self.__builder.fn_body_stmts(new_fn, to_add)
+        self.bld.fn_body_stmts(new_fn, to_add)
             
     # def __is_builtin(self, clause):
     #     return clause.p.type() == term_types.IRI and clause.p.ns.startswith(swapNs.iri)
@@ -434,40 +434,40 @@ class GenPython:
             return f"{self.__fn_prefix}_{rule_no}_{clause_no}"
 
     def _val(self, r):
-        return self.__builder.cnst(r.idx_val())
+        return self.bld.cnst(r.idx_val())
     
     def _var_ref(self, name):
-        return self.__builder.ref(name)
+        return self.bld.ref(name)
     
     def _triple_val(self, t, spo, var):
-        triple_ref = self.__builder.attr_ref(t, spo)
+        triple_ref = self.bld.attr_ref(t, spo)
         # unification code requires original ADT to work with
         if var._get_raw:
-            return self.__builder.fn_call(self.__builder.attr_ref_expr(triple_ref, 'idx_val'))
+            return self.bld.fn_call(self.bld.attr_ref_expr(triple_ref, 'idx_val'))
         else:
             return triple_ref
 
     def _term_val(self, expr):
-        return self.__builder.fn_call(self.__builder.attr_ref_expr(expr, 'idx_val'))
+        return self.bld.fn_call(self.bld.attr_ref_expr(expr, 'idx_val'))
         
     def _rule_fn_def(self, fn_name, params):
         my_params = params + self.__inner_fn_params
-        return self.__builder.fn(fn_name, my_params)
+        return self.bld.fn(fn_name, my_params)
         
     def _rule_fn_call(self, fn_name, args):
         my_args = args + (self.__rule_fn_args if fn_name == 'ctu' else self.__inner_fn_args)
-        return self.__builder.fn_call(self.__builder.ref(fn_name), my_args)
+        return self.bld.fn_call(self.bld.ref(fn_name), my_args)
             
     def _reconstr(self, r):
         match r.type():
             case term_types.IRI: 
-                return self.__builder.cnst(r.iri)
+                return self.bld.cnst(r.iri)
             case term_types.LITERAL: 
-                return self.__builder.cnst(r.value)
+                return self.bld.cnst(r.value)
             case term_types.COLLECTION: 
-                return self.__builder.tple([ self._reconstr(e) for e in r ])
+                return self.bld.tple([ self._reconstr(e) for e in r ])
             case term_types.VAR: 
-                return self.__builder.ref(r.name)
+                return self.bld.ref(r.name)
             case _: print("inconceivable")
     
     # def _raw_type_check(self, ref, adt_type):
@@ -477,9 +477,9 @@ class GenPython:
     #             raw_type = 'tuple'
     #         case _: print("inconceivable!")
 
-    #     return self.__builder.comp(
-    #         self.__builder.fn_call(self.__builder.ref('type'), [ ref ]), 'eq',
-    #         self.__builder.ref(raw_type)
+    #     return self.bld.comp(
+    #         self.bld.fn_call(self.bld.ref('type'), [ ref ]), 'eq',
+    #         self.bld.ref(raw_type)
     #     )
 
 
