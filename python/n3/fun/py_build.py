@@ -1,33 +1,25 @@
 import ast
 
-# TODO check that we don't recursively call fix_missing_locations a million times per element
-
 class PyBuilder:
     
     def module(self, body):
-        return ast.Module(body=body, type_ignores=[])
+        return self.__fix(ast.Module(body=body, type_ignores=[]))        
 
     def imports(self, module, names):
-        imprt = ast.ImportFrom(module=module, names=[ast.alias(name=n) for n in names], level=0)
-        ast.fix_missing_locations(imprt)
-        
-        return imprt
+        return self.__fix(ast.ImportFrom(module=module, names=[self.__fix(ast.alias(name=n)) for n in names], level=0))
 
     def fn(self, name, params=[]):
-        args = [ast.arg(arg=p) for p in params]
+        args = [self.__fix(ast.arg(arg=p)) for p in params]
 
-        ret = ast.FunctionDef(
+        return self.__fix(ast.FunctionDef(
             name=name,
-            args=ast.arguments(
+            args=self.__fix(ast.arguments(
                 args=args,
                 posonlyargs=[], vararg=None, kwarg=None, defaults=[], kwonlyargs=[], kw_defaults=[]
-            ),
+            )),
             body=[],
             decorator_list=[]
-        )
-        ast.fix_missing_locations(ret)
-        
-        return ret
+        ))        
 
     def fn_body_stmt(self, fn, stmt):
         fn.body.append(stmt)
@@ -36,64 +28,43 @@ class PyBuilder:
         fn.body.extend(stmts)
 
     def ref(self, name):
-        ret = ast.Name(id=name, ctx=ast.Load())
-        ast.fix_missing_locations(ret)
-        
-        return ret
+        return self.__fix(ast.Name(id=name, ctx=ast.Load()))
 
     def cnst(self, value):
-        ret = ast.Constant(value=value)
-        ast.fix_missing_locations(ret)
+        return self.__fix(ast.Constant(value=value))
         
-        return ret
-    
     def lst(self, elts):
-        ret = ast.List(elts = elts, ctx = ast.Load())
-        ast.fix_missing_locations(ret)
-        
-        return ret
-
+        return self.__fix(ast.List(elts = elts, ctx = ast.Load()))
+    
+    def tple(self, elts):
+        return self.__fix(ast.Tuple(elts = elts, ctx = ast.Load()))
+    
     def attr_ref(self, var, attr):
         return self.attr_ref_expr(self.ref(var), attr)
     
     def attr_ref_expr(self, expr, attr):
-        ret = ast.Attribute(value=expr, attr=attr, ctx=ast.Load())
-        ast.fix_missing_locations(ret)
+        return self.__fix(ast.Attribute(value=expr, attr=attr, ctx=ast.Load()))
         
-        return ret
-    
     def index(self, expr, nr):
-        ret = ast.Subscript(expr, slice=self.cnst(nr), ctx=ast.Load())
-        ast.fix_missing_locations(ret)
-        
-        return ret
+        return self.__fix(ast.Subscript(expr, slice=self.cnst(nr), ctx=ast.Load()))
 
     def fn_call(self, fn, args=None):
-        ret = ast.Call(func=fn, args=(args if args is not None else []), keywords=[])
-        ast.fix_missing_locations(ret)
+        return self.__fix(ast.Call(func=fn, args=(args if args is not None else []), keywords=[]))
         
-        return ret
-
     def lmbda(self, params, expr):
-        args = [ast.arg(arg=p) for p in params]
+        args = [self.__fix(ast.arg(arg=p)) for p in params]
 
-        ret = ast.Lambda(
-            args=ast.arguments(
+        return self.__fix(ast.Lambda(
+            args=self.__fix(ast.arguments(
                 args=args,
                 posonlyargs=[], kwonlyargs=[], kw_defaults=[], defaults=[]
-            ),
+            )),
             body=expr
-        )
-        ast.fix_missing_locations(ret)
-        
-        return ret
+        ))
 
     def stmt(self, expr):
-        ret = ast.Expr(expr)
-        ast.fix_missing_locations(ret)
+        return self.__fix(ast.Expr(expr))
         
-        return ret
-
     def comp(self, op1, cmp, op2):
         return self.comps(cmp, [op1, op2])
     
@@ -108,52 +79,45 @@ class PyBuilder:
             case 'is': cmp = ast.Is()
             case 'is not': cmp = ast.IsNot()
             case _: print("inconceivable"); return
-        ast.fix_missing_locations(cmp)
-
-        ret = ast.Compare(left=ops[0], ops=[cmp], comparators=ops[1:])
-        ast.fix_missing_locations(ret)
+        self.__fix(cmp)
         
-        return ret
-    
+        return self.__fix(ast.Compare(left=ops[0], ops=[cmp], comparators=ops[1:]))
+        
     def assn(self, var, expr):
-        ret = ast.Assign(targets=[ast.Name(id=var, ctx=ast.Store())], 
-                   value=expr)
-        ast.fix_missing_locations(ret)
-        
-        return ret
+        return self.__fix(ast.Assign(targets=[self.__fix(ast.Name(id=var, ctx=ast.Store()))],
+                   value=expr))
 
     def noot(self, cond):
-        ret = ast.BoolOp(op=ast.Not(), values=cond)
-        ast.fix_missing_locations(ret)
-        
-        return ret
+        return self.__fix(ast.BoolOp(op=ast.Not(), values=cond))
 
     def conj(self, conds):
         if len(conds) > 1:
-            ret = ast.BoolOp(op=ast.And(), values=conds)
+            return self.__fix(ast.BoolOp(op=ast.And(), values=conds))
         else: 
-            ret = conds[0]
-        ast.fix_missing_locations(ret)
-        
-        return ret
+            return self.__fix(conds[0])
 
     def disj(self, conds):
-        ret = ast.BoolOp(op=ast.Or(), values=conds)
-        ast.fix_missing_locations(ret)
-        
-        return ret
+        return self.__fix(ast.BoolOp(op=ast.Or(), values=conds))
 
     def iif(self, cond, body, ellse=None):
-        ret = ast.If(
+        return self.__fix(ast.If(
             test=cond,
             body=body,
-            orelse=ellse if ellse is not None else [])
-        ast.fix_missing_locations(ret)
-        
-        return ret
+            orelse=ellse if ellse is not None else []))
     
     def pss(self):
-        ret = ast.Pass()
-        ast.fix_missing_locations(ret)
-        
-        return ret
+        return self.__fix(ast.Pass())
+    
+    # shamelessly adapted from ast.py
+    # (got too frustrated to keep using the original version)
+    
+    def __fix(self, node, lineno=1, col_offset=0, end_lineno=1, end_col_offset=0):
+        if 'lineno' in node._attributes:
+            node.lineno = lineno
+        if 'end_lineno' in node._attributes:
+            node.end_lineno = end_lineno
+        if 'col_offset' in node._attributes:
+            node.col_offset = col_offset
+        if 'end_col_offset' in node._attributes:
+            node.end_col_offset = end_col_offset
+        return node

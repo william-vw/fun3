@@ -193,21 +193,27 @@ class VarContainer(Container):
     # def _parsed_vars(self, vars):
     #     self.__vars.update(vars)
         
-    def _rename_recur_vars(self, ren_vars):        
-        var_its = { to_repl: repl.__iter__() for to_repl, repl in ren_vars.items() }
-        
-        for i, parent, term in self._iter_recur_atomics():
-            if term.type() == term_types.VAR and term.name in var_its: 
-                parent[i] = Var(var_its[term.name].__next__())
+    def _rename_recur_vars(self, ren_vars, repl_list=False):
+        if repl_list:
+            var_its = { to_repl: repl.__iter__() for to_repl, repl in ren_vars.items() }
+            for i, parent, term in self._iter_recur_atomics():
+                if term.type() == term_types.VAR and term.name in var_its: 
+                    parent[i] = Var(var_its[term.name].__next__())
+        else:
+            for i, parent, term in self._iter_recur_atomics():
+                if term.type() == term_types.VAR and term.name in ren_vars: 
+                    parent[i] = Var(ren_vars[term.name])
     
-    def _recur_vars(self):
+    def _vars(self,get_name=True):
+        return [ (i, (v.name if get_name else v)) for i, v in enumerate(self) if v.type() == term_types.VAR ]
+    
+    def _recur_vars(self,get_name=True):
         # return self.__vars
         
-        # return [ v.name for _, _, v in self._iter_recur_atomics() if v.type() == term_types.VAR ]
+        return [ (v.name if get_name else v) for _, _, v in self._iter_recur_atomics() if v.type() == term_types.VAR ]
         
-        for _, _, v in self._iter_recur_atomics():
-            if v.type() == term_types.VAR:
-                yield v
+        # for _, _, v in self._iter_recur_atomics():
+        #     if v.type() == term_types.VAR: yield v
 
 
 class Collection(VarContainer):
