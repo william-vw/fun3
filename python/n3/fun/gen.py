@@ -34,7 +34,7 @@ class GenPython:
         
         self.__unify_head = UnifyCoref_Head(self, self.bld)
         self.__unify_body = UnifyCoref_Body(self, self.bld)
-        self.__unify_data_coll = UnifyDataColl(self, self.bld)
+        self.__unify_coll = UnifyColl(self, self.bld)
         
         self.__inner_fn_params = [ 'data', 'state', 'ctu' ]
         self.__rule_fn_params = [ 'state' ]
@@ -139,9 +139,11 @@ class GenPython:
     # START find data
     
     def __find_data_call(self, head, clause, clause_fn, ctu_fn):
+        ctu_fn = ctu_fn.clone() # (may be updated by unify below)
+        
         # if needed, unify ungrounded collections in clause with data
         # (will update clause & ctu_fn only for finding data, so create copy)
-        (clause, ctu_fn) = self.__unify_data_coll.unify(clause, clause_fn, ctu_fn)
+        clause = self.__unify_coll.unify_find_data(clause, clause_fn, ctu_fn)
         
         # all unifications are done; finalize fns
         self.__setup_fns(head, clause, clause_fn, ctu_fn)
@@ -160,7 +162,7 @@ class GenPython:
                     # when given as var, can pass it
                     call_args.append(self._var_ref(r.name) if r.name in clause_fn.avail_vars else self.bld.cnst(None))
                 
-                # TODO (long-term) if possible, unify collection and pass in search
+                # TODO (long-term) if possible, unify collection and provide as search param
                 case term_types.COLLECTION: # (ungrounded-collections)
                     call_args.append(self.bld.cnst(None) if not r.is_grounded() else self._val(r))
                 
@@ -190,7 +192,7 @@ class GenPython:
         
         # if there's conds, assns needed; create extra fn
         if ctu_fn.req_separ_fn():
-            self.__gen_separ_ctu_fn(clause_fn, ctu_fn)
+            self.__gen_separ_ctu_fn(clause_fn, ctu_fn, "data")
 
         # ex: ctu_fn = rule0_1 or ctu (original parameter)
         return self._rule_fn_call(ctu_fn.name, ctu_fn.in_args)
@@ -199,17 +201,17 @@ class GenPython:
     
     # START match call
     
-    def __match_rule_calls(self, head, clause, clause_fn, ctu_fn):        
-        print("matching:", clause)
+    def __match_rule_calls(self, head, clause, clause_fn, ctu_fn):
+        # print("matching:", clause)
         matches = self.__matching_rules(clause)
 
         if len(matches) > 0:
-            # all unifications were already done; finalize fns
+            # setup fns after some potential unifications
             self.__setup_fns(head, clause, clause_fn, ctu_fn)
 
         # TODO blank nodes vs. universals
 
-        print("match:", matches)
+        # print("matches:", matches)
         for match in matches:
             
             # TODO deal with recursion
@@ -217,8 +219,8 @@ class GenPython:
             #     print(f"\nwarning: avoiding recursion in {match.fn_name}\n")
             #     continue;
             
-            # arguments to be passed to ctu
-            # (may be updated by code below)
+            ctu_fn = ctu_fn.clone() # (code may be updated by unify)
+            # arguments to be passed to ctu (may be updated below)
             ctu_fn.in_args = [ self.bld.ref(p) for p in ctu_fn.in_vars ]
             
             match_fn = MatchRuleFn()
@@ -228,11 +230,15 @@ class GenPython:
             
             if not self.__match_clauses(clause, match_clause, clause_fn, ctu_fn, match_fn):
                 continue
+            
+            # if needed, unify coll vars (see __match_call_coll)
+            self.__unify_coll.unify_coll_vars(clause_fn, ctu_fn)
 
             # build the ctu call
 
+            # if there's conds, assns needed; create extra fn
             if ctu_fn.req_separ_fn():
-                self.__gen_separ_ctu_fn(clause_fn, ctu_fn)
+                self.__gen_separ_ctu_fn(clause_fn, ctu_fn, match.fn_name)
 
             ctu_call = self._rule_fn_call(ctu_fn.name, ctu_fn.in_args)
 
@@ -257,7 +263,7 @@ class GenPython:
     def __match_clauses(self, clause, match_clause, clause_fn, ctu_fn, match_fn):
         for pos in range(3):
             match_r = match_clause[pos]; clause_r = clause[pos]
-            print(f"{match_r} <> {clause_r}")
+            # print(f"{match_r} <> {clause_r}")
             
             # (ungrounded-collections)
             if match_r.type() == term_types.COLLECTION and not match_r.is_grounded() or \
@@ -309,7 +315,7 @@ class GenPython:
     
     # (ungrounded-collections)
     # returns false if match_r coll is not consistent with clause_r
-    # also, fn passes appropriate arguments for these params based on clause_r
+    # also, will pass appropriate arguments for params based on clause_r
     # (note that rule fns will have separate params for each of its coll var)
     def __match_call_coll(self, match_r, clause_r, clause_fn, ctu_fn, match_fn):
         # (clause_r is none if there was nothing left to check consistency with)
@@ -324,20 +330,19 @@ class GenPython:
                 if clause_r.name in ctu_fn.in_vars: # only if this var is actually used, lol
                     ctu_fn.in_args[ctu_fn.in_vars.index(clause_r.name)] = self._reconstr(match_r)
                     
-                # (after, still need to process match_r (i.e., pass None's, collect its vars))
+                # (after, will still process match_r (i.e., pass None's, collect its vars))
         
             # if match_r is var, clause_r was ungrounded coll: pass _grounded collection_ to match fn
-            # TODO if needed, fully ground using skolemization or whatever
+            # TODO (long-term) if possible, unify collection and provide as search param
             elif not match_r.is_concrete():
-                match_fn.get_vars.append(match_r.name)
-                match_fn.in_args.append(self._reconstr(clause_r))
-                return True # TODO there's actually unification left to do here
+                self.__unify_coll.coll_to_unify(clause_r, match_r, clause_fn, ctu_fn, match_fn)
+                return True
         
         # compare element-by-element
         for i, match_r2 in enumerate(match_r):
             clause_r2 = clause_r[i] if (clause_r is not None and clause_r.type() == term_types.COLLECTION) else None
             
-            # nested collection-with-vars; call fn recursively
+            # nested ungrounded collections; call fn recursively
             if (match_r2.type() == term_types.COLLECTION and not match_r2.is_grounded()) or \
                 (clause_r2 is not None and clause_r2.type() == term_types.COLLECTION and not clause_r2.is_grounded()):
                 if not self.__match_call_coll(match_r2, clause_r2, clause_fn, ctu_fn, match_fn):
@@ -398,13 +403,11 @@ class GenPython:
     # END match call
     
     # create separate, intermediary unify fn for ctu
-    # this fn will check assoc. conds & do assns before calling ctu
-    def __gen_separ_ctu_fn(self, clause_fn, ctu_fn):
+    # this separate fn will check assoc. conds & do assns before calling ctu
+    def __gen_separ_ctu_fn(self, clause_fn, ctu_fn, id):
         # regular algorithm will call this interm. unify fn
-        ctu_fn.name = f"{clause_fn.name}_unify"
+        ctu_fn.name = f"{clause_fn.name}_unify_{id}"
         
-        # unify fns will build a "fake" image of the clause
-        # so, create a interm. unify fn based on "fake" image
         new_fn = self._rule_fn_def(ctu_fn.name, ctu_fn.in_vars)
         self.__code.append(new_fn)
         
@@ -506,9 +509,9 @@ class RuleFn:
     # in_vars (strings; incoming params representing vars)
     # avail_vars (vars available in fn; in_vars by default, maybe extended by unif)
     # in_args (ast; arguments for in_vars)
-    # clause_vars (strings)
     # fn (ast)
-    # is_last
+    # is_last (bool)
+    # to_unify (tuples of coll/var to unify)
     
     # cond, body
     
@@ -518,9 +521,9 @@ class RuleFn:
         self.__extra_avail = []
         self.fn = fn
         self.is_last = is_last
+        self.to_unify = []
         
-        self.cond = []
-        self.body = []
+        self.cond = []; self.body = []
         
     def extra_avail(self, vars):
         self.__extra_avail.extend(vars)
@@ -726,40 +729,65 @@ class UnifyCoref_Body(UnifyCoref):
         # (ctu conds, stmts above will be added to separate ctu fn; see __gen_separ_ctu_fn)
 
 
-class UnifyDataColl(UnifyCoref):
+class UnifyColl(UnifyCoref):
     
     def __init__(self, gen, bld):
         super().__init__(gen, bld)
         
-    def unify(self, clause, clause_fn, ctu_fn):
+    def unify_find_data(self, clause, clause_fn, ctu_fn):
         # get all ungrounded collections
         ungr_colls = [ (pos, term) for pos, term in enumerate(clause) if term.type() == term_types.COLLECTION and not term.is_grounded()]
         
         # whew, no need to unify!
         if len(ungr_colls) == 0:
-            return clause, ctu_fn
+            return clause
         
         # darn :-(
         
         # ex: :x :y ( 1 2 ?z )
-        clause = clause.clone() # only applicable to data find
+        clause = clause.clone() # only applicable here
         
-        if_test = []; if_body = []    
+        if_test = []; if_body = []
         for i, (pos, coll) in enumerate(ungr_colls):
             coll_var = f"coll_{i}"
             
             # sneak in variables for ungrounded collections
+            # (code will then pass values for these vars to interm. ctu fn)
             clause[pos] = Var(coll_var, get_raw=False)
 
-            # add code to unify collection found in data (conds, assns)
+            # add code to unify collection from the data (conds, assns)
             self.__unify_coll(coll, [], self.bld.ref(coll_var), clause_fn, if_test, if_body)
+        
+        self.__update_ctu_fn(ctu_fn, if_test, if_body)
+                
+        return clause
+
+    # TODO think about this some more & test it better
+
+    def coll_to_unify(self, clause_coll, match_var, _, ctu_fn, match_fn):
+        ctu_fn.to_unify.append((clause_coll, match_var.name))
+        
+        match_fn.get_vars.append(match_var.name)
+        match_fn.in_args.append(self.bld.cnst(None))
+    
+    def unify_coll_vars(self, clause_fn, ctu_fn):
+        if len(ctu_fn.to_unify)==0: return
+        
+        if_test = []; if_body = []
+        for (clause_coll, match_var) in ctu_fn.to_unify:
+            # add code to unify collection from the rule (conds, assns)
+            self.__unify_coll(clause_coll, [], self.bld.ref(match_var), clause_fn, if_test, if_body)
             
-        ctu_fn = ctu_fn.clone() # only applicable to data find
-            
+            ctu_fn.in_vars.append(match_var)
+            ctu_fn.in_args.append(self.bld.ref(match_var))
+
+        self.__update_ctu_fn(ctu_fn, if_test, if_body)
+    
+    def __update_ctu_fn(self, ctu_fn, if_test, if_body):
         # ex: coll0[0]==1 and coll0[1]==2
         ctu_fn.cond.append(self.bld.conj(if_test) if len(if_test) > 1 else if_test[0])
         
-        # won't be the last cause of our intermediary fn
+        # won't be the last fn, because of our intermediary fn
         ctu_fn.is_last = False
         
         # now, add call to original ctu as if nothing happened
@@ -767,8 +795,6 @@ class UnifyDataColl(UnifyCoref):
         
         # ex: z = coll0[2]; rule_0_1(...)
         ctu_fn.body.extend(if_body)
-        
-        return clause, ctu_fn
 
     # 1/ add conditions for element-by-element comparisons
     # 2/ add assignments of match coll values to clause vars 
