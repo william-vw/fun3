@@ -20,6 +20,7 @@ class GenPython:
     # __fn_prefix
     # __pred_idx
     # __cur_vars
+    # __var_cnt
     
     # __unify_head
     # __unify_body
@@ -31,6 +32,7 @@ class GenPython:
     def __init__(self):
         self.bld = PyBuilder()
         self.__fn_prefix = "rule"
+        self.__var_cnt = 0
         
         self.__unify_head = UnifyCoref_Head(self, self.bld)
         self.__unify_body = UnifyCoref_Body(self, self.bld)
@@ -378,7 +380,7 @@ class GenPython:
             r = rules[i]
             
             # giving up & just giving all vars unique names
-            self.__rename_vars_unique(i, r.s, r.o)
+            self.__rename_vars_unique(r.s, r.o)
             
             if r.s.model.len() != 1:
                 print(f"warning: cannot use rule, length of head > 1 ({r})")
@@ -484,24 +486,19 @@ class GenPython:
     #         self.bld.fn_call(self.bld.ref('type'), [ ref ]), 'eq',
     #         self.bld.ref(raw_type)
     #     )
-
-
-    # NOTE code assumes this does not occur often
-    # (else, optimize this)
     
-    # TODO (long-term) try our best to keep original var names
-    
-    def __rename_vars_unique(self, rule_no, head, body):
+    def __rename_vars_unique(self, head, body):
         triple_it = chain(head._recur_vars(), body._recur_vars()) \
             if body.type() == term_types.GRAPH else head._recur_vars()
         unique_vars = { v:0 for v in triple_it }
-        unique_vars = { v:f"r{rule_no}_v{i}" for i,v in enumerate(unique_vars) }
+        unique_vars = { v:f"{v}_{i}" for v,i in zip(unique_vars, range(self.__var_cnt, len(unique_vars)+self.__var_cnt)) }
         
         head._rename_recur_vars(unique_vars)
         if body.type() == term_types.GRAPH:
             body._rename_recur_vars(unique_vars)
         
-        print(f"[rule{rule_no}]", "var map:", unique_vars)
+        self.__var_cnt += len(unique_vars)
+        
 
 class RuleFn:
     
