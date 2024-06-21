@@ -219,7 +219,7 @@ class GenPython:
             #     print(f"\nwarning: avoiding recursion in {match.fn_name}\n")
             #     continue;
             
-            ctu_fn = ctu_fn.clone() # (code may be updated by unify)
+            ctu_fn = ctu_fn.clone() # (may be updated by unify)
             # arguments to be passed to ctu (may be updated below)
             ctu_fn.in_args = [ self.bld.ref(p) for p in ctu_fn.in_vars ]
             
@@ -705,7 +705,6 @@ class UnifyCoref_Body(UnifyCoref):
         # ex: x -> x1, x2
         
         # rename duplicate var occur. with unique vars
-        # (regular algorithm will proceed with these unique vars)
         clause._rename_recur_vars(uniq_vars,repl_list=True)
         
         # tell us that these de-dupl vars are now avail in fn
@@ -726,7 +725,8 @@ class UnifyCoref_Body(UnifyCoref):
         # now, add call to original ctu as if nothing happened
         ctu_fn.body.append(self.bld.stmt(self.gen._rule_fn_call(ctu_fn.name, [ self.bld.ref(v) for v in ctu_fn.in_vars ])))
         
-        # (ctu conds, stmts above will be added to separate ctu fn; see __gen_separ_ctu_fn)
+        # (regular algorithm will proceed with reworked clause; i.e., use correct vars for unif fn)
+        # (also, will create unif fn with conds, stmts from above; see __gen_separ_ctu_fn)
 
 
 class UnifyColl(UnifyCoref):
@@ -752,23 +752,28 @@ class UnifyColl(UnifyCoref):
             coll_var = f"coll_{i}"
             
             # sneak in variables for ungrounded collections
-            # (code will then pass values for these vars to interm. ctu fn)
+            # (code will then pass values for these vars to unif fn)
             clause[pos] = Var(coll_var, get_raw=False)
 
             # add code to unify collection from the data (conds, assns)
             self.__unify_coll(coll, [], self.bld.ref(coll_var), clause_fn, if_test, if_body)
         
-        self.__update_ctu_fn(ctu_fn, if_test, if_body)
-                
+        # populate code for our unif fn (incl. call to original ctu fn)
+        self.__populate_ctu_fn(ctu_fn, if_test, if_body)
+
+        # (regular algorithm will proceed with reworked clause; i.e., use correct vars for unif fn)
+        # (also, will create unif fn with conds, stmts from above; see __gen_separ_ctu_fn)
+        
         return clause
 
-    # TODO think about this some more & test it better
+    # TODO think about this some more & test better
 
     def coll_to_unify(self, clause_coll, match_var, _, ctu_fn, match_fn):
-        ctu_fn.to_unify.append((clause_coll, match_var.name))
-        
         match_fn.get_vars.append(match_var.name)
         match_fn.in_args.append(self.bld.cnst(None))
+        
+        # we will find these one by one, so collect them here
+        ctu_fn.to_unify.append((clause_coll, match_var.name))
     
     def unify_coll_vars(self, clause_fn, ctu_fn):
         if len(ctu_fn.to_unify)==0: return
@@ -777,13 +782,18 @@ class UnifyColl(UnifyCoref):
         for (clause_coll, match_var) in ctu_fn.to_unify:
             # add code to unify collection from the rule (conds, assns)
             self.__unify_coll(clause_coll, [], self.bld.ref(match_var), clause_fn, if_test, if_body)
-            
+        
+        # populate code for our unif fn (incl. call to original ctu fn)
+        self.__populate_ctu_fn(ctu_fn, if_test, if_body)
+        
+        # now, manually update our unif fn with vars we need
+        for (clause_coll, match_var) in ctu_fn.to_unify:
             ctu_fn.in_vars.append(match_var)
             ctu_fn.in_args.append(self.bld.ref(match_var))
-
-        self.__update_ctu_fn(ctu_fn, if_test, if_body)
+            
+        # (regular algorithm will create unif fn with vars/args, conds, stmts from above; see __gen_separ_ctu_fn)
     
-    def __update_ctu_fn(self, ctu_fn, if_test, if_body):
+    def __populate_ctu_fn(self, ctu_fn, if_test, if_body):
         # ex: coll0[0]==1 and coll0[1]==2
         ctu_fn.cond.append(self.bld.conj(if_test) if len(if_test) > 1 else if_test[0])
         
