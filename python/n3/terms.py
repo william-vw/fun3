@@ -164,15 +164,15 @@ class BlankNode:
 class Container:
     
     # implemented by subclasses
-    def _iter_recur_atomics(self):
+    def _iter_recur_atomics(self, pos):
         pass
     
     # (called by subclasses)
-    def _iter_atomic(self, index, term):
+    def _iter_atomic(self, pos, term):
         match term.type():
-            case term_types.COLLECTION: yield from term._iter_recur_atomics()
-            case term_types.GRAPH: yield from term._iter_recur_atomics()
-            case _: yield (index, self, term)
+            case term_types.COLLECTION: yield from term._iter_recur_atomics(pos)
+            case term_types.GRAPH: yield from term._iter_recur_atomics(pos)
+            case _: yield (pos, term)
     
     
 class VarContainer(Container):
@@ -193,27 +193,30 @@ class VarContainer(Container):
     # def _parsed_vars(self, vars):
     #     self.__vars.update(vars)
         
-    def _rename_recur_vars(self, ren_vars, repl_list=False):
-        if repl_list:
-            var_its = { to_repl: repl.__iter__() for to_repl, repl in ren_vars.items() }
-            for i, parent, term in self._iter_recur_atomics():
-                if term.type() == term_types.VAR and term.name in var_its: 
-                    parent[i] = Var(var_its[term.name].__next__())
-        else:
-            for i, parent, term in self._iter_recur_atomics():
-                if term.type() == term_types.VAR and term.name in ren_vars: 
-                    parent[i] = Var(ren_vars[term.name])
+    def _rename_recur_vars(self, ren_vars):
+        for pos, term in self._iter_recur_atomics(()):
+            if term.type() == term_types.VAR and term.name in ren_vars: 
+                parent = pos[-1][1]; i = pos[-1][0]
+                parent[i] = Var(ren_vars[term.name])
     
     def _vars(self,get_name=True):
-        return [ (i, (v.name if get_name else v)) for i, v in enumerate(self) if v.type() == term_types.VAR ]
-    
+        return [ (i, (v.name if get_name else v)) for i, v in enumerate(self) if v.type() == term_types.VAR ]     
+       
     def _recur_vars(self,get_name=True):
         # return self.__vars
         
-        return [ (v.name if get_name else v) for _, _, v in self._iter_recur_atomics() if v.type() == term_types.VAR ]
-        
+        # return [ (v.name if get_name else v) for _, _, v in self._iter_recur_atomics() if v.type() == term_types.VAR ]
         # for _, _, v in self._iter_recur_atomics():
         #     if v.type() == term_types.VAR: yield v
+        
+        return [ v for _, v in self.__yield_recur_vars(get_name) ]
+    
+    def _recur_vars_pos(self,get_name=True):
+        return [ (pos, v) for pos, v in self.__yield_recur_vars(get_name) ]
+    
+    def __yield_recur_vars(self, get_name):
+        for pos, v in self._iter_recur_atomics(()):
+            if v.type() == term_types.VAR: yield (pos, (v.name if get_name else v))
 
 
 class Collection(VarContainer):
@@ -238,8 +241,8 @@ class Collection(VarContainer):
     def _parsed_el(self, el):
         self.__elements.append(el)
     
-    def _iter_recur_atomics(self):
-        for i, el in enumerate(self): yield from self._iter_atomic(i, el)
+    def _iter_recur_atomics(self, pos):
+        for i, el in enumerate(self): yield from self._iter_atomic(pos + ((i, self),), el)
     
     def __iter__(self):
         return self.__elements.__iter__()
@@ -277,8 +280,8 @@ class GraphTerm(VarContainer):
     def is_concrete(self):
         return True
     
-    def _iter_recur_atomics(self):
-        for t in self.model.triples(): yield from t._iter_recur_atomics()
+    def _iter_recur_atomics(self, pos):
+        for t in self.model.triples(): yield from t._iter_recur_atomics(pos)
         
     def __str__(self):
         return "{ "  + "".join([ str(t) for t in self.model.triples() ])[:-2] + " }"
@@ -287,6 +290,8 @@ class GraphTerm(VarContainer):
 
 
 class Triple(VarContainer):
+    
+    spo = ['s', 'p','o']
     
     # s, p, o
     
@@ -302,8 +307,8 @@ class Triple(VarContainer):
     def has_graph(self):
         return any(r.type() == term_types.GRAPH for r in self)
     
-    def _iter_recur_atomics(self):
-        for i, term in enumerate(self): yield from self._iter_atomic(i, term)
+    def _iter_recur_atomics(self, pos):
+        for i, term in enumerate(self): yield from self._iter_atomic(pos + ((i, self),), term)
     
     def __len__(self):
         return 3

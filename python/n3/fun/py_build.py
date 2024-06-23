@@ -1,5 +1,9 @@
 import ast
 
+class PyBuildError(Exception):
+    pass
+
+
 class PyBuilder:
     
     def module(self, body):
@@ -84,6 +88,9 @@ class PyBuilder:
         return self.__fix(ast.Compare(left=ops[0], ops=[cmp], comparators=ops[1:]))
         
     def assn(self, var, expr):
+        if not isinstance(var, str):
+            raise PyBuildError("expecting str in var assn")
+            
         return self.__fix(ast.Assign(targets=[self.__fix(ast.Name(id=var, ctx=ast.Store()))],
                    value=expr))
 

@@ -1,21 +1,29 @@
 from ast import dump, unparse
+from collections import Counter
+from multidict import MultiDict
 
 from n3.parse import parse_n3
 from n3.fun.gen import gen_py
+from n3.terms import Triple
 
-# def test():
-#     rule = """@prefix : <http://example.org/> .
-#     { ?p a :Canadian } <= { :x :y { ?x :d ( ?p ?a ?t ) } . ( ?p ?x ) :address ?a . ?a :country "CA" } ."""
+def test():
+    rule = """@prefix : <http://example.org/> .
+    { ?p a :Canadian } <= { ?x :d ?x . ?y :e ( ?x ?x ?y ?y ) } ."""
     
-#     result = parse_n3(rule)
-#     # print("rules:\n", result.rules)
+    result = parse_n3(rule)
+    # print("rules:\n", result.rules)
     
-#     rule = result.rules[0]
-#     body = rule.o
-#     print(body._vars())
+    rule = result.rules[0]
+    body = rule.o
+    clause = body.model.triples()[1]
     
-#     body._rename_vars({ 'p': [ 'p1', 'p2' ], 'x': [ 'x1', 'x1M' ] })
-#     print(body)
+    
+def get_spo_pos(pos):
+    return pos[0][0]
+
+def get_spo_varname(pos, var):
+    spo_ch = Triple.spo[get_spo_pos(pos)]
+    return f"{var}_{spo_ch}" if len(pos) == 1 else f"coll_{spo_ch}"
 
 
 class State : 
@@ -28,31 +36,31 @@ def result_fn(*args):
 
 
 def fun3():
-# ex 1
-    rules =  """@prefix : <http://example.org/> . 
-# -
-{ ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
-{ ?pe a :Person } <= { ?pe :ability :think } .
-{ ?pe a :Belgian } <= { ?pe :ability :drink } .
-# -
+# # ex 1
+#     rules =  """@prefix : <http://example.org/> . 
+# # -
 # { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
-# { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
-# -
-# { ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
-# { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
-# - TODO deal with recursion properly
-# { ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
-#  { ?pe a :Person } <= { ?pe :ability :think } .
-#  { ?p a ?t } <= { ?p :name "Socrates" } .
-"""
-    data = """@prefix : <http://example.org/> . 
-:will a :Person ; :address :addr1 . :addr1 :country "CA" .
-:ed :ability :think ; :address :addr1 ; :describedAs :Person .
-:el :ability :drink ; :address :addr1 ; :describedAs :Belgian .
-:dor :ability :think ; :address :addr2 ; :describedAs :German .
-:soc :name "Socrates" ; :address :addr1 .
-"""
-    call = lambda data, state, rule_fn: rule_fn(None, data, state, result_fn)
+# { ?pe a :Person } <= { ?pe :ability :think } .
+# { ?pe a :Belgian } <= { ?pe :ability :drink } .
+# # -
+# # { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
+# # { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
+# # -
+# # { ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
+# # { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
+# # - TODO deal with recursion properly
+# # { ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
+# #  { ?pe a :Person } <= { ?pe :ability :think } .
+# #  { ?p a ?t } <= { ?p :name "Socrates" } .
+# """
+#     data = """@prefix : <http://example.org/> . 
+# :will a :Person ; :address :addr1 . :addr1 :country "CA" .
+# :ed :ability :think ; :address :addr1 ; :describedAs :Person .
+# :el :ability :drink ; :address :addr1 ; :describedAs :Belgian .
+# :dor :ability :think ; :address :addr2 ; :describedAs :German .
+# :soc :name "Socrates" ; :address :addr1 .
+# """
+#     call = lambda data, state, rule_fn: rule_fn(None, data, state, result_fn)
 
 # # ex 2
 #     rules =  """@prefix log: <http://www.w3.org/2000/10/swap/log#> .
@@ -124,16 +132,17 @@ def fun3():
 # """
 #     call = lambda data, state, rule_fn: rule_fn(None, None, None, data, state, result_fn)
 
-# # ex 8
-#     rules =  """@prefix : <http://example.org/> . 
-# { ?x :lonerName ?xn } <= { ?x :onlyFriend ?x . ?x :name ?xn } .
-# # { ?x :blah ( ?y ?y ) } <= { ?x :onlyFriend ?x } .
-# """
-#     data = """@prefix : <http://example.org/> . 
-# :edw :onlyFriend :edw .
-# :edw :name "edw" .
-# """
-#     call = lambda data, state, rule_fn: rule_fn(None, None,  data, state, result_fn)
+# ex 8
+    rules =  """@prefix : <http://example.org/> . 
+{ ?x :lonerName ?xn } <= { ?x :onlyFriend ?x . ?x :name ?xn } .
+# { ?x :onlyFriend ?y } <= { ?x :blah ?y } .
+"""
+    data = """@prefix : <http://example.org/> . 
+:edw :onlyFriend :edw .
+:elb :blah :elb .
+:edw :name "edw" . :elb :name "elb" .
+"""
+    call = lambda data, state, rule_fn: rule_fn(None, None,  data, state, result_fn)
 
 
     # parse
