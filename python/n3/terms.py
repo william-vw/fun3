@@ -101,11 +101,8 @@ class Var:
     
     # (get_raw_value)
     
-    def __init__(self, name, get_raw=True):
+    def __init__(self, name):
         self.name = name
-        
-        # used by gen.py
-        self._get_raw = get_raw
         
     def type(self):
         return term_types.VAR

@@ -73,25 +73,23 @@ def fun3():
 # """
 #     call = lambda data, state, rule_fn: rule_fn(None, None, data, state, result_fn)
 
-# # ex 3
-#     rules =  """@prefix : <http://example.org/> . 
-# # { ?z :aliasNames ( ?xn ?yn ) } <= { ?z :alias ( ?x ?y ) . ?x :name ?xn . ?y :name ?yn } .
-# # { ?z :aliases ( ?x ?y ) } <= { ?z :alias ( ?x ?y ) } .
-# { ?z :aliasNames ( ?xn ?yn ) } <= { ( ?z ) :alias ( ( ?x ) ( ?y ?q ) ) . ?x :name ?xn . ?y :name ?yn } .
-# """
-#     data = """@prefix : <http://example.org/> . 
-# # :wil :alias ( :edw :elb ) . 
-# ( :wil ) :alias ( ( :edw ) ( :elb :wil ) ) .  # ( ( :edw ) :elb )
-# :edw :name "edward" . :elb :name "elbert" .
-# """
-#     call = lambda data, state, rule_fn: rule_fn(None, None, None, data, state, result_fn)
+# ex 3
+    rules =  """@prefix : <http://example.org/> . 
+{ ?z :aliasNames ( ?xn ?yn ) } <= { ( ?z ) :alias ( ( ?x ) ( ?y ?q ) ) . ?x :name ?xn . ?y :name ?yn } .
+"""
+    data = """@prefix : <http://example.org/> . 
+# :wil :alias ( :edw :elb ) . 
+( :wil ) :alias ( ( :edw ) ( :elb :wil ) ) .  # ( ( :edw ) :elb )
+:edw :name "edward" . :elb :name "elbert" .
+"""
+    call = lambda data, state, rule_fn: rule_fn(None, None, None, data, state, result_fn)
 
 # # ex 4
 #     rules =  """@prefix : <http://example.org/> . 
 # { ?z :aliasNames ( ?xn ) } <= { ?z :aliasPair ( :edw ?x ) . ?x :name ?xn } .
-# # { ?z :aliasPair ( :edw :elb ) } <= { ?z :alias ( :edw :elb ) } .
+# { ?z :aliasPair ( :edw :elb ) } <= { ?z :alias ( :edw :elb ) } .
 # # { ?z :aliasPair ( :edw ?a ) } <= { ?z :alias ( :edw ?a ) } .
-# { ?z :aliasPair ( ?a ?b ) } <= { ?z :alias ( ?a ?b ) } .
+# # { ?z :aliasPair ( :edu ?a ) } <= { ?z :alias ( :edw ?a ) } .
 # """
 #     data = """@prefix : <http://example.org/> . 
 # :wil :alias ( :edw :elb ) . 
@@ -110,7 +108,7 @@ def fun3():
 # """
 #     call = lambda data, state, rule_fn: rule_fn(None, None, data, state, result_fn)
 
-# # # ex 6
+# # ex 6
 #     rules =  """@prefix : <http://example.org/> . 
 # { ?z :aliasNames ( ?a ?x ) } <= { ?z :aliasPair ( ?a ?x ) } .
 # { ?z :aliasPair ( ( ?x ?y ) ?k ) } <= { ?z :alias ( ?x ?y ) } .
@@ -124,25 +122,25 @@ def fun3():
 # # ex 7
 #     rules =  """@prefix : <http://example.org/> . 
 # { ?z :aliases ( ?x ?y ) } <= { ?z :aliasPair ( ( ?x ?y ) ?k ) . ?x :name ?xn . ?y :name ?yn } .
-# { ?z :aliasPair ( ?a ?k ) } <= { ?z :alias ( :k :l ) } .
+# { ?z :aliasPair ( ?a ?k ) } <= { ?z :alias ( ?a ?k ) } .
 # """
 #     data = """@prefix : <http://example.org/> . 
-# :wil :alias ( :edw :elb ) . 
-# :edw :name "edward" . :elb :name "elbert" .
+# :wil :alias ( ( :wil :edw ) :elb ) . 
+# :wil :name "wil" . :edw :name "edward" . :elb :name "elbert" .
 # """
 #     call = lambda data, state, rule_fn: rule_fn(None, None, None, data, state, result_fn)
 
-# ex 8
-    rules =  """@prefix : <http://example.org/> . 
-{ ?x :lonerName ?xn } <= { ?x :onlyFriend ?x . ?x :name ?xn } .
-# { ?x :onlyFriend ?y } <= { ?x :blah ?y } .
-"""
-    data = """@prefix : <http://example.org/> . 
-:edw :onlyFriend :edw .
-:elb :blah :elb .
-:edw :name "edw" . :elb :name "elb" .
-"""
-    call = lambda data, state, rule_fn: rule_fn(None, None,  data, state, result_fn)
+# # ex 8
+#     rules =  """@prefix : <http://example.org/> . 
+# { ?x :lonerName ?xn } <= { ?x :onlyFriend ?x . ?x :name ?xn } .
+# # { ?x :onlyFriend ?y } <= { ?x :blah ?y } .
+# """
+#     data = """@prefix : <http://example.org/> . 
+# :edw :onlyFriend :edw .
+# :elb :blah :elb .
+# :edw :name "edw" . :elb :name "elb" .
+# """
+#     call = lambda data, state, rule_fn: rule_fn(None, None,  data, state, result_fn)
 
 
     # parse
