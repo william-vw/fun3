@@ -547,6 +547,8 @@ class Unify:
     def __req_unify_fn(self):
         return len(self.in_args) == 0
         
+    # if needed, build separate unif fn & return it    
+    
     def finalize(self, clause_fn, ctu_fn, match_fn=None):
         if self.__req_unify_fn():
             return ctu_fn
@@ -556,15 +558,19 @@ class Unify:
         # won't be the last due to our unify fn
         unif_fn.is_last = False
         unif_fn.name = f"{clause_fn.name}_unify_{self.id}"
+        # extend with unif fn args, params
         unif_fn.in_args.extend(self.in_args)
         unif_fn.in_vars.extend(self.in_vars)
         
         new_fn = self.gen._rule_fn_def(unif_fn.name, unif_fn.in_vars)
         self.gen._code.append(new_fn)
         
-        # update ctu fn in_vars, if needed (nested vars from ungr coll)
+        # orig ctu fn will be called in body of unif fn
+        
+        # update ctu fn in_vars, if needed, with nested vars from ungr coll
+        # (these are now avail in our unif fn)
         ctu_fn.in_vars.extend([ v for v in self.new_vars if v not in ctu_fn.in_vars ])
-        # these will all be references
+        # these will all be var refs (either from in params, or assns)
         ctu_fn.in_args = [ self.bld.ref(v) for v in ctu_fn.in_vars ]
         
         fn_body = self.assns
@@ -591,6 +597,11 @@ class Unify:
             match_fn.get_vars = get_vars
         
         return unif_fn
+    
+    # START unify_coref
+    
+    # - gather extra args & params for unify fn
+    # - build conds, assns for unific in fn
 
     def unify_coref(self, clause):
         orig_vars_pos = clause._recur_vars_pos()
@@ -612,6 +623,7 @@ class Unify:
         
         # per dupl var occ, need extra in_arg and in_var for unif fn
         # (so we can manually unify them in unif fn)
+        # TODO (long-term) results in redundant args
         for spo, (_, occ) in spo_var_occ.items():
             arg = self.gen._triple_val('t', Triple.spo[spo]) if self.find_data else self.bld.ref(occ)
             self.__unify_entry(arg, occ)
@@ -667,6 +679,10 @@ class Unify:
         # (not actually needed in case of find_data)
         if not self.find_data:
             self.assns.append(self.bld.assn(origvar, ops[0]))
+        
+    # END unify_coref
+    
+    # START unify_coll
             
     def unify_coll_data(self, clause, clause_fn):
         ungr_colls = [ (i, term) for i, term in enumerate(clause) \
@@ -697,8 +713,7 @@ class Unify:
     
     # 1/ add conditions for element-by-element comparisons
     # 2/ add assignments of match coll values to clause vars 
-    # clause_coll_term: term in clause_coll
-    # match_coll_expr: corresp. in match_coll (e.g., coll[0][1])
+    # clause_coll_term: term in clause_coll ; match_coll_expr: corresp. in match_coll (e.g., coll[0][1])
     # pos: (nested) position (e.g., [0, 1] for 2nd el in 1st el)
     def __unify_ungr_coll(self, clause_coll_term, pos, match_coll_expr, clause_fn, conds, assns):
         # match_coll needs to be type collection of same length
@@ -740,6 +755,7 @@ class Unify:
                     conds.append(
                         self.bld.comp(self.bld.cnst(clause_el_val.idx_val()), 'eq', match_el_expr)) #self.gen._term_val(match_el_expr)))
     
+    # END unify_coll
     
     def __varname(self, pos, var):
         return f"{var}_{Triple.spo[pos]}"
@@ -763,6 +779,7 @@ class Unify:
         
         return ( new_vars, uniq_vars )
     
+# TODO
 
 # class UnifyCoref_Head(Unify) :
     
