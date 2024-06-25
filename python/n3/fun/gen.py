@@ -97,7 +97,7 @@ class GenPython:
         ctu_fn = RuleFn(name=(self._fn_name(rule_no, clause_no+1) if not is_last else 'ctu'), is_last=is_last)
         
         # vars occurring in clause
-        own_vars = clause._recur_vars()
+        own_vars = [ v for _, v in clause._vars() ]
         
         if not ctu_fn.is_last:
             # params to pass to next clause fn; unique(prior vars + own vars)
@@ -108,6 +108,7 @@ class GenPython:
          
         # keep track of vars in subsequent clauses
         if not ctu_fn.is_last:
+            # (recur_vars; all nested vars have to be passed as well; happens in unify op)
             self.__cur_vars = list(dict.fromkeys(self.__cur_vars + clause._recur_vars())) # (keep order)
 
         # if self.__is_builtin(clause):
@@ -149,15 +150,16 @@ class GenPython:
                 
                 case _: call_args.append(self._val(r))
         
-        # ctu vars ; ex: { 'p' : [ 's ', Var('p') ], 'a': [ 'o', Var('a') ] }
+        # ctu vars ; ex: { 'p' : 's ', 'a': 'o' }
         clause_vars = { v: Triple.spo[i] for i, v in clause._vars(get_name=True) }
-        ctu_fn.in_args.extend([self._triple_val('t', clause_vars[v]) if v in clause_vars else self.bld.ref(v)
-                     for v in ctu_fn.in_vars])
+        ctu_fn.in_args = [self._triple_val('t', clause_vars[v]) if v in clause_vars else self.bld.ref(v)
+                     for v in ctu_fn.in_vars]
         
         # let unif do its thing, if needed
         ctu_fn = unify.finalize(clause_fn, ctu_fn)
         
         # build the ctu call
+        
         ctu_call = self._rule_fn_call(ctu_fn.name, ctu_fn.in_args)
         
         # then, create lambda with as body the ctu call
@@ -459,8 +461,7 @@ class RuleFn:
     # in_args (ast; arguments for in_vars)
     # fn (ast)
     # is_last (bool)
-    
-    # cond, body
+    # body
     
     def __init__(self, name=None, in_vars=None, in_args=None, fn=None, is_last=False):
         self.name = name
@@ -468,6 +469,7 @@ class RuleFn:
         self.in_args = in_args if in_args is not None else []
         self.fn = fn
         self.is_last = is_last
+        self.body = [] # TODO head unif
         
     def extra_avail(self, vars):
         self.__extra_avail.extend(vars)
@@ -517,7 +519,7 @@ class Unify:
     # gen, bld
     # find_data
     
-    # in_args, in_var, lmbda_vars
+    # in_args, in_var, new_vars, lmbda_vars
     # conds, assns
         
     def __init__(self, gen, bld, find_data, id=None):
@@ -526,15 +528,18 @@ class Unify:
         self.find_data = find_data
         self.id = id if id is not None else 'data'
         
-        self.in_args = []; self.in_vars = []; self.orig_vars = []
+        self.in_args = []; self.in_vars = []; self.new_vars = []
         self.lmbda_vars = MultiDict()
         self.conds = []; self.assns = []
         
-    def __unify_entry(self, arg, var, orig_vars):
-        self.in_args.append(arg)
-        self.in_vars.append(var)
-        if orig_vars is not None:
-            self.orig_vars.extend(orig_vars)
+    def __unify_entry(self, arg, var):
+        if var not in self.in_vars:
+            self.in_args.append(arg)
+            self.in_vars.append(var)
+            
+    def __unify_found_var(self, var):
+        if var not in self.new_vars:
+            self.new_vars.append(var)
         
     def __update_lmbda_vars(self, lmbda_vars):
         self.lmbda_vars.extend(lmbda_vars)
@@ -545,14 +550,6 @@ class Unify:
     def finalize(self, clause_fn, ctu_fn, match_fn=None):
         if self.__req_unify_fn():
             return ctu_fn
-        
-        # orig vars replaced by our unif vars
-        # (either redundant, or vars we don't have access to yet)
-        # TODO we need to remove these *only from own_vars* - they are not provided by us,
-        # but could have been provided as input (ex 3)
-        for v in self.orig_vars:
-            idx = ctu_fn.in_vars.index(v)
-            del ctu_fn.in_vars[idx]; del ctu_fn.in_args[idx]
 
         # create separ unif fn
         unif_fn = ctu_fn.clone()
@@ -565,15 +562,20 @@ class Unify:
         new_fn = self.gen._rule_fn_def(unif_fn.name, unif_fn.in_vars)
         self.gen._code.append(new_fn)
         
+        # update ctu fn in_vars, if needed (nested vars from ungr coll)
+        ctu_fn.in_vars.extend([ v for v in self.new_vars if v not in ctu_fn.in_vars ])
+        # these will all be references
+        ctu_fn.in_args = [ self.bld.ref(v) for v in ctu_fn.in_vars ]
+        
         fn_body = self.assns
         # add call to orig ctu to our unif fn body
-        fn_body.append(self.bld.stmt(self.gen._rule_fn_call(ctu_fn.name, [ self.bld.ref(v) for v in ctu_fn.in_vars ])))
+        fn_body.append(self.bld.stmt(self.gen._rule_fn_call(ctu_fn.name, ctu_fn.in_args)))
         
         # wrap fn body in if-stmt w/ unif conds
         if len(self.conds) > 0:
             fn_body = [ self.bld.iif(
                 self.bld.conj(self.conds), fn_body) ]
-        
+            
         self.bld.fn_body_stmts(new_fn, fn_body)
         
         # ugh, have to update lambda params
@@ -592,6 +594,7 @@ class Unify:
 
     def unify_coref(self, clause):
         orig_vars_pos = clause._recur_vars_pos()
+        # print("orig_vars_pos", orig_vars_pos)
         orig_vars = [ v for _, v in orig_vars_pos ]
         
         # whew, no need to unify!
@@ -603,19 +606,21 @@ class Unify:
         # print("dupls", dupls)
         
         # per triple spo, get unique names for dupl var occ (if needed, also for coll w/ dupl)
-        # ex: { ?x :p ?x } = 0 -> ( x, x_s ), 2 -> ( x, x_o ) ; ex: { :a :p ( ?x ?x ) } = 2 -> ( None, coll_o )
+        # ex: { ?x :p ?x } = 0 -> ( x, x_s ), 2 -> ( x, x_o ) ; ex: { :a :p ( ?x ?x ) } = 2 -> ( x, coll_o )
         spo_var_occ = { self.__get_spo_pos(pos): (var, self.__get_spo_varname(pos, var)) for pos, var in orig_vars_pos if var in dupls }
         # print("spo_var_occ", spo_var_occ)
         
         # per dupl var occ, need extra in_arg and in_var for unif fn
         # (so we can manually unify them in unif fn)
-        for spo, (orig_var, occ) in spo_var_occ.items():
+        for spo, (_, occ) in spo_var_occ.items():
             arg = self.gen._triple_val('t', Triple.spo[spo]) if self.find_data else self.bld.ref(occ)
-            self.__unify_entry(arg, occ, [orig_var])
+            self.__unify_entry(arg, occ)
             # print(arg, "->", occ)
         
         if not self.find_data:
-            # if needed, update lambda params as well
+            # update lambda params
+            # match rule will return values for each of its vars
+            # "catch" those values with our dupl var occ
             lmbda_vars = MultiDict()
             for spo, (orig_var, occ) in spo_var_occ.items():
                 # map orig_var to its occ's (will be replaced by latter)
@@ -627,7 +632,7 @@ class Unify:
         # per orig (dupl) var, get positions of its occ's
         # ex: { ?x :p ?x } = x -> ((0, <triple>)), ((2, <triple>))
         # ex: { :a :p ( ?x ?x ) } = x -> ((2, <triple>), (0, <coll>)), ((2, <triple>), (1, <coll>))
-        origvar_pos = MultiDict((orig_var, pos) for pos, orig_var in orig_vars_pos)
+        origvar_pos = MultiDict((orig_var, pos) for pos, orig_var in orig_vars_pos if orig_var in dupls)
         
         for orig_var in set(origvar_pos.keys()):
             # per orig (dupl) var, for each occ, get in_var & pos
@@ -644,7 +649,8 @@ class Unify:
         return pos[0][0]
 
     def __get_spo_varname(self, pos, var):
-        return self.__varname(pos, var) if len(pos) == 1 else self.__col_varname(pos)
+        i = self.__get_spo_pos(pos)
+        return self.__varname(i, var) if len(pos) == 1 else self.__col_varname(i)
 
     def __unify_coref_var(self, origvar, entries):
         ops = []
@@ -677,14 +683,13 @@ class Unify:
             # for each ungr coll, need extra in_arg and in_var for unif fn
             var = self.__col_varname(i)
             arg = self.gen._triple_val('t', Triple.spo[i])
-            self.__unify_entry(arg, var, coll._recur_vars())
+            self.__unify_entry(arg, var)
             
             # add code to unify collection from the data (conds, assns)
             self.__unify_ungr_coll(coll, [], self.bld.ref(var), clause_fn, self.conds, self.assns)
     
     def unify_coll_match(self, clause_coll, match_var, clause_fn):
-        # TODO need extra in_arg and in_var for unif fn?
-        self.__unify_entry(self.bld.ref(match_var.name), match_var.name, match_var.name)
+        self.__unify_entry(self.bld.ref(match_var.name), match_var.name)
         
         # add code to unify collection from data (conds, assns)
         self.__unify_ungr_coll(clause_coll, [], self.bld.ref(match_var.name), clause_fn, self.conds, self.assns)
@@ -716,16 +721,19 @@ class Unify:
                     self.__unify_ungr_coll(clause_el_val, cur_pos, match_el_expr, clause_fn, conds, assns)
                 
                 case term_types.VAR:
+                    varname = clause_el_val.name
                     # TODO (long-term) only need assignment is var is None
                     # either var was not provided, or it is equal to value from match_coll
-                    if clause_el_val.name in clause_fn.avail_vars:
+                    if varname in clause_fn.avail_vars:
                         conds.append(self.bld.disj([
-                            self.bld.comp(self.bld.ref(clause_el_val.name), 'is', self.bld.cnst(None)),
-                            self.bld.comp(self.bld.ref(clause_el_val.name), 'eq', match_el_expr) #self.gen._term_val(match_el_expr))
+                            self.bld.comp(self.bld.ref(varname), 'is', self.bld.cnst(None)),
+                            self.bld.comp(self.bld.ref(varname), 'eq', match_el_expr) #self.gen._term_val(match_el_expr))
                         ]))
                     # assign match_coll value to clause var
                     assns.append(
-                        self.bld.assn(clause_el_val.name, match_el_expr)) #self.gen._term_val(match_el_expr)))
+                        self.bld.assn(varname, match_el_expr)) #self.gen._term_val(match_el_expr)))
+                    # new var that we will now provide to orig ctu fn
+                    self.__unify_found_var(varname)
                     
                 case _:
                     # add comparison condition for concrete values
