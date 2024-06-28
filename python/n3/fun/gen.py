@@ -589,6 +589,7 @@ class Unify:
             match_fn.get_vars = list(dict.fromkeys(match_fn.get_vars)) # may have duplicates
             get_vars = []
             # expand each dupl var with unique occ names
+            # together, will constitute all vars given by match fn
             for v in match_fn.get_vars:
                 if v in self.lmbda_vars:
                     get_vars.extend(self.lmbda_vars.getall(v))
@@ -596,6 +597,7 @@ class Unify:
                     get_vars.append(v)
             match_fn.get_vars = get_vars
         
+        # will be called by 'regular' code!
         return unif_fn
     
     # START unify_coref

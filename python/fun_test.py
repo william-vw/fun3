@@ -36,23 +36,40 @@ def result_fn(*args):
 
 
 def fun3():
-# # ex 1
+# # - test 1
+# # (straightforward, non-recursive rules)
+
+# # (1) only query data
 #     rules =  """@prefix : <http://example.org/> . 
-# # -
+# { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
+# """
+
+# # (2) call other rules (same level of specificity)
+#     rules =  """@prefix : <http://example.org/> . 
 # { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
 # { ?pe a :Person } <= { ?pe :ability :think } .
 # { ?pe a :Belgian } <= { ?pe :ability :drink } .
-# # -
-# # { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
-# # { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
-# # -
-# # { ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
-# # { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
-# # - TODO deal with recursion properly
-# # { ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
-# #  { ?pe a :Person } <= { ?pe :ability :think } .
-# #  { ?p a ?t } <= { ?p :name "Socrates" } .
 # """
+
+# # (3) called rule more general than calling rule
+#     rules =  """@prefix : <http://example.org/> . 
+# { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
+# { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
+# """
+
+# # (4) calling rule more general than called rule
+#     rules =  """@prefix : <http://example.org/> . 
+# { ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
+#  { ?pe a :Person } <= { ?pe :ability :think } .
+# """
+
+# # (5) same level of specificity; all clauses have 2 variables
+#     rules =  """@prefix : <http://example.org/> . 
+# { ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
+# { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
+#  { ?p a ?t } <= { ?p :name "Socrates" } . # t not used in body
+# """
+
 #     data = """@prefix : <http://example.org/> . 
 # :will a :Person ; :address :addr1 . :addr1 :country "CA" .
 # :ed :ability :think ; :address :addr1 ; :describedAs :Person .
@@ -60,9 +77,12 @@ def fun3():
 # :dor :ability :think ; :address :addr2 ; :describedAs :German .
 # :soc :name "Socrates" ; :address :addr1 .
 # """
+
 #     call = lambda data, state, rule_fn: rule_fn(None, data, state, result_fn)
 
-# # ex 2
+# # - test 2
+# # (simple example of recursive rules)
+
 #     rules =  """@prefix log: <http://www.w3.org/2000/10/swap/log#> .
 # @prefix : <http://example.org/> . 
 # { ?desc :ancestor ?anc } <= { ?desc :parent ?parent . ?parent :ancestor ?anc } .
@@ -73,19 +93,23 @@ def fun3():
 # """
 #     call = lambda data, state, rule_fn: rule_fn(None, None, data, state, result_fn)
 
-# # ex 3
+# # - test 3
+# # (list unification (nested); only querying data)
+
 #     rules =  """@prefix : <http://example.org/> . 
 # { ?z :aliasNames ( ?xn ?yn ) } <= { ( ?z ) :alias ( ( ?x ) ( ?y ?q ) ) . ?x :name ?xn . ?y :name ?yn } .
 # """
 #     data = """@prefix : <http://example.org/> . 
-# # :wil :alias ( :edw :elb ) . 
 # ( :wil ) :alias ( ( :edw ) ( :elb :wil ) ) .  # ( ( :edw ) :elb )
 # :edw :name "edward" . :elb :name "elbert" .
 # """
 #     call = lambda data, state, rule_fn: rule_fn(None, None, None, data, state, result_fn)
 
-# # ex 4
+# # - test 4
+# # (list unification; refer to other rules; calling, called rules have similar lists)
+
 #     rules =  """@prefix : <http://example.org/> . 
+# # (partially concrete list in calling rule; compile-time check on :edw)
 # { ?z :aliasNames ( ?xn ) } <= { ?z :aliasPair ( :edw ?x ) . ?x :name ?xn } .
 # { ?z :aliasPair ( :edw :elb ) } <= { ?z :alias ( :edw :elb ) } .
 # # { ?z :aliasPair ( :edw ?a ) } <= { ?z :alias ( :edw ?a ) } .
@@ -97,7 +121,8 @@ def fun3():
 # """
 #     call = lambda data, state, rule_fn: rule_fn(None, None, data, state, result_fn)
 
-# # ex 5
+# # - test 5
+# # (list unification; called rule has list where calling rule has var)
 #     rules =  """@prefix : <http://example.org/> . 
 # { ?z :aliasNames ?a } <= { ?z :aliasPair ?a } .
 # { ?z :aliasPair ( ?x ?y ) } <= { ?z :alias ( ?x ?y ) } .
@@ -108,7 +133,8 @@ def fun3():
 # """
 #     call = lambda data, state, rule_fn: rule_fn(None, None, data, state, result_fn)
 
-# # ex 6
+# # - test 6
+# # (list unification (nested); called rule has sublist where calling rule has var)
 #     rules =  """@prefix : <http://example.org/> . 
 # { ?z :aliasNames ( ?a ?x ) } <= { ?z :aliasPair ( ?a ?x ) } .
 # { ?z :aliasPair ( ( ?x ?y ) ?k ) } <= { ?z :alias ( ?x ?y ) } .
@@ -119,7 +145,8 @@ def fun3():
 # """
 #     call = lambda data, state, rule_fn: rule_fn(None, None, None, data, state, result_fn)
 
-# # ex 7
+# # - test 7
+# # (list unification (nested); calling rule has sublist where called rule has var)
 #     rules =  """@prefix : <http://example.org/> . 
 # { ?z :aliases ( ?x ?y ) } <= { ?z :aliasPair ( ( ?x ?y ) ?k ) . ?x :name ?xn . ?y :name ?yn } .
 # { ?z :aliasPair ( ?a ?k ) } <= { ?z :alias ( ?a ?k ) } .
@@ -130,7 +157,21 @@ def fun3():
 # """
 #     call = lambda data, state, rule_fn: rule_fn(None, None, None, data, state, result_fn)
 
-# # ex 8
+# # - test 8
+# # (co-referencing; simple triple)
+#     rules =  """@prefix : <http://example.org/> . 
+# { ?x :lonerName ?xn } <= { ?x :onlyFriend ?x . ?x :name ?xn } .
+# { ?x :onlyFriend ?y } <= { ?x :blah ?y } .
+# """
+#     data = """@prefix : <http://example.org/> . 
+# :edw :onlyFriend :edw .
+# :elb :blah :elb .
+# :edw :name "edw" . :elb :name "elb" .
+# """
+#     call = lambda data, state, rule_fn: rule_fn(None, None,  data, state, result_fn)
+
+# # - test 9
+# # (co-referencing; lists)
 #     rules =  """@prefix : <http://example.org/> . 
 # { ?z :aliases ( ?xn ) } <= { ?z :aliasPair ( ?x ?x ) . ?x :name ?xn } .
 # # { ?z :aliasPair ( ?a ?k ) } <= { ?z :alias ( ?a ?k ) } .
@@ -140,18 +181,6 @@ def fun3():
 # :wil :name "wil" . :edw :name "edward" . :elb :name "elbert" .
 # """
 #     call = lambda data, state, rule_fn: rule_fn(None, None, data, state, result_fn)
-
-# # ex 9
-#     rules =  """@prefix : <http://example.org/> . 
-# { ?x :lonerName ?xn } <= { ?x :onlyFriend ?x . ?x :name ?xn } .
-# # { ?x :onlyFriend ?y } <= { ?x :blah ?y } .
-# """
-#     data = """@prefix : <http://example.org/> . 
-# :edw :onlyFriend :edw .
-# :elb :blah :elb .
-# :edw :name "edw" . :elb :name "elb" .
-# """
-#     call = lambda data, state, rule_fn: rule_fn(None, None,  data, state, result_fn)
 
 
     # parse
