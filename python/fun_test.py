@@ -36,13 +36,13 @@ def result_fn(*args):
 
 
 def fun3():
-# # - test 1
-# # (straightforward, non-recursive rules)
+# - test 1
+# (straightforward, non-recursive rules)
 
-# # (1) only query data
-#     rules =  """@prefix : <http://example.org/> . 
-# { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
-# """
+# (1) only query data
+    rules =  """@prefix : <http://example.org/> . 
+{ ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
+"""
 
 # # (2) call other rules (same level of specificity)
 #     rules =  """@prefix : <http://example.org/> . 
@@ -70,15 +70,15 @@ def fun3():
 #  { ?p a ?t } <= { ?p :name "Socrates" } . # t not used in body
 # """
 
-#     data = """@prefix : <http://example.org/> . 
-# :will a :Person ; :address :addr1 . :addr1 :country "CA" .
-# :ed :ability :think ; :address :addr1 ; :describedAs :Person .
-# :el :ability :drink ; :address :addr1 ; :describedAs :Belgian .
-# :dor :ability :think ; :address :addr2 ; :describedAs :German .
-# :soc :name "Socrates" ; :address :addr1 .
-# """
+    data = """@prefix : <http://example.org/> . 
+:will a :Person ; :address :addr1 . :addr1 :country "CA" .
+:ed :ability :think ; :address :addr1 ; :describedAs :Person .
+:el :ability :drink ; :address :addr1 ; :describedAs :Belgian .
+:dor :ability :think ; :address :addr2 ; :describedAs :German .
+:soc :name "Socrates" ; :address :addr1 .
+"""
 
-#     call = lambda data, state, rule_fn: rule_fn(None, data, state, result_fn)
+    call = lambda data, state, rule_fn: rule_fn(None, data, state, result_fn)
 
 # # - test 2
 # # (simple example of recursive rules)

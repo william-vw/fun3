@@ -160,12 +160,45 @@ class BlankNode:
     
 class Container:
     
-    # implemented by subclasses
+    # (implemented by subclasses)
     def _iter_recur_atomics(self, pos):
+        """
+        Recursively yields all (nested) atomic elements in the container.
+        The function calls _iter_atomic for each element in the container, which:
+        - If the element is itself a collection, calls this function on it recursively
+        - Else, returns the element.
+        
+        Args:
+            pos (tuple): series of parent containers of element (here, current object)
+                structure:
+                    ( ..., ( idx_i, container_i ), ... ): 
+                        container_i: a parent container of element
+                        idx_i: index of element in container_i
+            
+        Yields:
+            tuple:
+                0: pos (tuple)
+                1: term: (nested) atomic element
+        """
         pass
     
     # (called by subclasses)
+    # iterate over the atomic elements of this container
     def _iter_atomic(self, pos, term):
+        """
+        Utility function for iterating over container elements. Given an element:
+        - If the element is itself a collection, call the _iter_recur_atomics function on it recursively
+        - Else, return the element.
+        
+        Args:
+            pos (tuple): series of parent containers of element
+            term: the container element
+        
+        Yields:
+            tuple:
+                0: pos (tuple): series of parent containers of element
+                1: term: (nested) atomic element
+        """
         match term.type():
             case term_types.COLLECTION: yield from term._iter_recur_atomics(pos)
             case term_types.GRAPH: yield from term._iter_recur_atomics(pos)
@@ -191,15 +224,46 @@ class VarContainer(Container):
     #     self.__vars.update(vars)
         
     def _rename_recur_vars(self, ren_vars):
+        """
+            Renames all (nested) variables in this VarContainer.
+            
+            Args:
+                ren_vars (dictionary): keys = variables to rename; values = new variable names
+        """
         for pos, term in self._iter_recur_atomics(()):
             if term.type() == term_types.VAR and term.name in ren_vars: 
+                # get closest parent container & index of var therein
                 parent = pos[-1][1]; i = pos[-1][0]
+                # replace with ≠variable with new name
                 parent[i] = Var(ren_vars[term.name])
     
     def _vars(self,get_name=True):
+        """
+        Returns a list of all non-nested variables in this VarContainer.
+        
+        Args:
+            get_name: whether we are interested in var names or the vars themselves.
+            
+        Returns:
+            list:
+                0: index of var in triple
+                1: non-nested var or its name
+        """
+        
         return [ (i, (v.name if get_name else v)) for i, v in enumerate(self) if v.type() == term_types.VAR ]     
        
     def _recur_vars(self,get_name=True):
+        """
+        Returns a list of all (nested) variables in this VarContainer. 
+        
+        Args:
+            get_name: whether we are interested in var names or the vars themselves.
+            
+        Returns:
+            list:
+                (nested) var or its name
+        """
+        
         # return self.__vars
         
         # return [ (v.name if get_name else v) for _, _, v in self._iter_recur_atomics() if v.type() == term_types.VAR ]
@@ -209,9 +273,34 @@ class VarContainer(Container):
         return [ v for _, v in self.__yield_recur_vars(get_name) ]
     
     def _recur_vars_pos(self,get_name=True):
+        """
+        Returns a list of all (nested) variables and their positions in this VarContainer. 
+        
+        Args:
+            get_name: whether we are interested in var names or the vars themselves.
+            
+        Returns:
+            list:
+                tuple:
+                    0: pos (tuple): series of parent containers of element
+                    1: (nested) var or its name
+        """
+        
         return [ (pos, v) for pos, v in self.__yield_recur_vars(get_name) ]
     
     def __yield_recur_vars(self, get_name):
+        """
+        Recursively yields all (nested) variables in this VarContainer.
+        
+        Args:
+            get_name: whether we are interested in var names or the vars themselves.
+            
+        Yields:
+            tuple:
+                0: pos (tuple): series of parent containers of element
+                1: (nested) var or its name
+        """
+        
         for pos, v in self._iter_recur_atomics(()):
             if v.type() == term_types.VAR: yield (pos, (v.name if get_name else v))
 

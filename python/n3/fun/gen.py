@@ -30,12 +30,14 @@ class GenPython:
         self.__fn_prefix = "rule"
         self.__var_cnt = 0
         
+        # parameters that each function will have
         self.__inner_fn_params = [ 'data', 'state', 'ctu' ]
         self.__rule_fn_params = [ 'state' ]
         self.__inner_fn_args = [self.bld.ref(v) for v in self.__inner_fn_params]
         self.__rule_fn_args = [self.bld.ref(v) for v in self.__rule_fn_params]
 
     def gen_python(self, rules):
+        # 
         self.__process_rules(rules)
 
         return self.__gen_rule_mod(rules)
@@ -52,7 +54,16 @@ class GenPython:
     def __gen_imports(self):
         return self.bld.imports('n3.terms', ['Iri', 'Var', 'Literal', 'Collection', 'term_types'])
 
-    def __gen_rule(self, rule_no, head, body):                
+    def __gen_rule(self, rule_no, head, body):
+        """
+        Generates all functions to implement the rule with given rule_no, head & body.
+        
+        Args:
+            rule_no: the rule's unique number (used as basis for function names for body tp's). 
+            head: the rule's head graph.
+            body: the rule's body graph.
+        """
+        
         in_vars = head._recur_vars()
         first_fn = RuleFn(in_vars=in_vars)
         
@@ -60,7 +71,8 @@ class GenPython:
         # (will update clause_fn & its in_vars)
         # self.__unify_head.unify(head, body, first_fn)
         
-        # keeps track of vars in subsequent clauses
+        # keeps track of vars for subsequent clauses
+        # initially, vars in rule head; updated with vars from subsequent clauses
         self.__cur_vars = first_fn.in_vars
 
         if body.type() == term_types.GRAPH:
@@ -71,6 +83,17 @@ class GenPython:
             self.__gen_clause(rule_no, head, None, 0, first_fn)
 
     def __gen_clause(self, rule_no, head, body, clause_no, clause_fn):
+        """
+        Generates a single function to implement the body tp identified by clause_no.
+        
+        Args:
+            rule_no: the rule's unique number (used as basis for function names for body tp's). 
+            head: the rule's head graph.
+            body: the rule's body graph.
+            clause_no: the body tp's index in the body graph.
+            clause_fn: for the first body tp, its function (will have been unified with rule head.)
+        """
+        
         # incoming params representing vars
         in_vars = self.__cur_vars
         
@@ -88,7 +111,7 @@ class GenPython:
                                                                     else [ self.bld.pss() ])
             return
                 
-        # current clause
+        # current clause (triple)
         clause = body.model.triple_at(clause_no)
         
         # ADT representing ctu fn (i.e., fn to be called after clause fn)
@@ -103,9 +126,9 @@ class GenPython:
             # params to pass to next clause fn; unique(prior vars + own vars)
             ctu_fn.in_vars = list(dict.fromkeys(self.__cur_vars + own_vars)) # (keep order)
         else:
-            # only pass var needed by original ctu fn (head vars!)
+            # only pass vars needed by original ctu fn (head vars!)
             ctu_fn.in_vars = head._recur_vars()
-         
+        
         # keep track of vars in subsequent clauses
         if not ctu_fn.is_last:
             # (recur_vars; all nested vars have to be passed as well; happens in unify op)
@@ -122,6 +145,16 @@ class GenPython:
     # START find data
     
     def __find_data_call(self, head, clause, clause_fn, ctu_fn):
+        """
+        Generates a call to find triples matching the body tp (clause parameter).
+        
+        Args:
+            head: the rule's head graph.
+            body: the rule's body graph.
+            clause: the body tp.
+            clause_fn: the function representing the body tp.
+        """
+        
         unify = Unify(self, self.bld, find_data=True)
         
         # if needed, unify co-ref vars in clause
@@ -152,6 +185,9 @@ class GenPython:
         
         # ctu vars ; ex: { 'p' : 's ', 'a': 'o' }
         clause_vars = { v: Triple.spo[i] for i, v in clause._vars(get_name=True) }
+        # for each expected argument for the ctu fn (ctu_fn.in_vars),
+        # if found in the clause's own vars, then return the corresponding term in the matched triple
+        # if not, simply pass on this function's own argument
         ctu_fn.in_args = [self._triple_val('t', clause_vars[v]) if v in clause_vars else self.bld.ref(v)
                      for v in ctu_fn.in_vars]
         
@@ -163,6 +199,7 @@ class GenPython:
         ctu_call = self._rule_fn_call(ctu_fn.name, ctu_fn.in_args)
         
         # then, create lambda with as body the ctu call
+        # will accept the triple and the state
         lmbda = self.bld.lmbda(['t', 'state'], ctu_call)
 
         # finally, create data.find call
@@ -173,11 +210,21 @@ class GenPython:
         self.bld.fn_body_stmt(
             clause_fn.fn, self.bld.stmt(search_call))
         
-    # END find triple    
+    # END find triple
     
     # START match call
     
     def __match_rule_calls(self, head, clause, clause_fn, ctu_fn):
+        """
+        Generates a call to find triples matching the body tp (clause parameter).
+        
+        Args:
+            head: the rule's head graph.
+            body: the rule's body graph.
+            clause: the body tp.
+            clause_fn: the function representing the body tp.
+        """
+        
         # print("matching:", clause)
         matches = self.__matching_rules(clause)
 
@@ -192,6 +239,7 @@ class GenPython:
             #     continue;
             
             # arguments to be passed to ctu (may be updated below)
+            # by default, these are simply references to input vars
             ctu_fn.in_args = [ self.bld.ref(p) for p in ctu_fn.in_vars ]
             
             match_fn = MatchRuleFn()
@@ -215,7 +263,7 @@ class GenPython:
             ctu_call = self._rule_fn_call(ctu_fn.name, ctu_fn.in_args)
 
             # lambda params: vars we want from match rule fn (+ extra params)
-            lmbda_params = match_fn.get_vars + ['state' ]
+            lmbda_params = match_fn.get_vars + [ 'state' ]
             lmbda = self.bld.lmbda(lmbda_params, ctu_call)
 
             # match args: args we pass to match fn call
@@ -257,10 +305,10 @@ class GenPython:
         if match_r.is_concrete():
             if clause_r.is_concrete():
                 if clause_r.is_grounded() and match_r.is_grounded() and clause_r != match_r:  # compile-time check
-                    print("compile-time check: nok")
+                    # print("compile-time check: nok")
                     return False
             else:
-                # add runtime check, if possible
+                # add runtime check, if needed
                 if clause_r.name in clause_fn.avail_vars:
                     cmp1 = self.bld.comp(self._var_ref(clause_r.name), 
                                                 'is', self.bld.cnst(None))
@@ -268,20 +316,23 @@ class GenPython:
                     match_fn.cond.append(self.bld.disj([cmp1, cmp2]))
 
                 # clause has variable; match rule has concrete value
-                # if successful, pass concrete value to ctu, if needed
                 if clause_r.name in ctu_fn.in_vars:
+                    # pass matching function's concrete value for variable to ctu, if needed
                     ctu_fn.in_args[ctu_fn.in_vars.index(clause_r.name)] = self._val(match_r)
         
-        else: # pass data as arguments; get results as lambda parameters
+        else: 
+            # matching rule head has term as a var, so it will be a fn parameter there
             if clause_r.is_concrete():
-                match_fn.get_vars.append(match_r.name)
+                # simply pass data as argument
                 match_fn.in_args.append(self._val(clause_r))
+                # var result will always be passed by that fn (even if we don't need it, like here)
+                match_fn.get_vars.append(match_r.name)
             else:
-                # always get value from match clause / find call; 
-                # either we gave None, or it is the same as what we gave
-                match_fn.get_vars.append(clause_r.name)
-                # when given as var, can pass it
+                # simply pass the var as an argument, if needed
                 match_fn.in_args.append(self._var_ref(clause_r.name) if clause_r.name in clause_fn.avail_vars else self.bld.cnst(None))
+                # var result will always be passed by that fn (we need it here, if we passed None above)
+                 # trick to minimize effort; ctu_fn already uses clause_r.name in its args
+                match_fn.get_vars.append(clause_r.name)
                     
         return True
     
@@ -346,6 +397,20 @@ class GenPython:
         return ret
 
     def __process_rules(self, rules):
+        """
+        Pre-process the given set of rules. 
+        It renames all variables per rule so they are unique across all rules to simplify matters.
+        It creates an index (__pred_idx) that maps head triple predicates to function names.
+        
+        Args:
+            rules (collection): set of triples representing rules 
+        """
+        
+        # map of rule predicates to functions (FnIdxEntry) implementing them.
+        # keys:
+        #   - 'var': for triples with variable predicate
+        #   - 'all': all functions
+        #   - <uri>: for triples with concrete predicate
         self.__pred_idx = MultiDict()
 
         i = 0
@@ -355,14 +420,17 @@ class GenPython:
             # giving up & just giving all vars unique names
             self.__rename_vars_unique(r.s, r.o)
             
+            # top-down rules need heads with len 1
             if r.s.model.len() != 1:
                 print(f"warning: cannot use rule, length of head > 1 ({r})")
                 del rules[i]; continue
+            # only top-down rules
             if r.p.iri == n3Log['implies']:
                 print(f"warning: cannot use bottom-up rule ({r})")
                 del rules[i]; continue
 
             entry = FnIdxEntry(r, self._fn_name(i, 0))
+            # iterate over all triples in head (just one really)
             for t in r.s.model.triples():
                 if t.p.type() == term_types.VAR:
                     self.__pred_idx.add('var', entry)
@@ -388,6 +456,17 @@ class GenPython:
     # helper functions
     
     def _fn_name(self, rule_no, clause_no):
+        """
+        Generates unique function name for a rule head or body triple
+        
+        Args:
+            rule_no: rule number
+            clause_no: 0 if rule head, > 0 if body triple ??
+            
+        Returns:
+            Unique function name
+        """
+        
         if clause_no == 0:
             return f"{self.__fn_prefix}_{rule_no}"
         else:
@@ -442,26 +521,38 @@ class GenPython:
         )
     
     def __rename_vars_unique(self, head, body):
-        triple_it = chain(head._recur_vars(), body._recur_vars()) \
-            if body.type() == term_types.GRAPH else head._recur_vars()
+        # all variables (possibly duplicate) in head & body
+        triple_it = \
+                chain(head._recur_vars(), body._recur_vars()) \
+            if body.type() == term_types.GRAPH else \
+                head._recur_vars()
+        # use dict to have 1 entry per variable
+        # (head & body can share same variables)
         unique_vars = { v:0 for v in triple_it }
+        # for each unique var in head+body, assign unique value "v_i" based on var count
         unique_vars = { v:f"{v}_{i}" for v,i in zip(unique_vars, range(self.__var_cnt, len(unique_vars)+self.__var_cnt)) }
         
+        # rename vars in head & body
         head._rename_recur_vars(unique_vars)
         if body.type() == term_types.GRAPH:
             body._rename_recur_vars(unique_vars)
         
+        # update var count
         self.__var_cnt += len(unique_vars)
         
 
 class RuleFn:
+    """
+    A function implementing a body triple from a rule.
     
-    # name (string)
-    # in_vars (strings; incoming params representing vars)
-    # in_args (ast; arguments for in_vars)
-    # fn (ast)
-    # is_last (bool)
-    # body
+    Attributes:
+        name (str): function name
+        in_vars (list of str): incoming params representing vars
+        in_args (list of ast): argument ast's for in_vars
+        fn (ast): corresponding ast object
+        is_last (bool): whether the body triple is the last one in the body
+    """
+    
     
     def __init__(self, name=None, in_vars=None, in_args=None, fn=None, is_last=False):
         self.name = name
@@ -488,6 +579,16 @@ class RuleFn:
     
 class MatchRuleFn:
     
+    """
+    Call of a function that was matched to a rule body triple pattern (btp).
+    
+    Attributes:
+        cond (list): potential conditions to be checked before function call should be made.
+        in_args (list): arguments (ast's) that will be passed to the function call.
+        get_vars (list): parameters that will be received from the called function 
+            (i.e., the function will itself call a ctu with arguments for these parameters)
+    """
+    
     # conds (runtime conditions before calling match rule fn)
     # in_args (args to provide to match fn's vars)
     # get_vars (vars to get from match rule fn; will serve as lambda params)
@@ -498,6 +599,14 @@ class MatchRuleFn:
         self.get_vars = []
 
 class FnIdxEntry:
+
+    """
+    An index entry for a function related to a rule head or a body triple.
+    
+    Attributes:
+        rule: entire rule (rule head) or triple (body triple)
+        fn_name (str): function name
+    """
 
     # rule (triple)
     # fn_name
@@ -585,6 +694,8 @@ class Unify:
         self.bld.fn_body_stmts(new_fn, fn_body)
         
         # ugh, have to update lambda params
+        # TODO replace this with simply using var names from _called rule_
+        # (no problem with var name clashes in lambda params)
         if not self.find_data:
             match_fn.get_vars = list(dict.fromkeys(match_fn.get_vars)) # may have duplicates
             get_vars = []
