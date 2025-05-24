@@ -30,7 +30,7 @@ class Model:
         #         # print("t -", t)
         #         ctu(t, state)
         
-        needle = [ True ] * len(self.df)
+        needle = pd.Series([ True ] * len(self.df))
         if s is not None:
             needle &= self.df['s']==s
         if p is not None:

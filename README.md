@@ -1,6 +1,28 @@
 # fun3
 Stands for **fun**ctional programming for **N3**, or, alternatively, **fun** with **N3**.
 
+# UnifyFlow
+
+For a btp, 3 terms will need to be unified.
+for find: 3 match terms (mterms) are variables
+for fn: 3 mterms from htp
+
+var either exists (param) or is new
+
+if is_concrete:
+   if mterm is concrete:
+        return term == match term
+    else:
+        use myself to unify mterm
+
+else if is_var:
+        use mterm to unify myself
+        use mterm to unify myself
+
+use x to unify y
+    ...
+
+
 # General process
 
 ## Function map
@@ -67,7 +89,7 @@ This will determine which arguments will be passed _to_ the function, and how ar
 
 Re the "passing back": we will pass a ctu to the matching function. If the matching function is successful, it will call this ctu with values for rule head variables. (So, even if we don't need these values, we still need our ctu to accept them.) This ctu will itself call either the next btp's function, or the final_ctu.
 
-If the btp term is a variable: note that (btp.1) it is possible that it was given as a function parameter, and (btp.2) we need a value for it here, which will be given by the matching function.
+If the btp term is a variable: note that (btp.1) we need a value for it here, which will be given by the matching function, and (btp.2) it is possible that it was given as a function parameter.
 If the htp term is a variable: note that we need to pass a value for it, and the matching function will pass a value back for it. If our btp term was also a variable, then we will need this value.
 
 (Note: most of these are examples of unification.)
@@ -75,4 +97,4 @@ If both terms are concrete, we simply compare them; if they are not equal, we do
 If the btp term is a variable:
     If the htp term is also a variable: if the btp's variable was given as a function parameter (btp.1), then pass the corresponding argument; else, pass None. Also, the value passed back from the matching function is now a value for the btp variable (btp.2). 
     If the htp term is instead concrete: if the btp's variable was given as a function parameter (btp.1), then the corresponding argument has to be compared with the concrete htp term. A condition is added that performs this check (at runtime) before calling the function. Also, the concrete htp term is now a value for the btp variable (btp.2); if the btp variable is a parameter for this function's own ctu, then we pass this htp term as an argument for it.
-If the btp term is instead concrete, but the htp term is a variable, then we simply pass the former as an argument. The matching function will still pass a value back for the variable, but we can ignore it (it will be the same as our concrete term that we passed).
+If the btp term is instead concrete, but the htp term is a variable, then we simply pass the former as an argument. The matching function will still pass a value back for the variable, but we can ignore it (it will/should be the same as our concrete term that we passed).

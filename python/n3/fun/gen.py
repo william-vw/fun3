@@ -119,7 +119,7 @@ class GenPython:
         is_last = (clause_no == body.model.len() - 1)
         ctu_fn = RuleFn(name=(self._fn_name(rule_no, clause_no+1) if not is_last else 'ctu'), is_last=is_last)
         
-        # vars occurring in clause
+        # vars occurring in clause (non-recursively)
         own_vars = [ v for _, v in clause._vars() ]
         
         if not ctu_fn.is_last:
@@ -317,22 +317,25 @@ class GenPython:
 
                 # clause has variable; match rule has concrete value
                 if clause_r.name in ctu_fn.in_vars:
-                    # pass matching function's concrete value for variable to ctu, if needed
+                    # pass matching function's value for variable to ctu
                     ctu_fn.in_args[ctu_fn.in_vars.index(clause_r.name)] = self._val(match_r)
         
         else: 
             # matching rule head has term as a var, so it will be a fn parameter there
+            
+            # var result will always be passed by that fn (even if we don't need it)
+            match_fn.get_vars.append(match_r.name) # use same var name in lambda
             if clause_r.is_concrete():
                 # simply pass data as argument
                 match_fn.in_args.append(self._val(clause_r))
-                # var result will always be passed by that fn (even if we don't need it, like here)
-                match_fn.get_vars.append(match_r.name)
+                # (here, we don't need var result)
             else:
                 # simply pass the var as an argument, if needed
                 match_fn.in_args.append(self._var_ref(clause_r.name) if clause_r.name in clause_fn.avail_vars else self.bld.cnst(None))
-                # var result will always be passed by that fn (we need it here, if we passed None above)
-                 # trick to minimize effort; ctu_fn already uses clause_r.name in its args
-                match_fn.get_vars.append(clause_r.name)
+                # here, we need var result from function; pass matching function's value for variable to ctu
+                ctu_fn.in_args[ctu_fn.in_vars.index(clause_r.name)] = self._var_ref(match_r.name)
+                # # trick; ctu_fn already uses clause_r.name in its args (but, won't work in other lang, so don't use it)
+                # match_fn.get_vars.append(clause_r.name)
                     
         return True
     

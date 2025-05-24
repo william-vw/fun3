@@ -39,36 +39,38 @@ def fun3():
 # - test 1
 # (straightforward, non-recursive rules)
 
-# (1) only query data
-    rules =  """@prefix : <http://example.org/> . 
-{ ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
-"""
+# # (1) only query data
+#     rules =  """@prefix : <http://example.org/> . 
+# { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
+# """
 
-# # (2) call other rules (same level of specificity)
+# # (2) call other rules (both terms concrete)
 #     rules =  """@prefix : <http://example.org/> . 
 # { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
 # { ?pe a :Person } <= { ?pe :ability :think } .
 # { ?pe a :Belgian } <= { ?pe :ability :drink } .
 # """
 
-# # (3) called rule more general than calling rule
+# # (3) call other rules (clause term concrete, match term var)
 #     rules =  """@prefix : <http://example.org/> . 
 # { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
 # { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
 # """
 
-# # (4) calling rule more general than called rule
+# # (4) call other rules (clause term var, match term concrete)
+# # ("label"; not doing recursion yet)
 #     rules =  """@prefix : <http://example.org/> . 
-# { ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
-#  { ?pe a :Person } <= { ?pe :ability :think } .
+# { ?p :label :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
+# { ?pe a :Person } <= { ?pe :ability :think } .
 # """
 
-# # (5) same level of specificity; all clauses have 2 variables
-#     rules =  """@prefix : <http://example.org/> . 
-# { ?p a :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
-# { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
-#  { ?p a ?t } <= { ?p :name "Socrates" } . # t not used in body
-# """
+# (5) same level of specificity; all clauses have 2 variables
+# ("label"; not doing recursion yet)
+    rules =  """@prefix : <http://example.org/> . 
+{ ?p :label :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
+{ ?p a ?t } <= { ?p :describedAs ?t } .
+{ ?p a ?t } <= { ?p :name "Socrates" } . # t not used in body
+"""
 
     data = """@prefix : <http://example.org/> . 
 :will a :Person ; :address :addr1 . :addr1 :country "CA" .
