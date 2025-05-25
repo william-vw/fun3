@@ -15,21 +15,6 @@ class GenError(Exception):
     pass
 
 
-class __UOps(Enum):
-	CMP_DIRECT = 1
-	CMP_RUNTIME = 2
-	PASS_ARG = 3
-	ASSN_DIRECT = 4
-	ASSN_RUNTIME = 5
-
-
-class __UOp:
-    def __init__(self, op, arg1, arg2):
-        self.op = op
-        self.arg1 = arg1
-        self.arg2 = arg2
-
-
 class __Rule:
     
     def __init__(self, no, head, body):
@@ -41,9 +26,14 @@ class __Rule:
     def add_cur_vars(self, vars):
         self.cur_vars = list(dict.fromkeys(self.cur_vars + vars)) 
 
-    def clause_runtime_val(self, var):
-        return var in self.cur_vars
+    def set_new_vars(self, new_vars):
+        self.new_vars = list(dict.fromkeys(self.cur_vars + new_vars)) 
 
+    def update_new_vars(self):
+        self.cur_vars = self.new_vars
+
+    def has_runtime_val(self, var):
+        return var in self.cur_vars
 
 class __Clause:
     
@@ -52,15 +42,18 @@ class __Clause:
         self.no = no
         self.tp = tp
         
+    def next_fn_name(self):
+        return __RuleFn.fn_name(self.rule.no, self.no + 1)
         
 class __RuleFn:
     
     __fn_prefix = "rule"
     
     def __init__(self, rule_no, clause_no):        
-        self.name = self.__gen_fn_name(rule_no, clause_no)
+        self.name = __RuleFn.fn_name(rule_no, clause_no)
 
-    def __gen_fn_name(self, rule_no, clause_no):
+    @staticmethod
+    def fn_name(rule_no, clause_no):
         """
         Generates unique function name for a rule head or body triple
 
@@ -73,11 +66,10 @@ class __RuleFn:
         """
 
         if clause_no == 0:
-            return f"{self.__fn_prefix}_{rule_no}"
+            return f"{__RuleFn.__fn_prefix}_{rule_no}"
         else:
-            return f"{self.__fn_prefix}_{rule_no}_{clause_no}"
+            return f"{__RuleFn.__fn_prefix}_{rule_no}_{clause_no}"
         
-
 
 class __FnIndex:
     
@@ -166,7 +158,8 @@ class __RuleProcessor_UniqueVars:
         # (head & body can share same variables)
         unique_vars = { v:0 for v in triple_it }
         # for each unique var in head+body, assign unique value "v_i" based on var count
-        unique_vars = { v:f"{v}_{i}" for v,i in zip(unique_vars, range(self.var_cnt, len(unique_vars)+self.var_cnt)) }
+        unique_vars = { v:f"{v}_{i}" for v,i in 
+                            zip(unique_vars, range(self.var_cnt, len(unique_vars)+self.var_cnt)) }
         
         # rename vars in head & body
         head._rename_recur_vars(unique_vars)
@@ -175,7 +168,38 @@ class __RuleProcessor_UniqueVars:
         
         # update var count
         self.var_cnt += len(unique_vars)
+
+
+class UOpTypes(Enum):
+    CMP = 1
+    PASS_ARG = 2
+    ASSN = 3
     
+class UOpRefs(Enum):
+    DIRECT = 1
+    RUNTIME = 2
+
+class UOp:
+    def __init__(self, type, ref, val1, val2):
+        self.type = type
+        self.ref = ref
+        self.val1 = val1
+        self.val2 = val2
+    
+    
+class FnCall:
+    
+    def __init__(self, fn_ref, params=None, args=None):
+        self.fn_ref = fn_ref
+        
+        self.args = {}
+        if params is not None:
+            for i in range(len(params)):
+                self.args[params[i]] = args[i]
+    
+    def set_params(self, params, default):
+        for param in params:
+            self.args[param] = default
     
 class GenPython:
 
@@ -222,51 +246,115 @@ class GenPython:
     def __gen_rule(self, rule):
         rule.add_cur_vars(rule.head._vars())
         
-        for i, tp in enumerate(rule.body.model.triples()):
-            clause = __Clause(rule, i, tp)
-            self.__gen_clause(clause)
-            
-            rule.add_cur_vars(tp._vars())
-            
-    def __gen_clause(self, clause):
-        self.__gen_find_data(clause)
-        self.__gen_find_rule(clause)
-    
-    def __gen_find_data(self, clause):
+        for no, tp in enumerate(rule.body.model.triples()):
+            clause = __Clause(rule, no, tp)
+            rule.set_new_vars(tp._vars())
+
+            if no == len(rule.body.model)-1:
+                ctu_call = self.__gen_ctu_call('final_ctu', rule.head._vars(get_name=True))
+            else:
+                ctu_call = self.__gen_ctu_call(clause.next_fn_name(), rule.new_vars)
+
+            self.__gen_clause(clause, ctu_call)
+
+            rule.update_cur_vars()
+
+    def __gen_ctu_call(self, name, params):
+        return FnCall(self.bld.ref(name), 
+            params=params, 
+            args=[self.bld.ref(p) for p in params])
+
+    def __gen_clause(self, clause, ctu_call):
+        clause_fn = self.bld.fn(clause.fn_name(), clause.rule.cur_vars())
+
+        clause_fn_body = chain(
+            self.__gen_find_data(clause, ctu_call),
+            self.__gen_find_rules(clause, ctu_call)
+        )
+
+        self.bld.fn_body_stmts(clause_fn, clause_fn_body)
+
+    def __gen_find_data(self, clause, ctu_call):
         match_tp = ( Var("s"), Var("p"), Var("o") )
-        self.__unify(clause, match_tp)
-    
-    def __gen_find_rule(self, clause):
-        # find matching rules
-        matches = self.__fn_idx.find(clause.tp)
+        fn_call = FnCall(self.bld.attr_ref('data', 'find'))
         
+        yield from self.__gen_match_call(clause, match_tp, fn_call, ctu_call)
+
+    def __gen_find_rules(self, clause, ctu_call):
+        matches = self.__fn_idx.find(clause.tp)
+            
         for match in matches:
             match_tp = match.rule.s.model.triples()[0]
-            self.__unify(clause, match_tp)
-    
-    def __unify(self, clause, match_tp):
+            fn_call = FnCall(self.bld.ref(match.name))
+            
+            yield from self.__gen_match_call(clause, match_tp, fn_call, ctu_call)
+                
+    def __gen_match_call(self, clause, match_tp, fn_call, ctu_call):
+        fn_call.set_params(match_tp._vars(get_name=True), default=self.bld.cnst(None))
+
+        if not self.__unify(clause, match_tp, fn_call, ctu_call):
+            return
+
+        ctu_args = ctu_call.get_args()
+        ctu_call_bld = self.bld.fn_call(ctu_call.ref, ctu_args)
+
+        lmbda_params = match_tp._vars(get_name=True)
+        lmbda_bld = self.bld.lmbda(lmbda_params, ctu_call_bld)
+
+        fn_args = fn_call.get_args()
+        fn_args.append(lmbda_bld)
+        fn_call_bld = self.bld.fn_call(fn_call.ref, fn_args)
+        
+        if len(fn_call.conds) > 0:
+            fn_call_bld = self.bld.iif(
+                self.bld.conj(fn_call.conds), fn_call_bld)
+
+        yield fn_call_bld
+
+    def __unify(self, clause, match_tp, fn_call, ctu_call):
         for pos in range(3):
             clause_term = clause.tp[pos]
-            clause_runtime_val = clause.rule.has_runtime_val(clause_term)
+            has_runtime_val = clause.rule.has_runtime_val(clause_term)
             match_term = match_tp[pos]
             
-            op = self.__unify_terms(clause_term, clause_runtime_val, match_term)
-            print(op)
+            op = self.__unify_terms(clause_term, has_runtime_val, match_term)
+
+            match (op.type):
+                case UOpTypes.CMP:
+                    if op.ref == UOpRefs.DIRECT:
+                        if clause_term != match_term:
+                            return False
+                    else:
+                        cmp1 = self.bld.comp(self.bld.ref(clause_term.name), 'is', self.bld.cnst(None))
+                        cmp2 = self.bld.comp(self.bld.ref(clause_term.name), 'eq', self._val(match_term))
+                        fn_call.conds.append(self.bld.disj([cmp1, cmp2]))    
+
+                case UOpTypes.PASS_ARG:
+                    if op.ref == UOpRefs.DIRECT:
+                        fn_call.args.assign(op.val2.name, self.bld._val(op.val1))
+                    else:
+                        fn_call.args.assign(op.val2.name, self.bld.bld.ref(op.val1.name))
+
+                case UOpTypes.ASSN:
+                    if op.ref == UOpRefs.DIRECT:
+                        ctu_call.args.assign(op.val2.name, self.bld._val(op.val1))
+                    else:
+                        ctu_call.args.assign(op.val2.name, self.bld.bld.ref(op.val1.name))
     
     def __unify_terms(self, clause_term, clause_runtime_val, match_term):
         if clause_term.is_concrete():
             if match_term.is_concrete():
-                return __UOp(__UOps.CMP_DIRECT, clause_term, match_term)
+                return UOp(UOpTypes.CMP, UOpRefs.DIRECT, clause_term, match_term)
             else:
-                return __UOp(__UOps.PASS_ARG, clause_term, match_term)
+                return UOp(UOpTypes.PASS_ARG, UOpRefs.DIRECT, clause_term, match_term)
         else:
             if match_term.is_concrete():
                 if clause_runtime_val:
-                    return __UOp(__UOps.CMP_RUNTIME, clause_term, match_term)
+                    return UOp(UOpTypes.CMP, UOpRefs.RUNTIME, clause_term, match_term)
                 else:
-                    return __UOp(__UOps.ASSN_DIRECT, match_term, clause_term)
+                    return UOp(UOpTypes.ASSN, UOpRefs.DIRECT, match_term, clause_term)
             else:
                 if clause_runtime_val:
-                    return __UOp(__UOps.PASS_ARG, clause_term, match_term)
+                    return UOp(UOpTypes.PASS_ARG, UOpRefs.RUNTIME, clause_term, match_term)
                 else:
-                    return __UOp(__UOps.ASSN_RUNTIME, match_term, clause_term)
+                    return UOp(UOpTypes.ASSN, UOpRefs.RUNTIME, match_term, clause_term)
