@@ -15,7 +15,7 @@ class GenError(Exception):
     pass
 
 
-class __Rule:
+class Rule:
     
     def __init__(self, no, head, body):
         self.no = no
@@ -35,7 +35,7 @@ class __Rule:
     def has_runtime_val(self, var):
         return var in self.cur_vars
 
-class __Clause:
+class Clause:
     
     def __init__(self, rule, no, tp):
         self.rule = rule
@@ -43,14 +43,14 @@ class __Clause:
         self.tp = tp
         
     def next_fn_name(self):
-        return __RuleFn.fn_name(self.rule.no, self.no + 1)
+        return RuleFn.fn_name(self.rule.no, self.no + 1)
         
-class __RuleFn:
+class RuleFn:
     
     __fn_prefix = "rule"
     
     def __init__(self, rule_no, clause_no):        
-        self.name = __RuleFn.fn_name(rule_no, clause_no)
+        self.name = RuleFn.fn_name(rule_no, clause_no)
 
     @staticmethod
     def fn_name(rule_no, clause_no):
@@ -66,12 +66,12 @@ class __RuleFn:
         """
 
         if clause_no == 0:
-            return f"{__RuleFn.__fn_prefix}_{rule_no}"
+            return f"{RuleFn.__fn_prefix}_{rule_no}"
         else:
-            return f"{__RuleFn.__fn_prefix}_{rule_no}_{clause_no}"
+            return f"{RuleFn.__fn_prefix}_{rule_no}_{clause_no}"
         
 
-class __FnIndex:
+class FnIndex:
     
     """Map of rule predicates to functions (FnIdxEntry) implementing them.
     
@@ -108,7 +108,7 @@ class __FnIndex:
         for k, v in self.idx.items(): print(k, ":\n", v, "\n")
 
 
-class __FnEntry:
+class FnEntry:
     """
     An index entry for a function related to a rule head or a body triple.
     
@@ -127,20 +127,20 @@ class __FnEntry:
         return self.__str__()
     
 
-class __RuleProcessor_BuildFnIndex:
+class RuleProcessor_BuildFnIndex:
     
     def __init__(self, gen_python):
-        self.fn_idx = __FnIndex()
+        self.fn_idx = FnIndex()
         gen_python.__fn_idx = self.fn_idx
     
     def process(self, rule_no, rule_triple):        
-        entry = __FnEntry(rule_triple, __RuleFn(rule_no, 0))
-        # iterate over all triples in head (just one really)
-        for t in rule_triple.s.model.triples():
-            self.fn_idx.add(t.p, entry)
+        entry = FnEntry(rule_triple, RuleFn(rule_no, 0))
+        
+        t = rule_triple.s.model.triple_at(0) # only 1 triple
+        self.fn_idx.add(t.p, entry)
 
 
-class __RuleProcessor_UniqueVars:
+class RuleProcessor_UniqueVars:
     
     def __init__(self, _):
         self.var_cnt = 0
@@ -172,8 +172,8 @@ class __RuleProcessor_UniqueVars:
 
 class UOpTypes(Enum):
     CMP = 1
-    PASS_ARG = 2
-    ASSN = 3
+    TO_MATCH = 2
+    FROM_MATCH = 3
     
 class UOpRefs(Enum):
     DIRECT = 1
@@ -200,20 +200,28 @@ class FnCall:
     def set_params(self, params, default):
         for param in params:
             self.args[param] = default
+            
+    def set_arg(self, param, arg):
+        if param in self.args:
+            self.args[param] = arg
+            
+    def get_args(self):
+        return self.args.values()
+
     
 class GenPython:
 
     def __init__(self):
         self.bld = PyBuilder()
         
-        self.__rule_buildFnIdx = __RuleProcessor_BuildFnIndex(self)
-        self.__rule_renameVars = __RuleProcessor_UniqueVars(self)
+        self.__rule_buildFnIdx = RuleProcessor_BuildFnIndex(self)
+        self.__rule_renameVars = RuleProcessor_UniqueVars(self)
 
     def gen_python(self, rules):
         self.__process_rules(rules)
         
         for i, (head, _, body) in enumerate(rules):
-            rule = __Rule(i, head, body)
+            rule = Rule(i, head, body)
             self.__gen_rule(rule)
 
     def __process_rules(self, rules):
@@ -247,7 +255,7 @@ class GenPython:
         rule.add_cur_vars(rule.head._vars())
         
         for no, tp in enumerate(rule.body.model.triples()):
-            clause = __Clause(rule, no, tp)
+            clause = Clause(rule, no, tp)
             rule.set_new_vars(tp._vars())
 
             if no == len(rule.body.model)-1:
@@ -284,7 +292,7 @@ class GenPython:
         matches = self.__fn_idx.find(clause.tp)
             
         for match in matches:
-            match_tp = match.rule.s.model.triples()[0]
+            match_tp = match.rule.s.model.triple_at(0)
             fn_call = FnCall(self.bld.ref(match.name))
             
             yield from self.__gen_match_call(clause, match_tp, fn_call, ctu_call)
@@ -292,7 +300,7 @@ class GenPython:
     def __gen_match_call(self, clause, match_tp, fn_call, ctu_call):
         fn_call.set_params(match_tp._vars(get_name=True), default=self.bld.cnst(None))
 
-        if not self.__unify(clause, match_tp, fn_call, ctu_call):
+        if self.__unify(clause, match_tp, fn_call, ctu_call):
             return
 
         ctu_args = ctu_call.get_args()
@@ -321,40 +329,43 @@ class GenPython:
 
             match (op.type):
                 case UOpTypes.CMP:
-                    if op.ref == UOpRefs.DIRECT:
-                        if clause_term != match_term:
-                            return False
-                    else:
-                        cmp1 = self.bld.comp(self.bld.ref(clause_term.name), 'is', self.bld.cnst(None))
-                        cmp2 = self.bld.comp(self.bld.ref(clause_term.name), 'eq', self._val(match_term))
-                        fn_call.conds.append(self.bld.disj([cmp1, cmp2]))    
+                    match (op.ref):
+                        case UOpRefs.DIRECT:
+                            if clause_term != match_term:
+                                return False
+                        case UOpRefs.RUNTIME:
+                            cmp1 = self.bld.comp(self.bld.ref(clause_term.name), 'is', self.bld.cnst(None))
+                            cmp2 = self.bld.comp(self.bld.ref(clause_term.name), 'eq', self._val(match_term))
+                            fn_call.conds.append(self.bld.disj([cmp1, cmp2]))    
 
-                case UOpTypes.PASS_ARG:
-                    if op.ref == UOpRefs.DIRECT:
-                        fn_call.args.assign(op.val2.name, self.bld._val(op.val1))
-                    else:
-                        fn_call.args.assign(op.val2.name, self.bld.bld.ref(op.val1.name))
+                case UOpTypes.TO_MATCH:
+                    match (op.ref):
+                        case UOpRefs.DIRECT:
+                            fn_call.set_arg(op.val2.name, self.bld._val(op.val1))
+                        case UOpRefs.RUNTIME:
+                            fn_call.set_arg(op.val2.name, self.bld.bld.ref(op.val1.name))
 
-                case UOpTypes.ASSN:
-                    if op.ref == UOpRefs.DIRECT:
-                        ctu_call.args.assign(op.val2.name, self.bld._val(op.val1))
-                    else:
-                        ctu_call.args.assign(op.val2.name, self.bld.bld.ref(op.val1.name))
+                case UOpTypes.FROM_MATCH:
+                    match (op.ref):
+                        case UOpRefs.DIRECT:
+                            ctu_call.set_arg(op.val2.name, self.bld._val(op.val1))
+                        case UOpRefs.RUNTIME:
+                            ctu_call.set_arg(op.val2.name, self.bld.bld.ref(op.val1.name))
     
     def __unify_terms(self, clause_term, clause_runtime_val, match_term):
         if clause_term.is_concrete():
             if match_term.is_concrete():
                 return UOp(UOpTypes.CMP, UOpRefs.DIRECT, clause_term, match_term)
             else:
-                return UOp(UOpTypes.PASS_ARG, UOpRefs.DIRECT, clause_term, match_term)
+                return UOp(UOpTypes.TO_MATCH, UOpRefs.DIRECT, clause_term, match_term)
         else:
             if match_term.is_concrete():
                 if clause_runtime_val:
                     return UOp(UOpTypes.CMP, UOpRefs.RUNTIME, clause_term, match_term)
                 else:
-                    return UOp(UOpTypes.ASSN, UOpRefs.DIRECT, match_term, clause_term)
+                    return UOp(UOpTypes.FROM_MATCH, UOpRefs.DIRECT, match_term, clause_term)
             else:
                 if clause_runtime_val:
-                    return UOp(UOpTypes.PASS_ARG, UOpRefs.RUNTIME, clause_term, match_term)
+                    return UOp(UOpTypes.TO_MATCH, UOpRefs.RUNTIME, clause_term, match_term)
                 else:
-                    return UOp(UOpTypes.ASSN, UOpRefs.RUNTIME, match_term, clause_term)
+                    return UOp(UOpTypes.FROM_MATCH, UOpRefs.RUNTIME, match_term, clause_term)

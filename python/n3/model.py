@@ -21,7 +21,7 @@ class Model:
     def triples(self):
         return self.__triples
     
-    def find(self, s, p, o, state, ctu):
+    def find(self, s, p, o, ctu):
         # print("find - ", s, p, o)
         
         # for t in self.__triples:
@@ -42,7 +42,7 @@ class Model:
         for t in self.df.loc[needle, 't']:
             # if state.stop: break
             # print("t -", t)
-            ctu(t, state)
+            ctu(t.s, t.p, t.o)
         
     def __str__(self):
         return "\n".join([ str(t) for t in self.__triples ])
