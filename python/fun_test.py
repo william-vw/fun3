@@ -3,7 +3,7 @@ from collections import Counter
 from multidict import MultiDict
 
 from n3.parse import parse_n3
-from n3.fun.gen import gen_py
+from n3.fun.gen2 import gen_py
 from n3.terms import Triple
 
 def test():
@@ -39,10 +39,10 @@ def fun3():
 # - test 1
 # (straightforward, non-recursive rules)
 
-# # (1) only query data
-#     rules =  """@prefix : <http://example.org/> . 
-# { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
-# """
+# (1) only query data
+    rules =  """@prefix : <http://example.org/> . 
+{ ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
+"""
 
 # # (2) call other rules (both terms concrete)
 #     rules =  """@prefix : <http://example.org/> . 
@@ -64,13 +64,13 @@ def fun3():
 # { ?pe a :Person } <= { ?pe :ability :think } .
 # """
 
-# (5) same level of specificity; all clauses have 2 variables
-# ("label"; not doing recursion yet)
-    rules =  """@prefix : <http://example.org/> . 
-{ ?p :label :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
-{ ?p a ?t } <= { ?p :describedAs ?t } .
-{ ?p a ?t } <= { ?p :name "Socrates" } . # t not used in body
-"""
+# # (5) same level of specificity; all clauses have 2 variables
+# # ("label"; not doing recursion yet)
+#     rules =  """@prefix : <http://example.org/> . 
+# { ?p :label :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
+# { ?p a ?t } <= { ?p :describedAs ?t } .
+# { ?p a ?t } <= { ?p :name "Socrates" } . # t not used in body
+# """
 
     data = """@prefix : <http://example.org/> . 
 :will a :Person ; :address :addr1 . :addr1 :country "CA" .
@@ -188,10 +188,10 @@ def fun3():
     # parse
     
     result = parse_n3(rules)
-    print("rules:\n", result.rules)
+    # print("rules:\n", result.rules)
     
     data = parse_n3(data).data
-    print("data:\n", data)
+    # print("data:\n", data)
     
     print()
     
@@ -208,16 +208,16 @@ def fun3():
     # compile
     
     rule_fn = compile_py(mod)
-    # print(rule_fn)
+    print(rule_fn)
     
     print()
     
     # test
     
-    state = State(False)
+    # state = State(False)
     
-    print("run -")
-    call(data, state, rule_fn)
+    # print("run -")
+    # call(data, state, rule_fn)
 
     
 def unparse_with_lineno(ast):

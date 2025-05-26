@@ -250,7 +250,7 @@ class VarContainer(Container):
                 1: non-nested var or its name
         """
         
-        return [ (i, (v.name if get_name else v)) for i, v in enumerate(self) if v.type() == term_types.VAR ]     
+        return [ v.name if get_name else (i, v) for i, v in enumerate(self) if v.type() == term_types.VAR ]     
        
     def _recur_vars(self,get_name=True):
         """

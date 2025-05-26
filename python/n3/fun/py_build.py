@@ -34,6 +34,12 @@ class PyBuilder:
     def ref(self, name):
         return self.__fix(ast.Name(id=name, ctx=ast.Load()))
 
+    def val(self, r):
+        return self.cnst(r.idx_val())
+    
+    def var_ref(self, var):
+        return self.ref(var.name)
+
     def cnst(self, value):
         return self.__fix(ast.Constant(value=value))
         
