@@ -284,14 +284,15 @@ class GenPython:
     
     def __gen_rule(self, rule):
         head_triple = rule.head.model.triple_at(0)
-        rule.set_avail_vars(head_triple._vars(get_name=True))
+        head_vars = head_triple._recur_vars(get_name=True)
+        rule.set_avail_vars(head_vars)
         
         for no, tp in enumerate(rule.body.model.triples()):
             clause = Clause(rule, no, tp)
-            new_avail_vars = Rule.unique_vars(rule.avail_vars, tp._vars(get_name=True))
+            new_avail_vars = Rule.unique_vars(rule.avail_vars, tp._recur_vars(get_name=True))
 
             if no == len(rule.body.model)-1:
-                ctu_call = self.__get_ctu_call(self.names['final_ctu'], head_triple._vars(get_name=True), final=True)
+                ctu_call = self.__get_ctu_call(self.names['final_ctu'], head_vars, final=True)
             else:
                 ctu_call = self.__get_ctu_call(clause.next_fn_name(), new_avail_vars)
             self.__gen_clause(clause, ctu_call)
@@ -327,7 +328,7 @@ class GenPython:
             yield from self.__gen_match_call(clause, match_tp, fn_call, ctu_call)
 
     def __gen_match_call(self, clause, match_tp, fn_call, ctu_call):
-        fn_call.set_params(match_tp._vars(get_name=True), default=self.bld.cnst(None))
+        fn_call.set_params(match_tp._recur_vars(get_name=True), default=self.bld.cnst(None))
 
         if not self.__unify(clause, match_tp, fn_call, ctu_call):
             return
@@ -335,7 +336,7 @@ class GenPython:
         ctu_args = ctu_call.get_args()
         ctu_call_bld = self.bld.fn_call(ctu_call.ref, ctu_args)
 
-        lmbda_params = match_tp._vars(get_name=True)
+        lmbda_params = match_tp._recur_vars(get_name=True)
         lmbda_bld = self.bld.lmbda(lmbda_params, ctu_call_bld)
 
         fn_args = fn_call.get_args()
@@ -349,15 +350,19 @@ class GenPython:
         yield fn_call_bld
 
     def __unify(self, clause, match_tp, fn_call, ctu_call):
-        # print()
-        # print("unify:", clause.tp, match_tp)
-        for pos in range(3):
-            clause_term = clause.tp[pos]
+        print()
+        print("unify:", clause.tp, match_tp)
+        
+        maps = self.__map_tp(clause.tp, match_tp)        
+        for map in maps:
+            print("map:", map)
+              
+            clause_term = map[0]
             has_runtime_val = clause.rule.has_runtime_val(clause_term)
-            match_term = match_tp[pos]
+            match_term = map[1]
             
             for op in self.__unify_terms(clause_term, has_runtime_val, match_term):
-                # print(op)
+                print("op", op)
                 
                 match (op.type):
                     case UOpTypes.CMP:
@@ -405,6 +410,24 @@ class GenPython:
                     yield UOp(UOpTypes.TO_MATCH, UOpRefs.RUNTIME, clause_term, match_term)
 
                 yield UOp(UOpTypes.FROM_MATCH, UOpRefs.RUNTIME, match_term, clause_term)
+    
+    def __map_tp(self, clause_tp, match_tp):
+        for pos in range(3):
+            yield from self.__map_terms(clause_tp[pos], match_tp[pos])
+
+    def __map_terms(self, clause_r, match_r):
+        if (clause_r.type()==term_types.COLLECTION and match_r.type()==term_types.COLLECTION) and \
+            (not clause_r.is_grounded() or not match_r.is_grounded()): # look for variables!
+                
+                if len(clause_r) == len(match_r):
+                    for idx in range(len(clause_r)):
+                        yield from self.__map_terms(clause_r[idx], match_r[idx])
+                else: # comparison will fail anyway!
+                    yield ( clause_r, match_r )
+                return
+
+        # by default, simply based on spo position
+        yield ( clause_r, match_r )
     
     def __get_ctu_call(self, name, params, final=False):
         params = self.__get_fn_params(params, final)
