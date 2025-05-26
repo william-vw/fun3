@@ -202,7 +202,7 @@ class ConditionalStmt:
         self.conds = conds if conds is not None else []
     
     
-class FnCall (ConditionalStmt):
+class FnCall(ConditionalStmt):
     
     def __init__(self, ref, params=None, args=None):
         super().__init__()
@@ -354,53 +354,54 @@ class GenPython:
             has_runtime_val = clause.rule.has_runtime_val(clause_term)
             match_term = match_tp[pos]
             
-            op = self.__unify_terms(clause_term, has_runtime_val, match_term)
-            # print(op)
+            for op in self.__unify_terms(clause_term, has_runtime_val, match_term):
+                # print(op)
+                match (op.type):
+                    case UOpTypes.CMP:
+                        match (op.ref):
+                            case UOpRefs.DIRECT:
+                                if clause_term != match_term:
+                                    return False
+                            case UOpRefs.RUNTIME:
+                                cmp1 = self.bld.comp(self.bld.ref(clause_term.name), 'is', self.bld.cnst(None))
+                                cmp2 = self.bld.comp(self.bld.ref(clause_term.name), 'eq', self.val(match_term))
+                                fn_call.conds.append(self.bld.disj([cmp1, cmp2]))    
 
-            match (op.type):
-                case UOpTypes.CMP:
-                    match (op.ref):
-                        case UOpRefs.DIRECT:
-                            if clause_term != match_term:
-                                return False
-                        case UOpRefs.RUNTIME:
-                            cmp1 = self.bld.comp(self.bld.ref(clause_term.name), 'is', self.bld.cnst(None))
-                            cmp2 = self.bld.comp(self.bld.ref(clause_term.name), 'eq', self.val(match_term))
-                            fn_call.conds.append(self.bld.disj([cmp1, cmp2]))    
+                    case UOpTypes.TO_MATCH:
+                        match (op.ref):
+                            case UOpRefs.DIRECT:
+                                fn_call.set_arg(op.val2.name, self.bld.val(op.val1))
+                            case UOpRefs.RUNTIME:
+                                fn_call.set_arg(op.val2.name, self.bld.var_ref(op.val1))
 
-                case UOpTypes.TO_MATCH:
-                    match (op.ref):
-                        case UOpRefs.DIRECT:
-                            fn_call.set_arg(op.val2.name, self.bld.val(op.val1))
-                        case UOpRefs.RUNTIME:
-                            fn_call.set_arg(op.val2.name, self.bld.var_ref(op.val1))
-
-                case UOpTypes.FROM_MATCH:
-                    match (op.ref):
-                        case UOpRefs.DIRECT:
-                            ctu_call.set_arg(op.val2.name, self.bld.val(op.val1))
-                        case UOpRefs.RUNTIME:
-                            ctu_call.set_arg(op.val2.name, self.bld.var_ref(op.val1))
+                    case UOpTypes.FROM_MATCH:
+                        match (op.ref):
+                            case UOpRefs.DIRECT:
+                                ctu_call.set_arg(op.val2.name, self.bld.val(op.val1))
+                            case UOpRefs.RUNTIME:
+                                ctu_call.set_arg(op.val2.name, self.bld.var_ref(op.val1))
                             
         return True
     
     def __unify_terms(self, clause_term, clause_runtime_val, match_term):
         if clause_term.is_concrete():
             if match_term.is_concrete():
-                return UOp(UOpTypes.CMP, UOpRefs.DIRECT, clause_term, match_term)
+                yield UOp(UOpTypes.CMP, UOpRefs.DIRECT, clause_term, match_term)
             else:
-                return UOp(UOpTypes.TO_MATCH, UOpRefs.DIRECT, clause_term, match_term)
+                yield UOp(UOpTypes.TO_MATCH, UOpRefs.DIRECT, clause_term, match_term)
         else:
             if match_term.is_concrete():
                 if clause_runtime_val:
-                    return UOp(UOpTypes.CMP, UOpRefs.RUNTIME, clause_term, match_term)
+                    yield UOp(UOpTypes.CMP, UOpRefs.RUNTIME, clause_term, match_term)
                 else:
-                    return UOp(UOpTypes.FROM_MATCH, UOpRefs.DIRECT, match_term, clause_term)
+                    yield UOp(UOpTypes.FROM_MATCH, UOpRefs.DIRECT, match_term, clause_term)
             else:
+                # possible that runtime var is None (when called from other rule, or initial call)
+                # so also unify by getting result from match
                 if clause_runtime_val:
-                    return UOp(UOpTypes.TO_MATCH, UOpRefs.RUNTIME, clause_term, match_term)
-                else:
-                    return UOp(UOpTypes.FROM_MATCH, UOpRefs.RUNTIME, match_term, clause_term)
+                    yield UOp(UOpTypes.TO_MATCH, UOpRefs.RUNTIME, clause_term, match_term)
+
+                yield UOp(UOpTypes.FROM_MATCH, UOpRefs.RUNTIME, match_term, clause_term)
                 
     
     def __get_ctu_call(self, name, params, final=False):

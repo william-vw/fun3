@@ -1,4 +1,5 @@
 import ast
+from n3.terms import term_types
 
 class PyBuildError(Exception):
     pass
@@ -35,10 +36,28 @@ class PyBuilder:
         return self.__fix(ast.Name(id=name, ctx=ast.Load()))
 
     def val(self, r):
-        return self.cnst(r.idx_val())
+        # return self.cnst(r.idx_val())
+        
+        match r.type():
+            case term_types.IRI: 
+                cls_name = "Iri"
+            case term_types.LITERAL: 
+                cls_name = "Literal"
+            case term_types.COLLECTION: 
+                cls_name = "Collection"
+            case term_types.VAR: 
+                cls_name = "Var"
+            case term_types.BNODE:
+                cls_name = "BlankNode"
+            case _: print("inconceivable")
+    
+        return self.constr_obj(self.ref(cls_name), [ self.cnst(r.idx_val())] )
     
     def var_ref(self, var):
         return self.ref(var.name)
+
+    def term_val(self, expr):
+        return self.fn_call(self.attr_ref_expr(expr, 'idx_val'))
 
     def cnst(self, value):
         return self.__fix(ast.Constant(value=value))
@@ -60,7 +79,10 @@ class PyBuilder:
 
     def fn_call(self, fn, args=None):
         return self.__fix(ast.Call(func=fn, args=(args if args is not None else []), keywords=[]))
-        
+    
+    def constr_obj(self, cls_name, args=None):
+        return self.fn_call(cls_name, args)
+    
     def lmbda(self, params, expr):
         args = [self.__fix(ast.arg(arg=p)) for p in params]
 

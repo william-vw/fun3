@@ -1,86 +1,73 @@
-from ast import dump, unparse
+from ast import dump, unparse, parse
 from collections import Counter
 from multidict import MultiDict
 
 from n3.parse import parse_n3
 from n3.fun.gen2 import gen_py
-from n3.terms import Triple
-
-def test():
-    rule = """@prefix : <http://example.org/> .
-    { ?p a :Canadian } <= { ?x :d ?x . ?y :e ( ?x ?x ?y ?y ) } ."""
-    
-    result = parse_n3(rule)
-    # print("rules:\n", result.rules)
-    
-    rule = result.rules[0]
-    body = rule.o
-    clause = body.model.triples()[1]
-    
-    
-def get_spo_pos(pos):
-    return pos[0][0]
-
-def get_spo_varname(pos, var):
-    spo_ch = Triple.spo[get_spo_pos(pos)]
-    return f"{var}_{spo_ch}" if len(pos) == 1 else f"coll_{spo_ch}"
-
+from n3.terms import Triple, Iri
+from n3.model import Model
+  
 
 class State : 
     def __init__(self, stop):
         self.stop = stop
 
 def result_fn(*args):
-    print(f"solution: { [ a for a in args[:-1] ] }")
+    print(f"solution: { args }")
     # state.stop = True
 
 
 def fun3():
+    
 # - test 1
 # (straightforward, non-recursive rules)
 
-# (1) only query data
-    rules =  """@prefix : <http://example.org/> . 
-{ ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
-"""
+# # (1) only query data
+#     rules_str =  """@prefix : <http://example.org/> . 
+# { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
+# """
+#   rule_args = [ None ]
 
 # # (2) call other rules (both terms concrete)
-#     rules =  """@prefix : <http://example.org/> . 
+#     rules_str =  """@prefix : <http://example.org/> . 
 # { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
-# { ?pe a :Person } <= { ?pe :ability :think } .
+# { ?p a :Person } <= { ?p :ability :think } .
 # { ?pe a :Belgian } <= { ?pe :ability :drink } .
 # """
+#   rule_args = [ None ]
 
 # # (3) call other rules (clause term concrete, match term var)
-#     rules =  """@prefix : <http://example.org/> . 
+#     rules_str =  """@prefix : <http://example.org/> . 
 # { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
 # { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
 # """
+#    rule_args = [ None ]
 
 # # (4) call other rules (clause term var, match term concrete)
 # # ("label"; not doing recursion yet)
-#     rules =  """@prefix : <http://example.org/> . 
+#     rules_str =  """@prefix : <http://example.org/> . 
 # { ?p :label :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
-# { ?pe a :Person } <= { ?pe :ability :think } .
+# { ?pe a :Person } <= { ?pe :ability :drink } .
 # """
+#    rule_args = [ None ]
 
-# # (5) same level of specificity; all clauses have 2 variables
-# # ("label"; not doing recursion yet)
-#     rules =  """@prefix : <http://example.org/> . 
-# { ?p :label :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
-# { ?p a ?t } <= { ?p :describedAs ?t } .
-# { ?p a ?t } <= { ?p :name "Socrates" } . # t not used in body
-# """
+# (5) same level of specificity; all clauses have 2 variables
+# ("label"; not doing recursion yet)
+    rules_str =  """@prefix : <http://example.org/> . 
+{ ?p :label ?t } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
+{ ?p a ?t } <= { ?p :describedAs ?t } .
+{ ?p a ?t } <= { ?p :name "Socrates" } . # t not used in body
+"""
+    rule_args = [ ]
+    # rule_args = [ Iri("http://example.org/el"), Iri("http://example.org/Belgian") ]
 
-    data = """@prefix : <http://example.org/> . 
+    data_str = """@prefix : <http://example.org/> . 
 :will a :Person ; :address :addr1 . :addr1 :country "CA" .
 :ed :ability :think ; :address :addr1 ; :describedAs :Person .
 :el :ability :drink ; :address :addr1 ; :describedAs :Belgian .
-:dor :ability :think ; :address :addr2 ; :describedAs :German .
+:dor :ability :think ; :address :addr1 ; :describedAs :German .
 :soc :name "Socrates" ; :address :addr1 .
 """
-
-    call = lambda data, state, rule_fn: rule_fn(None, data, state, result_fn)
 
 # # - test 2
 # # (simple example of recursive rules)
@@ -187,37 +174,32 @@ def fun3():
 
     # parse
     
-    result = parse_n3(rules)
+    rules = parse_n3(rules_str).rules
     # print("rules:\n", result.rules)
     
-    data = parse_n3(data).data
+    global data
+    data = parse_n3(data_str).data
     # print("data:\n", data)
     
     print()
     
     # generate
     
-    mod = gen_py(result.rules)
-    print()
+    mod = gen_py(rules)
+    # print()
     # print(dump(mod, indent=4))
     # print(unparse_with_lineno(mod))
     print(unparse(mod))
-    
     print()
     
     # compile
     
     rule_fn = compile_py(mod)
-    print(rule_fn)
-    
-    print()
-    
+        
     # test
-    
-    # state = State(False)
-    
+        
     # print("run -")
-    # call(data, state, rule_fn)
+    rule_fn(*rule_args, result_fn)
 
     
 def unparse_with_lineno(ast):
@@ -236,7 +218,12 @@ def compile_py(mod):
 
     return new_refs['rule_0']
 
-
+def test_ast():
+    print(dump(parse("""class State : 
+    def __init__(self, stop):
+        pass        
+state = State()""")))
+    
 if __name__ == "__main__":
     fun3()
-    # test()
+    # test_ast()

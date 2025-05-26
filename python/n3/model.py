@@ -32,11 +32,11 @@ class Model:
         
         needle = pd.Series([ True ] * len(self.df))
         if s is not None:
-            needle &= self.df['s']==s
+            needle &= self.df['s']==s.idx_val()
         if p is not None:
-            needle &= self.df['p']==p
+            needle &= self.df['p']==p.idx_val()
         if o is not None:
-            needle &= self.df['o']==o
+            needle &= self.df['o']==o.idx_val()
         
         # print("needle:", needle)
         for t in self.df.loc[needle, 't']:
