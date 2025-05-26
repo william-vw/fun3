@@ -193,7 +193,7 @@ class UOp:
         self.val2 = val2
         
     def __str__(self):
-        return f"{self.type}.{self.ref}: {self.val1} <> {self.val2}"
+        return f"{self.type} @{self.ref}: {self.val1} <> {self.val2}"
     
     
 class ConditionalStmt:
@@ -325,7 +325,7 @@ class GenPython:
             fn_call = FnCall(self.bld.ref(match.rule_fn.name))
             
             yield from self.__gen_match_call(clause, match_tp, fn_call, ctu_call)
-                
+
     def __gen_match_call(self, clause, match_tp, fn_call, ctu_call):
         fn_call.set_params(match_tp._vars(get_name=True), default=self.bld.cnst(None))
 
@@ -344,11 +344,13 @@ class GenPython:
         
         if len(fn_call.conds) > 0:
             fn_call_bld = self.bld.iif(
-                self.bld.conj(fn_call.conds), fn_call_bld)
+                self.bld.conj(fn_call.conds), [ fn_call_bld ])
 
         yield fn_call_bld
 
     def __unify(self, clause, match_tp, fn_call, ctu_call):
+        # print()
+        # print("unify:", clause.tp, match_tp)
         for pos in range(3):
             clause_term = clause.tp[pos]
             has_runtime_val = clause.rule.has_runtime_val(clause_term)
@@ -356,6 +358,7 @@ class GenPython:
             
             for op in self.__unify_terms(clause_term, has_runtime_val, match_term):
                 # print(op)
+                
                 match (op.type):
                     case UOpTypes.CMP:
                         match (op.ref):
@@ -364,7 +367,7 @@ class GenPython:
                                     return False
                             case UOpRefs.RUNTIME:
                                 cmp1 = self.bld.comp(self.bld.ref(clause_term.name), 'is', self.bld.cnst(None))
-                                cmp2 = self.bld.comp(self.bld.ref(clause_term.name), 'eq', self.val(match_term))
+                                cmp2 = self.bld.comp(self.bld.ref(clause_term.name), 'eq', self.bld.val(match_term))
                                 fn_call.conds.append(self.bld.disj([cmp1, cmp2]))    
 
                     case UOpTypes.TO_MATCH:
@@ -393,16 +396,15 @@ class GenPython:
             if match_term.is_concrete():
                 if clause_runtime_val:
                     yield UOp(UOpTypes.CMP, UOpRefs.RUNTIME, clause_term, match_term)
-                else:
-                    yield UOp(UOpTypes.FROM_MATCH, UOpRefs.DIRECT, match_term, clause_term)
-            else:
                 # possible that runtime var is None (when called from other rule, or initial call)
                 # so also unify by getting result from match
+                yield UOp(UOpTypes.FROM_MATCH, UOpRefs.DIRECT, match_term, clause_term)
+            else:
+                # idem
                 if clause_runtime_val:
                     yield UOp(UOpTypes.TO_MATCH, UOpRefs.RUNTIME, clause_term, match_term)
 
                 yield UOp(UOpTypes.FROM_MATCH, UOpRefs.RUNTIME, match_term, clause_term)
-                
     
     def __get_ctu_call(self, name, params, final=False):
         params = self.__get_fn_params(params, final)

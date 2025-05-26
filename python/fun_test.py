@@ -49,16 +49,24 @@ def fun3():
 # { ?p :label :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
 # { ?pe a :Person } <= { ?pe :ability :drink } .
 # """
-#    rule_args = [ None ]
+#     rule_args = [ None ]
 
-# (5) same level of specificity; all clauses have 2 variables
+# # (5) call other rules (clause term var w/ runtime value, match term concrete)
+# # ("label"; not doing recursion yet)
+#     rules_str =  """@prefix : <http://example.org/> . 
+# { ?p :label ?t } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
+# { ?pe a :Person } <= { ?pe :ability :drink } .
+# """
+#     rule_args = [ None, None ]
+
+# (6) same level of specificity; all clauses have 2 variables
 # ("label"; not doing recursion yet)
     rules_str =  """@prefix : <http://example.org/> . 
 { ?p :label ?t } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
 { ?p a ?t } <= { ?p :describedAs ?t } .
 { ?p a ?t } <= { ?p :name "Socrates" } . # t not used in body
 """
-    rule_args = [ ]
+    rule_args = [ None, None ]
     # rule_args = [ Iri("http://example.org/el"), Iri("http://example.org/Belgian") ]
 
     data_str = """@prefix : <http://example.org/> . 
