@@ -350,19 +350,19 @@ class GenPython:
         yield fn_call_bld
 
     def __unify(self, clause, match_tp, fn_call, ctu_call):
-        print()
-        print("unify:", clause.tp, match_tp)
+        # print()
+        # print("unify:", clause.tp, match_tp)
         
         maps = self.__map_tp(clause.tp, match_tp)        
         for map in maps:
-            print("map:", map)
+            # print("map:", map)
               
             clause_term = map[0]
             has_runtime_val = clause.rule.has_runtime_val(clause_term)
             match_term = map[1]
             
             for op in self.__unify_terms(clause_term, has_runtime_val, match_term):
-                print("op", op)
+                # print("op", op)
                 
                 match (op.type):
                     case UOpTypes.CMP:

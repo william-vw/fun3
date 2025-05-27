@@ -38,6 +38,7 @@ class PyBuilder:
     def val(self, r):
         # return self.cnst(r.idx_val())
         
+        els = None
         match r.type():
             case term_types.IRI: 
                 cls_name = "Iri"
@@ -45,13 +46,17 @@ class PyBuilder:
                 cls_name = "Literal"
             case term_types.COLLECTION: 
                 cls_name = "Collection"
+                els = [ self.lst([ self.val(el) for el in r ]) ]
             case term_types.VAR: 
                 cls_name = "Var"
             case term_types.BNODE:
                 cls_name = "BlankNode"
             case _: print("inconceivable")
     
-        return self.constr_obj(self.ref(cls_name), [ self.cnst(r.idx_val())] )
+        if els is None:
+            els = [ self.cnst(r.idx_val())]
+    
+        return self.constr_obj(self.ref(cls_name), els )
     
     def var_ref(self, var):
         return self.ref(var.name)

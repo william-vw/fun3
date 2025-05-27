@@ -78,20 +78,31 @@ def fun3():
 # """
 
 # - test 2
-# (non-recursive rules with collections)
+# (non-recursive rules with grounded collections)
 
-# (1) call other rules (clause term var, match term concrete)
+# (1) only query data
     rules_str =  """@prefix : <http://example.org/> . 
-{ ?a :partLabels ( ?xl ?yl ) } <= { ?a :parts ( ?x ?y ) . ?x :label ?xl . ?y :label ?yl } . 
-{ ?q :parts ( ?a ?b ) } <= { ?q :part ?a , ?b } .
+{ ?a a ?xl } <= { ?a :parts ( :man :machine ) . :man :label ?xl } . 
 """
-    rule_args = [ None, None, None ]
+    rule_args = [ None, None ]
     
     data_str = """@prefix : <http://example.org/> . 
-:robocop :part :man , :machine .
+:robocop :parts ( :man :machine ) .
 :man :label "man" . :machine :label "machine" .
 """
 
+# - test 3
+# (non-recursive rules with ungrounded collections)
+
+# # (1) ...
+#     rules_str =  """{ ?a :partLabels ( ?xl ?yl ) } <= { ?a :parts ( ?x ?y ) . ?x :label ?xl . ?y :label ?yl } . 
+# { ?q :parts ( ?a ?b ) } <= { ?q :part ?a , ?b } .
+# """
+
+#     data_str = """@prefix : <http://example.org/> . 
+# :robocop :part :man , :machine .
+# :man :label "man" . :machine :label "machine" .
+# """
 
     # parse
     
