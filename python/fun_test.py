@@ -78,24 +78,37 @@ def fun3():
 # """
 
 # - test 2
-# (non-recursive rules with grounded collections)
+# (non-recursive rules with grounded/ungrounded collections)
 
-# (1) only query data
-    rules_str =  """@prefix : <http://example.org/> . 
-{ ?a a ?xl } <= { ?a :parts ( :man :machine ) . :man :label ?xl } . 
-"""
-    rule_args = [ None, None ]
+# # (1) grounded; same nesting level
+#     rules_str =  """@prefix : <http://example.org/> . 
+# { ?a :partLabels ( ?xl ?yl ) } <= { ?a :parts ( :man :machine ) . :man :label ?xl . :machine :label ?yl } . 
+# { ?q :parts ( :man :machine ) } <= { ?q :part :man , :machine } .
+# """
+
+#     data_str = """@prefix : <http://example.org/> . 
+# :robocop :part :man , :machine .
+# :man :label "man" . :machine :label "machine" .
+# """
+
+#     rule_args = [ None, None, None ]
     
-    data_str = """@prefix : <http://example.org/> . 
-:robocop :parts ( :man :machine ) .
-:man :label "man" . :machine :label "machine" .
-"""
+# # (2) ungrounded (some vars); same nesting level
+#     rules_str =  """@prefix : <http://example.org/> . 
+# { ?a :partLabels ( ?xl ?yl ) } <= { ?a :parts ( ?x :machine ) . ?x :label ?xl . :machine :label ?yl } . 
+# { ?q :parts ( :man ?b ) } <= { ?q :part :man , ?b } .
+# """
 
-# - test 3
-# (non-recursive rules with ungrounded collections)
+#     data_str = """@prefix : <http://example.org/> . 
+# :robocop :part :man , :machine .
+# :man :label "man" . :machine :label "machine" .
+# """
 
-# # (1) ...
-#     rules_str =  """{ ?a :partLabels ( ?xl ?yl ) } <= { ?a :parts ( ?x ?y ) . ?x :label ?xl . ?y :label ?yl } . 
+#     rule_args = [ None, None, None ]
+
+# # (3) ungrounded (all vars); same nesting level
+#     rules_str =  """@prefix : <http://example.org/> . 
+# { ?a :partLabels ( ?xl ?yl ) } <= { ?a :parts ( ?x ?y ) . ?x :label ?xl . ?y :label ?yl } . 
 # { ?q :parts ( ?a ?b ) } <= { ?q :part ?a , ?b } .
 # """
 
@@ -104,6 +117,34 @@ def fun3():
 # :man :label "man" . :machine :label "machine" .
 # """
 
+#     rule_args = [ None, None, None ]
+    
+# (4) ungrounded (some vars); different nesting level
+    rules_str =  """@prefix : <http://example.org/> . 
+{ ?a :partLabels ( ?xl ?yl ) } <= { ?a :parts ( ?x ?y ) . ?x :label ?xl . ?y :label ?yl } . 
+{ ?q :parts ?a } <= { ?q :hasParts ?a } .
+"""
+
+    data_str = """@prefix : <http://example.org/> . 
+:robocop :hasParts ( :man :machine ).
+:man :label "man" . :machine :label "machine" .
+"""
+
+    rule_args = [ None, None, None ]
+    
+# # (5) ungrounded (some vars); different nesting level
+#     rules_str =  """@prefix : <http://example.org/> . 
+# { ?a :hasParts ?b } <= { ?a :parts ?b } . 
+# { ?q :parts ( ?x ?y ) } <= { ?q :part ?x , ?y } .
+# """
+
+#     data_str = """@prefix : <http://example.org/> . 
+# :robocop :part :man , :machine .
+# :man :label "man" . :machine :label "machine" .
+# """
+
+#     rule_args = [ None, None ]
+    
     # parse
     
     rules = parse_n3(rules_str).rules
