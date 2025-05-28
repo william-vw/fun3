@@ -2,7 +2,7 @@ from enum import Enum
 from collections import Counter
 from multidict import MultiDict
 from n3.fun.py_build import PyBuilder, IdxedTerm
-from n3.terms import Var, term_types, Triple
+from n3.terms import Var, term_types, Triple, ANY
 from n3.ns import n3Log, swapNs
 from itertools import chain
 from ast import dump, unparse
@@ -219,7 +219,10 @@ class FnCall(ConditionalStmt):
     def set_arg(self, param, arg):
         if param in self.args:
             self.args[param] = arg
-            
+    
+    def get_params(self):
+        return list(self.args.keys())
+    
     def get_args(self):
         return list(self.args.values())
 
@@ -252,7 +255,7 @@ class GenPython:
         return self.bld.module(self.code)
 
     def __gen_imports(self):
-        return self.bld.imports('n3.terms', ['Iri', 'Var', 'Literal', 'Collection', 'term_types'])
+        return self.bld.imports('n3.terms', ['Iri', 'Var', 'Literal', 'Collection', 'ANY', 'term_types'])
         
     def __process_rules(self, rules):
         """
@@ -328,7 +331,7 @@ class GenPython:
             yield from self.__gen_match_call(clause, match_tp, fn_call, ctu_call)
 
     def __gen_match_call(self, clause, match_tp, fn_call, ctu_call):
-        fn_call.set_params(match_tp._recur_vars(get_name=True), default=self.bld.cnst(None))
+        fn_call.set_params(match_tp._recur_vars(get_name=True), default=self.bld.ref('ANY'))
 
         if not self.__unify(clause, match_tp, fn_call, ctu_call):
             return
@@ -350,15 +353,15 @@ class GenPython:
         yield fn_call_bld
 
     def __unify(self, clause, match_tp, fn_call, ctu_call):
-        print()
-        print("unify:\n", clause.tp, "\n", match_tp)
+        # print()
+        # print("unify:\n", clause.tp, "\n", match_tp)
         
         for pos in range(3):
             clause_term = clause.tp[pos]
             match_term = match_tp[pos]
             
-            for op in self.__unify_terms(clause, clause_term, match_term):
-                print("op", op)
+            for op in self.__unify_op(clause, clause_term, match_term):
+                # print("op", op)
                 
                 match (op.type):
                     case UOpTypes.CMP:
@@ -367,27 +370,26 @@ class GenPython:
                                 if clause_term != match_term:
                                     return False
                             case UOpRefs.RUNTIME:
-                                cmp1 = self.bld.comp(self.bld.ref(clause_term.name), 'is', self.bld.cnst(None))
-                                cmp2 = self.bld.comp(self.bld.ref(clause_term.name), 'eq', self.bld.val(match_term))
-                                fn_call.conds.append(self.bld.disj([cmp1, cmp2]))    
+                                cmp = self.bld.comp(self.bld.ref(clause_term.name), 'eq', self.bld.val(match_term))
+                                fn_call.conds.append(cmp)
 
                     case UOpTypes.TO_MATCH:
                         match (op.ref):
                             case UOpRefs.DIRECT:
-                                fn_call.set_arg(op.val2.term.name, self.bld.val(op.val1))
+                                fn_call.set_arg(op.val2.term.name, self.bld.val(op.val1, scope_vars=clause.rule.avail_vars))
                             case UOpRefs.RUNTIME:
-                                fn_call.set_arg(op.val2.term.name, self.bld.var_ref(op.val1, maybe_null=True))
+                                fn_call.set_arg(op.val2.term.name, self.bld.var_ref(op.val1))
 
                     case UOpTypes.FROM_MATCH:
                         match (op.ref):
                             case UOpRefs.DIRECT:
-                                ctu_call.set_arg(op.val2.term.name, self.bld.val(op.val1))
+                                ctu_call.set_arg(op.val2.term.name, self.bld.val(op.val1, scope_vars=match_tp._recur_vars(get_name=True)))
                             case UOpRefs.RUNTIME:
                                 ctu_call.set_arg(op.val2.term.name, self.bld.var_ref(op.val1))
                             
         return True
     
-    def __unify_terms(self, clause, clause_term, match_term):
+    def __unify_op(self, clause, clause_term, match_term):
         has_runtime_val = clause.rule.has_runtime_val(clause_term)
         
         if clause_term.is_concrete():
@@ -398,12 +400,11 @@ class GenPython:
                         
                         if len(clause_term) == len(match_term):
                             for idx in range(len(clause_term)):
-                                yield from self.__unify_terms(clause, clause_term[idx], match_term[idx])
+                                yield from self.__unify_op(clause, clause_term[idx], match_term[idx])
                             return
                 
                 yield UOp(UOpTypes.CMP, UOpRefs.DIRECT, clause_term, match_term)
             else:
-                # clause_term_grounded = clause_term if clause_term.is_grounded() else self.__try_grounding(clause, clause_term)
                 yield UOp(UOpTypes.TO_MATCH, UOpRefs.DIRECT, clause_term, match_term)
                 
                 if clause_term.type() == term_types.COLLECTION and not clause_term.is_grounded():
@@ -414,7 +415,7 @@ class GenPython:
                 if has_runtime_val:
                     yield UOp(UOpTypes.CMP, UOpRefs.RUNTIME, clause_term, match_term)
                 
-                # possible that runtime var is None (when called from other rule, or initial call)
+                # possible that runtime var is ANY (if initial call didn't pass anything)
                 # so also unify by getting result from match
                 yield UOp(UOpTypes.FROM_MATCH, UOpRefs.DIRECT, match_term, clause_term)
                 
@@ -434,7 +435,9 @@ class GenPython:
             positions = atomic[0]
             idxes = [ position[0] for position in positions ]
             
-            yield UOp(type, UOpRefs.RUNTIME, IdxedTerm(var_term, idxes), atomic_term)
+            # only need values for variables
+            if not atomic_term.is_concrete():
+                yield UOp(type, UOpRefs.RUNTIME, IdxedTerm(var_term, idxes), atomic_term)
             
         # return []
     

@@ -2,39 +2,7 @@
 problem with ungrcoll's; their vars become available (as regular vars) for rest of rule
 so pass them like regular vars
 
-2/ mappings: previously, for spo: we already know mapping (s<>s, p<>p, o<>o)
-now, we need to first establish mapping, and then unify accordingly
-
-map_collections
-    recursive match between match_r, clause_r
-    return map: atomic terms / vars match_r with atomic terms / vars clause_r
-
-for match rule:
-    given match_r from rule:
-        map_collections (clause_r, match_r)
-        apply unify on mapped terms
-
-for data find: 
-    given match_r from result:
-        map_collections (clause_r, match_r)
-        apply unify on mapped terms (all in match_r will be concrete)
-
-3/ dealing with var - ungrcoll maps (both directions)
-(note that these cases can also occur in a nested collection, not only at top level)
-
-clause (ungrcoll) - match (var) (this will always be case for data.find)
-    we don't know yet what match (var) will yield (still-unknown); will only know at runtime
-    more fine-grained map: from_match, runtime, nested_clause_term, match_var[nested pos x, y]
-        (why term; ungrcoll can have both cnsts & vars; all need to be matched with still-unknown coll from var)
-    to_match, direct, ungrcoll (try grounding), match_var
-
-clause (var) - match (ungrcoll)
-    more fine-grained map: to_match, runtime, clause_var[pos x, y], nested_clause_term
-        each time, also check if clause_var has_runtime_value 
-        (we always know that match has_runtime_value, so not needed above)
-    from_match, direct, ungrcoll, clause_var (use at our own peril)
-
-x/ simply...
+2/ unification
 basic unification approach -
 if clause term is a var: it is possible that it was given as a function parameter (c.1), and we need a value for it here (c.2)
     = provide input (c.1), accept output (c.2)

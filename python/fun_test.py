@@ -4,7 +4,7 @@ from multidict import MultiDict
 
 from n3.parse import parse_n3
 from n3.fun.gen2 import gen_py
-from n3.terms import Triple, Iri
+from n3.terms import Triple, Iri, ANY
 from n3.model import Model
   
 
@@ -26,7 +26,7 @@ def fun3():
 #     rules_str =  """@prefix : <http://example.org/> . 
 # { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
 # """
-#   rule_args = [ None ]
+#   rule_args = [ ANY ]
 
 # # (2) call other rules (both terms concrete)
 #     rules_str =  """@prefix : <http://example.org/> . 
@@ -34,14 +34,14 @@ def fun3():
 # { ?p a :Person } <= { ?p :ability :think } .
 # { ?pe a :Belgian } <= { ?pe :ability :drink } .
 # """
-#   rule_args = [ None ]
+#   rule_args = [ ANY ]
 
 # # (3) call other rules (clause term concrete, match term var)
 #     rules_str =  """@prefix : <http://example.org/> . 
 # { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
 # { ?pe a ?ty } <= { ?pe :describedAs ?ty } .
 # """
-#    rule_args = [ None ]
+#    rule_args = [ ANY ]
 
 # # (4) call other rules (clause term var, match term concrete)
 # # ("label"; not doing recursion yet)
@@ -49,7 +49,7 @@ def fun3():
 # { ?p :label :Canadian } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
 # { ?pe a :Person } <= { ?pe :ability :drink } .
 # """
-#     rule_args = [ None ]
+#     rule_args = [ ANY ]
 
 # # (5) call other rules (clause term var w/ runtime value, match term concrete)
 # # ("label"; not doing recursion yet)
@@ -57,7 +57,7 @@ def fun3():
 # { ?p :label ?t } <= { ?p a ?t . ?p :address ?a . ?a :country "CA" } . 
 # { ?pe a :Person } <= { ?pe :ability :drink } .
 # """
-#     rule_args = [ None, None ]
+#     rule_args = [ ANY, ANY ]
 
 # # (6) same level of specificity; all clauses have 2 variables
 # # ("label"; not doing recursion yet)
@@ -66,7 +66,7 @@ def fun3():
 # { ?p a ?t } <= { ?p :describedAs ?t } .
 # { ?p a ?t } <= { ?p :name "Socrates" } . # t not used in body
 # """
-#     # rule_args = [ None, None ]
+#     # rule_args = [ ANY, ANY ]
 #     rule_args = [ Iri("http://example.org/el"), Iri("http://example.org/Belgian") ]
 
 #     data_str = """@prefix : <http://example.org/> . 
@@ -91,7 +91,7 @@ def fun3():
 # :man :label "man" . :machine :label "machine" .
 # """
 
-#     rule_args = [ None, None, None ]
+#     rule_args = [ ANY, ANY, ANY ]
     
 # # (2) ungrounded (some vars); same nesting level
 #     rules_str =  """@prefix : <http://example.org/> . 
@@ -104,7 +104,7 @@ def fun3():
 # :man :label "man" . :machine :label "machine" .
 # """
 
-#     rule_args = [ None, None, None ]
+#     rule_args = [ ANY, ANY, ANY ]
 
 # # (3) ungrounded (all vars); same nesting level
 #     rules_str =  """@prefix : <http://example.org/> . 
@@ -117,20 +117,20 @@ def fun3():
 # :man :label "man" . :machine :label "machine" .
 # """
 
-#     rule_args = [ None, None, None ]
+#     rule_args = [ ANY, ANY, ANY ]
     
-# (4) ungrounded (some vars); different nesting level
-    rules_str =  """@prefix : <http://example.org/> . 
-{ ?a :hasParts ?b } <= { ?a :parts ?b } . 
-{ ?q :parts ( ?x ?y ) } <= { ?q :part ?x , ?y } .
-"""
+# # (4) ungrounded (some vars); different nesting level
+#     rules_str =  """@prefix : <http://example.org/> . 
+# { ?a :hasParts ?b } <= { ?a :parts ?b } . 
+# { ?q :parts ( ?x ?y ) } <= { ?q :part ?x , ?y } .
+# """
 
-    data_str = """@prefix : <http://example.org/> . 
-:robocop :part :man , :machine .
-:man :label "man" . :machine :label "machine" .
-"""
+#     data_str = """@prefix : <http://example.org/> . 
+# :robocop :part :man , :machine .
+# :man :label "man" . :machine :label "machine" .
+# """
 
-    rule_args = [ None, None ]
+#     rule_args = [ ANY, ANY ]
     
 # # (5) ungrounded (some vars); different nesting level
 #     rules_str =  """@prefix : <http://example.org/> . 
@@ -143,7 +143,20 @@ def fun3():
 # :man :label "man" . :machine :label "machine" .
 # """
 
-#     rule_args = [ None, None, None ]
+#     rule_args = [ ANY, ANY, ANY ]
+    
+# (6) ungrounded (some vars); different nesting level
+    rules_str =  """@prefix : <http://example.org/> . 
+{ ?a :partLabels ( ?x ?y ) } <= { ?a :parts ( ?x ?y ) . ?x :label ?xl . ?y :label ?yl } . 
+{ ?q :parts ?a } <= { ?q :hasParts ?a } .
+"""
+
+    data_str = """@prefix : <http://example.org/> . 
+:robocop :hasParts ( :man :machine ).
+:man :label "man" . :machine :label "machine" .
+"""
+
+    rule_args = [ ANY, ANY, ANY ]
     
     # parse
     

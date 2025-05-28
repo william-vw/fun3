@@ -27,7 +27,7 @@ class Model:
         
         for t in self.__triples:
             # if state.stop: break
-            if (s == None or t.s == s) and (p == None or t.p == p) and (o == None or t.o == o):
+            if (t.s == s) and (t.p == p) and (t.o == o):
                 # print("t -", t)
                 ctu(t.s, t.p, t.o)
         

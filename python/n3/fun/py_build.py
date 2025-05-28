@@ -44,40 +44,44 @@ class PyBuilder:
     def ref(self, name):
         return self.__fix(ast.Name(id=name, ctx=ast.Load()))
 
-    def val(self, val):
+    def val(self, val, scope_vars=[]):
         # return self.cnst(r.idx_val())
         term = val if not isinstance(val, IdxedTerm) else val.term
         
-        els = None
-        match term.type():
-            case term_types.IRI: 
-                cls_name = "Iri"
-            case term_types.LITERAL: 
-                cls_name = "Literal"
-            case term_types.COLLECTION: 
-                cls_name = "Collection"
-                els = [ self.lst([ self.val(el) for el in term ]) ]
-            case term_types.VAR: 
-                cls_name = "Var"
-            case term_types.BNODE:
-                cls_name = "BlankNode"
-            case _: print("inconceivable")
-    
-        if els is None:
-            els = [ self.cnst(term.idx_val())]
-
-        ret = self.constr_obj(self.ref(cls_name), els)
+        # replace n3 vars with python vars within scope
+        if term.type() == term_types.VAR and term.name in scope_vars:
+            expr = self.var_ref(term)
+        else:
+            elements = None
+            match term.type():
+                case term_types.IRI: 
+                    cls_name = "Iri"
+                case term_types.LITERAL: 
+                    cls_name = "Literal"
+                case term_types.COLLECTION: 
+                    cls_name = "Collection"
+                    elements = [ self.lst([ self.val(el, scope_vars) for el in term ]) ]
+                case term_types.VAR:
+                    cls_name = "Var"
+                case term_types.BNODE:
+                    cls_name = "BlankNode"
+                case _: print("inconceivable")
+            if elements is None:
+                elements = [ self.cnst(term.idx_val())]
+            
+            expr = self.constr_obj(self.ref(cls_name), elements)
+            
         if isinstance(val, IdxedTerm):
-            ret = self.indexes(ret, val.idxes)
-        return ret
+            expr = self.indexes(expr, val.idxes)
+        return expr
     
-    def var_ref(self, var, maybe_null=False):
+    def var_ref(self, var):
         term = var if not isinstance(var, IdxedTerm) else var.term
         
-        ret = self.ref(term.name)
+        expr = self.ref(term.name)
         if isinstance(var, IdxedTerm):
-            ret = self.indexes(ret, var.idxes)
-        return ret
+            expr = self.indexes(expr, var.idxes)
+        return expr
 
     def term_val(self, expr):
         return self.fn_call(self.attr_ref_expr(expr, 'idx_val'))

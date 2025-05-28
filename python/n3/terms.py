@@ -3,15 +3,64 @@ import string, random
 from n3.model import Model
 
 class term_types(Enum):
-    IRI = 0
-    LITERAL = 1
-    COLLECTION = 2
-    GRAPH = 3
-    VAR = 4
-    BNODE = 5
+    IRI = 1
+    LITERAL = 2
+    COLLECTION = 3
+    GRAPH = 4
+    VAR = 5
+    BNODE = 6
+    ANY = 7
 
 
-class Iri:
+class Any:
+    def type(self):
+        return term_types.ANY
+    
+    def is_any(self):
+        return True
+    
+    def is_concrete(self):
+        return True
+    
+    def is_grounded(self):
+        return True
+    
+    def idx_val(self):
+        return self.__str__()
+    
+    # yes
+    
+    def __iter__(self):
+        return iter([])
+    
+    def __len__(self):
+        return 0
+    
+    def __getitem__(self, key):
+        return self
+    
+    def __setitem__(self, key, value):
+        pass
+    
+    def __eq__(self, other): 
+        return True
+        
+    def __str__(self):
+        return "ANY"
+    def __repr__(self):
+        return self.__str__()
+    
+    
+class ConcreteNode:
+    
+    def is_any(self):
+        return False
+    
+    def is_concrete(self):
+        return True
+
+
+class Iri(ConcreteNode):
 
     # iri
     
@@ -20,9 +69,6 @@ class Iri:
         
     def type(self):
         return term_types.IRI
-    
-    def is_concrete(self):
-        return True
     
     def is_grounded(self):
         return True
@@ -48,10 +94,8 @@ class Iri:
             case 'ln': return Iri.get_ln(self.iri)
             case _: raise AttributeError(f"unknown attribute: {name}")
             
-    def __eq__(self, other): 
-        if other is None:
-            return False        
-        if not other.is_concrete():
+    def __eq__(self, other):  
+        if not other.is_concrete() or other.is_any():
             return True
         if not isinstance(other, Iri):
             return False # NotImplemented
@@ -63,7 +107,7 @@ class Iri:
         return self.__str__()
         
         
-class Literal:
+class Literal(ConcreteNode):
     
     def __init__(self, value, dt=None, lng=None):
         self.value = value
@@ -73,19 +117,14 @@ class Literal:
     def type(self):
         return term_types.LITERAL
     
-    def is_concrete(self):
-        return True
-    
     def is_grounded(self):
         return True
     
     def idx_val(self):
         return self.value
         
-    def __eq__(self, other): 
-        if other is None:
-            return False        
-        if not other.is_concrete():
+    def __eq__(self, other):
+        if not other.is_concrete() or other.is_any():
             return True
         if not isinstance(other, Literal):
             return False # NotImplemented
@@ -105,28 +144,27 @@ class Literal:
         return self.__str__()
 
 
-class Var:
+class VariableNode:
     
-    # (get_raw_value)
+    def is_concrete(self):
+        return False
+
+    def is_grounded(self):
+        return False
     
+
+class Var(VariableNode):
+        
     def __init__(self, name):
         self.name = name
         
     def type(self):
-        return term_types.VAR
-    
-    def is_concrete(self):
-        return False
-    
-    def is_grounded(self):
-        return False
+        return term_types.VAR    
     
     def idx_val(self):
         return self.name
         
-    def __eq__(self, other): 
-        if other is None:
-            return False        
+    def __eq__(self, other):  
         return True
         # if not isinstance(other, Var):
         #     return NotImplemented
@@ -138,7 +176,7 @@ class Var:
         return self.__str__()
     
 
-class BlankNode:
+class BlankNode(VariableNode):
         
     def __init__(self, label=None):
         if label is None:
@@ -149,18 +187,10 @@ class BlankNode:
     def type(self):
         return term_types.BNODE
     
-    def is_concrete(self):
-        return False
-    
-    def is_grounded(self):
-        return False
-    
     def idx_val(self):
         return self.label
         
     def __eq__(self, other): 
-        if other is None:
-            return False        
         return True
         # if not isinstance(other, BlankNode):
         #     return NotImplemented
@@ -172,7 +202,7 @@ class BlankNode:
         return self.__str__()
     
     
-class Container:
+class Container(ConcreteNode):
     
     # (implemented by subclasses)
     def _iter_recur_atomics(self, pos):
@@ -329,9 +359,6 @@ class Collection(VarContainer):
     def type(self):
         return term_types.COLLECTION
     
-    def is_concrete(self):
-        return True
-    
     def idx_val(self):
         return self.__to_nested_tuples()
     
@@ -356,10 +383,8 @@ class Collection(VarContainer):
     def __setitem__(self, key, value):
         self.__elements[key] = value
     
-    def __eq__(self, other): 
-        if other is None:
-            return False        
-        if not other.is_concrete():
+    def __eq__(self, other):
+        if not other.is_concrete() or other.is_any():
             return True
         if not isinstance(other, Collection):
             return False # NotImplemented
@@ -380,9 +405,6 @@ class GraphTerm(VarContainer):
         
     def type(self):
         return term_types.GRAPH
-        
-    def is_concrete(self):
-        return True
     
     def _iter_recur_atomics(self, pos):
         for t in self.model.triples(): yield from t._iter_recur_atomics(pos)
@@ -458,3 +480,5 @@ class TripleIt:
             case 1: return self.__t.p
             case 2: return self.__t.o
             case _: raise StopIteration
+            
+ANY = Any()
