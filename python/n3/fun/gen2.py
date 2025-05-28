@@ -226,7 +226,6 @@ class FnCall(ConditionalStmt):
     def get_args(self):
         return list(self.args.values())
 
-# TODO: also unify re-use of same vars in triple
     
 class GenPython:
 
