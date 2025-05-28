@@ -121,29 +121,29 @@ def fun3():
     
 # (4) ungrounded (some vars); different nesting level
     rules_str =  """@prefix : <http://example.org/> . 
-{ ?a :partLabels ( ?xl ?yl ) } <= { ?a :parts ( ?x ?y ) . ?x :label ?xl . ?y :label ?yl } . 
-{ ?q :parts ?a } <= { ?q :hasParts ?a } .
+{ ?a :hasParts ?b } <= { ?a :parts ?b } . 
+{ ?q :parts ( ?x ?y ) } <= { ?q :part ?x , ?y } .
 """
 
     data_str = """@prefix : <http://example.org/> . 
-:robocop :hasParts ( :man :machine ).
+:robocop :part :man , :machine .
 :man :label "man" . :machine :label "machine" .
 """
 
-    rule_args = [ None, None, None ]
+    rule_args = [ None, None ]
     
 # # (5) ungrounded (some vars); different nesting level
 #     rules_str =  """@prefix : <http://example.org/> . 
-# { ?a :hasParts ?b } <= { ?a :parts ?b } . 
-# { ?q :parts ( ?x ?y ) } <= { ?q :part ?x , ?y } .
+# { ?a :partLabels ( ?xl ?yl ) } <= { ?a :parts ( ?x ?y ) . ?x :label ?xl . ?y :label ?yl } . 
+# { ?q :parts ?a } <= { ?q :hasParts ?a } .
 # """
 
 #     data_str = """@prefix : <http://example.org/> . 
-# :robocop :part :man , :machine .
+# :robocop :hasParts ( :man :machine ).
 # :man :label "man" . :machine :label "machine" .
 # """
 
-#     rule_args = [ None, None ]
+#     rule_args = [ None, None, None ]
     
     # parse
     

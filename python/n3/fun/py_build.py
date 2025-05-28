@@ -1,9 +1,18 @@
 import ast
 from n3.terms import term_types
+from ast import dump, unparse
 
 class PyBuildError(Exception):
     pass
-
+    
+class IdxedTerm:
+    
+    def __init__(self, term, idxes=None):
+        self.term = term
+        self.idxes = idxes
+        
+    def __str__(self):
+        return f"{self.term}" if self.idxes is None else f"{self.term}@{self.idxes}"
 
 class PyBuilder:
     
@@ -35,18 +44,19 @@ class PyBuilder:
     def ref(self, name):
         return self.__fix(ast.Name(id=name, ctx=ast.Load()))
 
-    def val(self, r):
+    def val(self, val):
         # return self.cnst(r.idx_val())
+        term = val if not isinstance(val, IdxedTerm) else val.term
         
         els = None
-        match r.type():
+        match term.type():
             case term_types.IRI: 
                 cls_name = "Iri"
             case term_types.LITERAL: 
                 cls_name = "Literal"
             case term_types.COLLECTION: 
                 cls_name = "Collection"
-                els = [ self.lst([ self.val(el) for el in r ]) ]
+                els = [ self.lst([ self.val(el) for el in term ]) ]
             case term_types.VAR: 
                 cls_name = "Var"
             case term_types.BNODE:
@@ -54,12 +64,20 @@ class PyBuilder:
             case _: print("inconceivable")
     
         if els is None:
-            els = [ self.cnst(r.idx_val())]
+            els = [ self.cnst(term.idx_val())]
+
+        ret = self.constr_obj(self.ref(cls_name), els)
+        if isinstance(val, IdxedTerm):
+            ret = self.indexes(ret, val.idxes)
+        return ret
     
-        return self.constr_obj(self.ref(cls_name), els )
-    
-    def var_ref(self, var):
-        return self.ref(var.name)
+    def var_ref(self, var, maybe_null=False):
+        term = var if not isinstance(var, IdxedTerm) else var.term
+        
+        ret = self.ref(term.name)
+        if isinstance(var, IdxedTerm):
+            ret = self.indexes(ret, var.idxes)
+        return ret
 
     def term_val(self, expr):
         return self.fn_call(self.attr_ref_expr(expr, 'idx_val'))
@@ -81,6 +99,12 @@ class PyBuilder:
         
     def index(self, expr, nr):
         return self.__fix(ast.Subscript(expr, slice=self.cnst(nr), ctx=ast.Load()))
+
+    def indexes(self, expr, idxes):
+        if idxes is not None:
+            for idx in idxes:
+                expr = self.index(expr, idx)
+        return expr
 
     def fn_call(self, fn, args=None):
         return self.__fix(ast.Call(func=fn, args=(args if args is not None else []), keywords=[]))

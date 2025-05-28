@@ -49,8 +49,12 @@ class Iri:
             case _: raise AttributeError(f"unknown attribute: {name}")
             
     def __eq__(self, other): 
+        if other is None:
+            return False        
+        if not other.is_concrete():
+            return True
         if not isinstance(other, Iri):
-            return NotImplemented
+            return False # NotImplemented
         return self.iri == other.iri
         
     def __str__(self):
@@ -79,8 +83,12 @@ class Literal:
         return self.value
         
     def __eq__(self, other): 
+        if other is None:
+            return False        
+        if not other.is_concrete():
+            return True
         if not isinstance(other, Literal):
-            return NotImplemented
+            return False # NotImplemented
         return self.value == other.value
         
     def __str__(self):
@@ -117,9 +125,12 @@ class Var:
         return self.name
         
     def __eq__(self, other): 
-        if not isinstance(other, Var):
-            return NotImplemented
-        return self.name == other.name
+        if other is None:
+            return False        
+        return True
+        # if not isinstance(other, Var):
+        #     return NotImplemented
+        # return self.name == other.name
         
     def __str__(self):
         return f"?{self.name}"
@@ -148,9 +159,12 @@ class BlankNode:
         return self.label
         
     def __eq__(self, other): 
-        if not isinstance(other, BlankNode):
-            return NotImplemented
-        return self.label == other.label
+        if other is None:
+            return False        
+        return True
+        # if not isinstance(other, BlankNode):
+        #     return NotImplemented
+        # return self.label == other.label
         
     def __str__(self):
         return f"_:{self.label}"
@@ -343,8 +357,12 @@ class Collection(VarContainer):
         self.__elements[key] = value
     
     def __eq__(self, other): 
+        if other is None:
+            return False        
+        if not other.is_concrete():
+            return True
         if not isinstance(other, Collection):
-            return NotImplemented
+            return False # NotImplemented
         return self.__elements == other.__elements
         
     def __str__(self):

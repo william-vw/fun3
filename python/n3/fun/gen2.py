@@ -1,7 +1,7 @@
 from enum import Enum
 from collections import Counter
 from multidict import MultiDict
-from n3.fun.py_build import PyBuilder
+from n3.fun.py_build import PyBuilder, IdxedTerm
 from n3.terms import Var, term_types, Triple
 from n3.ns import n3Log, swapNs
 from itertools import chain
@@ -189,20 +189,11 @@ class UOp:
     def __init__(self, type, ref, val1, val2):
         self.type = type
         self.ref = ref
-        self.val1 = val1 if isinstance(val1, IdxedVal) else IdxedVal(val1)
-        self.val2 = val2 if isinstance(val2, IdxedVal) else IdxedVal(val2)
+        self.val1 = val1 if isinstance(val1, IdxedTerm) else IdxedTerm(val1)
+        self.val2 = val2 if isinstance(val2, IdxedTerm) else IdxedTerm(val2)
         
     def __str__(self):
         return f"{self.type} @{self.ref}: {self.val1} <> {self.val2}"
-    
-class IdxedVal:
-    
-    def __init__(self, val, idxes=None):
-        self.value = val
-        self.idxes = idxes
-        
-    def __str__(self):
-        return f"{self.value}" if self.idxes is None else f"{self.value}@{self.idxes}"
     
 class ConditionalStmt:
     
@@ -232,6 +223,7 @@ class FnCall(ConditionalStmt):
     def get_args(self):
         return list(self.args.values())
 
+# TODO: also unify re-use of same vars in triple
     
 class GenPython:
 
@@ -280,7 +272,7 @@ class GenPython:
                 print(f"warning: cannot use rule, length of head > 1 ({rule})")
                 del rules[rule_no]; continue
             # only top-down rules
-            if rule.p.iri == n3Log['implies']:
+            if rule.p == n3Log['implies']:
                 print(f"warning: cannot use bottom-up rule ({rule})")
                 del rules[rule_no]; continue
 
@@ -359,14 +351,11 @@ class GenPython:
 
     def __unify(self, clause, match_tp, fn_call, ctu_call):
         print()
-        print("unify:", clause.tp, match_tp)
+        print("unify:\n", clause.tp, "\n", match_tp)
         
-        maps = self.__map_tp(clause.tp, match_tp)        
-        for map in maps:
-            # print("map:", map)
-              
-            clause_term = map[0]
-            match_term = map[1]
+        for pos in range(3):
+            clause_term = clause.tp[pos]
+            match_term = match_tp[pos]
             
             for op in self.__unify_terms(clause, clause_term, match_term):
                 print("op", op)
@@ -385,16 +374,16 @@ class GenPython:
                     case UOpTypes.TO_MATCH:
                         match (op.ref):
                             case UOpRefs.DIRECT:
-                                fn_call.set_arg(op.val2.value.name, self.bld.val(op.val1.value))
+                                fn_call.set_arg(op.val2.term.name, self.bld.val(op.val1))
                             case UOpRefs.RUNTIME:
-                                fn_call.set_arg(op.val2.value.name, self.bld.var_ref(op.val1.value))
+                                fn_call.set_arg(op.val2.term.name, self.bld.var_ref(op.val1, maybe_null=True))
 
                     case UOpTypes.FROM_MATCH:
                         match (op.ref):
                             case UOpRefs.DIRECT:
-                                ctu_call.set_arg(op.val2.value.name, self.bld.val(op.val1.value))
+                                ctu_call.set_arg(op.val2.term.name, self.bld.val(op.val1))
                             case UOpRefs.RUNTIME:
-                                ctu_call.set_arg(op.val2.value.name, self.bld.var_ref(op.val1.value))
+                                ctu_call.set_arg(op.val2.term.name, self.bld.var_ref(op.val1))
                             
         return True
     
@@ -403,6 +392,15 @@ class GenPython:
         
         if clause_term.is_concrete():
             if match_term.is_concrete():
+                # look for variables inside ungrounded collections
+                if (clause_term.type()==term_types.COLLECTION and match_term.type()==term_types.COLLECTION) and \
+                    (not clause_term.is_grounded() or not match_term.is_grounded()): 
+                        
+                        if len(clause_term) == len(match_term):
+                            for idx in range(len(clause_term)):
+                                yield from self.__unify_terms(clause, clause_term[idx], match_term[idx])
+                            return
+                
                 yield UOp(UOpTypes.CMP, UOpRefs.DIRECT, clause_term, match_term)
             else:
                 # clause_term_grounded = clause_term if clause_term.is_grounded() else self.__try_grounding(clause, clause_term)
@@ -436,27 +434,9 @@ class GenPython:
             positions = atomic[0]
             idxes = [ position[0] for position in positions ]
             
-            yield UOp(type, UOpRefs.RUNTIME, IdxedVal(var_term, idxes), atomic_term)
+            yield UOp(type, UOpRefs.RUNTIME, IdxedTerm(var_term, idxes), atomic_term)
             
         # return []
-    
-    def __map_tp(self, clause_tp, match_tp):
-        for pos in range(3):
-            yield from self.__map_terms(clause_tp[pos], match_tp[pos])
-
-    def __map_terms(self, clause_r, match_r):
-        if (clause_r.type()==term_types.COLLECTION and match_r.type()==term_types.COLLECTION) and \
-            (not clause_r.is_grounded() or not match_r.is_grounded()): # look for variables!
-                
-                if len(clause_r) == len(match_r):
-                    for idx in range(len(clause_r)):
-                        yield from self.__map_terms(clause_r[idx], match_r[idx])
-                else: # comparison will fail anyway!
-                    yield ( clause_r, match_r )
-                return
-
-        # by default, simply based on spo position
-        yield ( clause_r, match_r )
     
     def __get_ctu_call(self, name, params, final=False):
         params = self.__get_fn_params(params, final)
