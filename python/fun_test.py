@@ -4,7 +4,7 @@ from multidict import MultiDict
 
 from n3.parse import parse_n3
 from n3.fun.gen2 import gen_py
-from n3.terms import Triple, Iri, ANY
+from n3.terms import Triple, Iri, Collection, ANY
 from n3.model import Model
   
 
@@ -130,7 +130,9 @@ def fun3():
 # :man :label "man" . :machine :label "machine" .
 # """
 
-#     rule_args = [ ANY, ANY ]
+#     # rule_args = [ ANY, ANY ]
+#     # rule_args = [ ANY, Collection([ Iri("http://example.org/man"), Iri("http://example.org/machine") ]) ]
+#     rule_args = [ ANY, Collection([ Iri("http://example.org/man") ]) ]
     
 # # (5) ungrounded (some vars); different nesting level
 #     rules_str =  """@prefix : <http://example.org/> . 
@@ -145,10 +147,53 @@ def fun3():
 
 #     rule_args = [ ANY, ANY, ANY ]
     
-# (6) ungrounded (some vars); different nesting level
+# # (6) ungrounded (some vars); different nesting level
+#     rules_str =  """@prefix : <http://example.org/> . 
+# { ?a :partLabels ( ?x ?y ) } <= { ?a :parts ( ?x ?y ) . ?x :label ?xl . ?y :label ?yl } . 
+# { ?q :parts ?a } <= { ?q :hasParts ?a } .
+# """
+
+#     data_str = """@prefix : <http://example.org/> . 
+# :robocop :hasParts ( :man :machine ).
+# :man :label "man" . :machine :label "machine" .
+# """
+
+#     rule_args = [ ANY, ANY, ANY ]
+    
+# # (7) ungrounded (some vars); nested lists
+#     rules_str =  """@prefix : <http://example.org/> . 
+# { ?a :partLabels ( ?x ?y ) } <= { ?a :parts ( ( 1 2 ) ?b ) . ?x :label ?xl . ?y :label ?yl } . 
+# { ?q :parts ( ?x ( 3 4 ) ) } <= { ?q :hasParts ?a } .
+# """
+
+#     data_str = """@prefix : <http://example.org/> . 
+# :robocop :hasParts ( :man :machine ).
+# :man :label "man" . :machine :label "machine" .
+# """
+
+#     rule_args = [ ANY, ANY, ANY ]
+    
+# - test 3
+# (non-recursive rules with duplicate vars)
+    
+# # (1) duplicate vars in non-called head tp
+# # (no unification needed)
+#     rules_str =  """@prefix : <http://example.org/> . 
+# { ?a :part ?a } <= { ?a :parts ( ?x ?y ) . ?x :label ?xl . ?y :label ?yl } . 
+# { ?q :parts ?a } <= { ?q :hasParts ?a } .
+# """
+
+#     data_str = """@prefix : <http://example.org/> . 
+# :robocop :hasParts ( :man :machine ).
+# :man :label "man" . :machine :label "machine" .
+# """
+
+#     rule_args = [ ANY ]
+
+# (2) duplicate vars in head tp
     rules_str =  """@prefix : <http://example.org/> . 
-{ ?a :partLabels ( ?x ?y ) } <= { ?a :parts ( ?x ?y ) . ?x :label ?xl . ?y :label ?yl } . 
-{ ?q :parts ?a } <= { ?q :hasParts ?a } .
+{ ?a :partLabels ( ?x ?y ?xl ) } <= { ?a :parts ( ?x ?y ) . ?x :label ?xl } . 
+{ ?q :parts ( ?x ?x ) } <= { ?q :hasParts ?a } .
 """
 
     data_str = """@prefix : <http://example.org/> . 
@@ -156,7 +201,21 @@ def fun3():
 :man :label "man" . :machine :label "machine" .
 """
 
-    rule_args = [ ANY, ANY, ANY ]
+    rule_args = [ ANY, ANY, ANY, ANY ]
+    # rule_args = [ ANY, Iri("http://example.org/man"), Iri("http://example.org/machine"), ANY ]
+
+# # (3) duplicate vars in body tp
+#     rules_str =  """@prefix : <http://example.org/> . 
+# { ?a :partLabels ( ?x ?xl ) } <= { ?a :parts ( ?x ?x ) . ?x :label ?xl } . 
+# { ?q :parts ( ?k ?l ) } <= { ?q :hasParts ?a } .
+# """
+
+#     data_str = """@prefix : <http://example.org/> . 
+# :robocop :hasParts ( :man :machine ).
+# :man :label "man" . :machine :label "machine" .
+# """
+
+#     rule_args = [ ANY, ANY, ANY ]
     
     # parse
     

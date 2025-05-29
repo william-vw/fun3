@@ -11,6 +11,9 @@ def gen_py(rules):
     gen = GenPython()
     return gen.gen_python(rules)
 
+def unique_values(lst):
+    return list(dict.fromkeys(lst)) 
+
 
 class GenError(Exception):
     pass
@@ -25,10 +28,6 @@ class Rule:
 
     def set_avail_vars(self, vars):
         self.avail_vars = vars
-
-    @staticmethod
-    def unique_vars(prior_vars, new_vars):
-        return list(dict.fromkeys(prior_vars + new_vars)) 
 
     def update_new_vars(self):
         self.avail_vars = self.new_vars
@@ -186,6 +185,7 @@ class UOpRefs(Enum):
     RUNTIME = 2
 
 class UOp:
+    
     def __init__(self, type, ref, val1, val2):
         self.type = type
         self.ref = ref
@@ -195,11 +195,75 @@ class UOp:
     def __str__(self):
         return f"{self.type} @{self.ref}: {self.val1} <> {self.val2}"
     
+class UnifyTerms:
+    
+    def __init__(self):
+        self.__unif_vars = { UOpTypes.FROM_MATCH: {}, UOpTypes.TO_MATCH: {} }
+
+    def unify(self, clause, clause_term, match_term):
+        has_runtime_val = clause.rule.has_runtime_val(clause_term)
+        
+        if clause_term.is_concrete():
+            if match_term.is_concrete():
+                # look for variables inside ungrounded collections
+                if (clause_term.type()==term_types.COLLECTION and match_term.type()==term_types.COLLECTION) and \
+                    (not clause_term.is_grounded() or not match_term.is_grounded()): 
+                        
+                        if len(clause_term) == len(match_term):
+                            for idx in range(len(clause_term)):
+                                yield from self.unify(clause, clause_term[idx], match_term[idx])
+                            return
+                
+                yield from self.__unify_op(UOpTypes.CMP, UOpRefs.DIRECT, clause_term, match_term)
+            else:
+                yield from self.__unify_op(UOpTypes.TO_MATCH, UOpRefs.DIRECT, clause_term, match_term)
+                
+                if clause_term.type() == term_types.COLLECTION and not clause_term.is_grounded():
+                    yield from self.__unify_ungrcoll(UOpTypes.FROM_MATCH, match_term, clause_term)
+        else:
+            if match_term.is_concrete():
+                if has_runtime_val:
+                    yield from self.__unify_op(UOpTypes.CMP, UOpRefs.RUNTIME, clause_term, match_term)
+                
+                # possible that runtime var is ANY (if initial call didn't pass anything)
+                # so also unify by getting result from match
+                yield from self.__unify_op(UOpTypes.FROM_MATCH, UOpRefs.DIRECT, match_term, clause_term)
+                
+                if match_term.type() == term_types.COLLECTION and not match_term.is_grounded():
+                    yield from self.__unify_ungrcoll(UOpTypes.TO_MATCH, clause_term, match_term)
+            else:
+                # idem
+                if has_runtime_val:
+                    yield from self.__unify_op(UOpTypes.TO_MATCH, UOpRefs.RUNTIME, clause_term, match_term)
+
+                yield from self.__unify_op(UOpTypes.FROM_MATCH, UOpRefs.RUNTIME, match_term, clause_term)
+        
+    def __unify_ungrcoll(self, type, var_term, coll_term):
+        for atomic in coll_term._iter_recur_atomics(()):
+            atomic_term = atomic[1]
+            
+            positions = atomic[0]
+            idxes = [ position[0] for position in positions ]
+            
+            # only need values for variables
+            if not atomic_term.is_concrete():
+                yield from self.__unify_op(type, UOpRefs.RUNTIME, IdxedTerm(var_term, idxes), atomic_term)
+
+    def __unify_op(self, type, ref, term1, term2):
+        # (already know term2 won't be concrete)
+        if (type == UOpTypes.FROM_MATCH or type == UOpTypes.TO_MATCH):
+            if term2.name in self.__unif_vars[type]:
+                print("duplicate assn:", type, ref, term2.name, self.__unif_vars[type][term2.name], "<>", term1)
+            else:
+                self.__unif_vars[type][term2.name] = term1
+        
+        yield UOp(type, ref, term1, term2)
+    
 class ConditionalStmt:
     
     def __init__(self, conds = None):
         self.conds = conds if conds is not None else []
-    
+
     
 class FnCall(ConditionalStmt):
     
@@ -226,7 +290,7 @@ class FnCall(ConditionalStmt):
     def get_args(self):
         return list(self.args.values())
 
-    
+   
 class GenPython:
 
     def __init__(self):
@@ -286,12 +350,12 @@ class GenPython:
     
     def __gen_rule(self, rule):
         head_triple = rule.head.model.triple_at(0)
-        head_vars = head_triple._recur_vars(get_name=True)
+        head_vars = unique_values(head_triple._recur_vars(get_name=True))
         rule.set_avail_vars(head_vars)
         
         for no, tp in enumerate(rule.body.model.triples()):
             clause = Clause(rule, no, tp)
-            new_avail_vars = Rule.unique_vars(rule.avail_vars, tp._recur_vars(get_name=True))
+            new_avail_vars = unique_values(rule.avail_vars + tp._recur_vars(get_name=True))
 
             if no == len(rule.body.model)-1:
                 ctu_call = self.__get_ctu_call(self.names['final_ctu'], head_vars, final=True)
@@ -338,7 +402,7 @@ class GenPython:
         ctu_args = ctu_call.get_args()
         ctu_call_bld = self.bld.fn_call(ctu_call.ref, ctu_args)
 
-        lmbda_params = match_tp._recur_vars(get_name=True)
+        lmbda_params = unique_values(match_tp._recur_vars(get_name=True))
         lmbda_bld = self.bld.lmbda(lmbda_params, ctu_call_bld)
 
         fn_args = fn_call.get_args()
@@ -352,15 +416,16 @@ class GenPython:
         yield fn_call_bld
 
     def __unify(self, clause, match_tp, fn_call, ctu_call):
-        # print()
-        # print("unify:\n", clause.tp, "\n", match_tp)
+        print()
+        print("unify:\n", clause.tp, "\n", match_tp)
         
+        unifier = UnifyTerms()
         for pos in range(3):
             clause_term = clause.tp[pos]
             match_term = match_tp[pos]
             
-            for op in self.__unify_op(clause, clause_term, match_term):
-                # print("op", op)
+            for op in unifier.unify(clause, clause_term, match_term):
+                print("op", op)
                 
                 match (op.type):
                     case UOpTypes.CMP:
@@ -387,58 +452,6 @@ class GenPython:
                                 ctu_call.set_arg(op.val2.term.name, self.bld.var_ref(op.val1))
                             
         return True
-    
-    def __unify_op(self, clause, clause_term, match_term):
-        has_runtime_val = clause.rule.has_runtime_val(clause_term)
-        
-        if clause_term.is_concrete():
-            if match_term.is_concrete():
-                # look for variables inside ungrounded collections
-                if (clause_term.type()==term_types.COLLECTION and match_term.type()==term_types.COLLECTION) and \
-                    (not clause_term.is_grounded() or not match_term.is_grounded()): 
-                        
-                        if len(clause_term) == len(match_term):
-                            for idx in range(len(clause_term)):
-                                yield from self.__unify_op(clause, clause_term[idx], match_term[idx])
-                            return
-                
-                yield UOp(UOpTypes.CMP, UOpRefs.DIRECT, clause_term, match_term)
-            else:
-                yield UOp(UOpTypes.TO_MATCH, UOpRefs.DIRECT, clause_term, match_term)
-                
-                if clause_term.type() == term_types.COLLECTION and not clause_term.is_grounded():
-                    yield from self.__unify_ungrcoll(UOpTypes.FROM_MATCH, match_term, clause_term)
-
-        else:
-            if match_term.is_concrete():
-                if has_runtime_val:
-                    yield UOp(UOpTypes.CMP, UOpRefs.RUNTIME, clause_term, match_term)
-                
-                # possible that runtime var is ANY (if initial call didn't pass anything)
-                # so also unify by getting result from match
-                yield UOp(UOpTypes.FROM_MATCH, UOpRefs.DIRECT, match_term, clause_term)
-                
-                if match_term.type() == term_types.COLLECTION and not match_term.is_grounded():
-                    yield from self.__unify_ungrcoll(UOpTypes.TO_MATCH, clause_term, match_term)
-            else:
-                # idem
-                if has_runtime_val:
-                    yield UOp(UOpTypes.TO_MATCH, UOpRefs.RUNTIME, clause_term, match_term)
-
-                yield UOp(UOpTypes.FROM_MATCH, UOpRefs.RUNTIME, match_term, clause_term)
-    
-    def __unify_ungrcoll(self, type, var_term, coll_term):
-        for atomic in coll_term._iter_recur_atomics(()):
-            atomic_term = atomic[1]
-            
-            positions = atomic[0]
-            idxes = [ position[0] for position in positions ]
-            
-            # only need values for variables
-            if not atomic_term.is_concrete():
-                yield UOp(type, UOpRefs.RUNTIME, IdxedTerm(var_term, idxes), atomic_term)
-            
-        # return []
     
     def __get_ctu_call(self, name, params, final=False):
         params = self.__get_fn_params(params, final)

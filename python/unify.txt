@@ -1,0 +1,56 @@
+# unification approach
+if clause term is a var: pass value for it (c.1), and we need a value for it here (c.2)
+    = provide input (c.1), accept output (c.2)
+if match term is a var: we need to pass a value for it (m.1), and the matching function will pass a value back for it (m.2).
+    = accept input (m.1), provide output (m.2)
+providing, accepting input; value will be used for variable (unif), but, only if it was given
+providing, accepting output; value will be used for variable (unif)
+
+
+# ungrounded collections
+
+1/ include _nested_ vars in fn params
+problem with ungrcoll's; their vars become available (as regular vars) for rest of rule
+so, after ungrcoll triple, them like regular vars
+
+2/ unification
+complication here:
+ungrcoll may contain vars as well, to which the unif approach should also apply
+
+ungrcoll in match, so nested vars:
+(m.1): deconstruct the clause ungrcoll, if it was given (c.1)
+    also check if static structure is same
+(c.2): return & ground clause ungrcoll (m.2)
+
+ungrcoll in clause, so nested vars:
+(m.1): pass & ground ungrcoll (c.1)
+(c.2): deconstruct the match ungrcoll (m.2)
+    also check if static structure is same
+
+so,
+if clause is var, match is ungrcoll:
+    call: deconstruct clause var to match ungrcoll
+    result: pass match ungrcoll to clause var
+
+if clause is ungrcoll, match is var:
+    call: pass clause ungrcoll to match var
+    result: deconstruct match var to clause's ungrcoll
+
+--- 
+
+NOTES 
+- Any class
+avoids dealing with None's:
+    it matches everything
+    it can be deconstructed at infinitum into Any's
+    (no separate call needed that does not deconstruct the var when no value was given)
+
+
+- _eq_ function
+properly deals with variables
+allows checking if static structure of collections corresponds
+
+
+- other unif going on: "pulling" ungrcoll into fn
+when "reconstructing" objects in functions to pass the values:
+replace variables with corresponding python variables within scope
