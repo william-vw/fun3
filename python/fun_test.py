@@ -3,7 +3,7 @@ from collections import Counter
 from multidict import MultiDict
 
 from n3.parse import parse_n3
-from n3.fun.gen2 import gen_py, InputData, InputCall, RuleFn
+from n3.fun.gen import gen_py, InputData, InputCall, RuleFn
 from n3.terms import Triple, Iri, Collection, ANY
 from n3.model import Model
   
@@ -18,7 +18,7 @@ def fun3():
 # - input
     
 # . test 1
-# (non-recursive rules without collections)
+# non-recursive rules without collections
 
 # # (1) only query data
 #     rules_str =  """@prefix : <http://example.org/> . 
@@ -76,7 +76,7 @@ def fun3():
 # """
 
 # . test 2
-# (non-recursive rules with grounded/ungrounded collections)
+# non-recursive rules with grounded/ungrounded collections
 
 # # (1) grounded; same nesting level
 #     rules_str =  """@prefix : <http://example.org/> . 
@@ -158,21 +158,21 @@ def fun3():
 
 #     rule_args = [ ANY, ANY, ANY ]
     
-# # (7) ungrounded (some vars); nested lists
-#     rules_str =  """@prefix : <http://example.org/> . 
-# { ?a :partLabels ( ?x ?y ) } <= { ?a :parts ( ( 1 2 ) ?b ) . ?x :label ?xl . ?y :label ?yl } . 
-# { ?q :parts ( ?x ( 3 4 ) ) } <= { ?q :hasParts ?a } .
-# """
+# (7) ungrounded (some vars); nested lists
+    rules_str =  """@prefix : <http://example.org/> . 
+{ ?a :partLabels ( ?x ?y ) } <= { ?a :parts ( ( 1 2 ) ?b ) . ?x :label ?xl . ?y :label ?yl } . 
+{ ?q :parts ( ?x ( 3 4 ) ) } <= { ?q :hasParts ?a } .
+"""
 
-#     data_str = """@prefix : <http://example.org/> . 
-# :robocop :hasParts ( :man :machine ).
-# :man :label "man" . :machine :label "machine" .
-# """
+    data_str = """@prefix : <http://example.org/> . 
+:robocop :hasParts ( :man :machine ).
+:man :label "man" . :machine :label "machine" .
+"""
 
-#     rule_args = [ ANY, ANY, ANY ]
+    rule_args = [ ANY, ANY, ANY ]
     
 # . test 3
-# (non-recursive rules with duplicate vars)
+# non-recursive rules with duplicate vars
     
 # # (1) duplicate vars in non-called head tp
 # # (no unification needed)
@@ -202,18 +202,49 @@ def fun3():
 #     rule_args = [ ANY, ANY, ANY, ANY ]
 #     # rule_args = [ ANY, Iri("http://example.org/man"), Iri("http://example.org/machine"), ANY ]
 
-# (3) duplicate vars in body tp
-    rules_str =  """@prefix : <http://example.org/> . 
-{ ?a :partLabels ( ?x ?xl ) } <= { ?a :parts ( ?x ?x ) . ?x :label ?xl } . 
-{ ?q :parts ( ?k ?l ) } <= { ?q :hasParts ( ?k ?l ) } .
-"""
+# # (3) duplicate vars in body tp
+#     rules_str =  """@prefix : <http://example.org/> . 
+# { ?a :partLabels ( ?x ?xl ) } <= { ?a :parts ( ?x ?x ) . ?x :label ?xl } . 
+# { ?q :parts ( ?k ?l ) } <= { ?q :hasParts ( ?k ?l ) } .
+# """
 
-    data_str = """@prefix : <http://example.org/> . 
-:robocop :hasParts ( :man :man ).
-:man :label "man" . :machine :label "machine" .
-"""
+#     data_str = """@prefix : <http://example.org/> . 
+# :robocop :hasParts ( :man :man ).
+# :man :label "man" . :machine :label "machine" .
+# """
 
-    rule_args = [ ANY, ANY, ANY ]
+#     rule_args = [ ANY, ANY, ANY ]
+
+# # . test 4
+# # recursive rules
+
+#     rules_str = """@prefix : <http://example.org/> . 
+# { ?x :descendantOf ?y } <= { ?x :hasParent ?y } .
+# { ?x :descendantOf ?z } <= { ?x :descendantOf ?y . ?y :descendantOf ?z } .
+# """
+
+#     data_str = """@prefix : <http://example.org/> . 
+# :will :hasParent :paul .
+# :paul :hasParent :edward .
+# :edward :hasParent :peter .    
+# """
+
+#     rule_args = [ ANY, ANY ]
+
+# . test 5
+# builtins
+
+# # (1) simple sum
+#     rules_str = """@prefix : <http://example.org/> . 
+# @prefix math: <http://www.w3.org/2000/10/swap/math#> .
+# { :r :result ?r } <= { (1 2) math:sum ?r } .
+# """
+
+#     data_str = """@prefix : <http://example.org/> .
+# """
+
+#     rule_args = [ ANY ]
+
     
     # - parse
     
@@ -227,19 +258,19 @@ def fun3():
     # print(unparse_with_lineno(mod)) # converts the ast to py code with line no
     # unparsed = unparse(mod) # converts the ast to py code
     
-    # 1/ save code
-    mod = gen_py(rules, InputData(data_str=data_str), InputCall(0, rule_args))
-    unparsed = unparse(mod)
-    print(unparsed)
+    # # 1/ save code
+    # mod = gen_py(rules, InputData(data_str=data_str), InputCall(0, rule_args))
+    # unparsed = unparse(mod)
+    # print(unparsed)
     
-    with open("code_out.py", 'w') as fh:
-        fh.write(unparsed)
+    # with open("code_out.py", 'w') as fh:
+    #     fh.write(unparsed)
     
-    # # 2/ run a rule fn
-    # mod = gen_py(rules, InputData(data_str=data_str)) # no call yet (won't work)
+    # 2/ run a rule fn
+    mod = gen_py(rules, InputData(data_str=data_str)) # no call yet (won't work)
     
-    # exec_ret = get_exec(mod, InputData(data_str=data_str))
-    # exec_rule(exec_ret, InputCall(0, rule_args))
+    exec_ret = get_exec(mod, InputData(data_str=data_str))
+    exec_rule(exec_ret, InputCall(0, rule_args))
 
     
 def unparse_with_lineno(ast):
@@ -268,10 +299,7 @@ def exec_rule(exec_ret, in_call):
     rule_fn(*in_call.args, lambda *args: print(args))
 
 def test_ast():
-    print(dump(parse("""class State : 
-    def __init__(self, stop):
-        pass        
-state = State()""")))
+    print(dump(parse("""a = 'abc'""")))
     
 if __name__ == "__main__":
     fun3()

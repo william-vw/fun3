@@ -20,10 +20,10 @@ class Any:
         return True
     
     def is_concrete(self):
-        return True
+        return False
     
     def is_grounded(self):
-        return True
+        return False
     
     def idx_val(self):
         return self.__str__()
@@ -361,6 +361,9 @@ class Collection(VarContainer):
     
     def idx_val(self):
         return self.__to_nested_tuples()
+    
+    def append(self, coll):
+        return Collection(self.__elements + coll.__elements)
     
     def __to_nested_tuples(self):
         return tuple(e.__to_nested_tuples() if e.type() == term_types.COLLECTION else e.idx_val() for e in self.__elements)

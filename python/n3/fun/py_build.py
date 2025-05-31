@@ -22,8 +22,11 @@ class PyBuilder:
     def module(self, body):
         return self.__fix(ast.Module(body=body, type_ignores=[]))        
 
-    def imports(self, module, names):
+    def import_from(self, module, names):
         return self.__fix(ast.ImportFrom(module=module, names=[self.__fix(ast.alias(name=n)) for n in names], level=0))
+
+    def import_as(self, module, alias):
+        return self.__fix(ast.Import(names=[self.__fix(ast.alias(name=module, asname=alias))]))
 
     def fn(self, name, params=[]):
         args = [self.__fix(ast.arg(arg=p)) for p in params]
@@ -66,24 +69,26 @@ class PyBuilder:
             expr = self.ref('ANY')
             
         else:
-            elements = None
+            args = None
             match term.type():
                 case term_types.IRI: 
                     cls_name = "Iri"
+                    args = [ self.cnst(term.iri) ]
                 case term_types.LITERAL: 
                     cls_name = "Literal"
+                    args = [ self.cnst(term.value), self.val(term.dt) ]
                 case term_types.COLLECTION: 
                     cls_name = "Collection"
-                    elements = [ self.lst([ self.val(el, scope_vars) for el in term ]) ]
+                    args = [ self.lst([ self.val(el, scope_vars) for el in term ]) ]
                 case term_types.VAR:
                     cls_name = "Var"
+                    args = [ self.cnst(term.name) ]
                 case term_types.BNODE:
                     cls_name = "BlankNode"
+                    args = [ self.cnst(term.label) ]
                 case _: print("inconceivable")
-            if elements is None:
-                elements = [ self.cnst(term.idx_val())]
             
-            expr = self.constr_obj(self.ref(cls_name), elements)
+            expr = self.constr_obj(self.ref(cls_name), args)
             
         if isinstance(val, IdxedTerm):
             expr = self.indexes(expr, val.idxes)
@@ -100,7 +105,7 @@ class PyBuilder:
     def term_val(self, expr):
         return self.fn_call(self.attr_ref_expr(expr, 'idx_val'))
 
-    def cnst(self, value):
+    def cnst(self, value):        
         return self.__fix(ast.Constant(value=value))
         
     def lst(self, elts):
