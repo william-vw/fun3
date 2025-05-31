@@ -45,10 +45,15 @@ avoids dealing with None's:
     it can be deconstructed at infinitum into Any's
     (no separate call needed that does not deconstruct the var when no value was given)
 
-
 - _eq_ function
 properly deals with variables
 allows checking if static structure of collections corresponds
+
+- why no comparison of returned var with clause's ungrcoll
+latter was already unified with the former;
+cannot change its value, as far as I know
+then, why a comparison of passed var with match's ungroll?
+possible that nothing was passed, or that wrong value was passed by client
 
 
 - other unif going on: "pulling" ungrcoll into fn

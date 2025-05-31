@@ -11,6 +11,9 @@ class IdxedTerm:
         self.term = term
         self.idxes = idxes
         
+    def type(self):
+        return self.term.type()
+        
     def __str__(self):
         return f"{self.term}" if self.idxes is None else f"{self.term}@{self.idxes}"
 
@@ -44,6 +47,13 @@ class PyBuilder:
     def ref(self, name):
         return self.__fix(ast.Name(id=name, ctx=ast.Load()))
 
+    def get(self, term):
+        match (term.type()):
+            case term_types.VAR:
+                return self.var_ref(term)
+            case _:
+                return self.val(term)
+
     def val(self, val, scope_vars=[]):
         # return self.cnst(r.idx_val())
         term = val if not isinstance(val, IdxedTerm) else val.term
@@ -51,6 +61,10 @@ class PyBuilder:
         # replace n3 vars with python vars within scope
         if term.type() == term_types.VAR and term.name in scope_vars:
             expr = self.var_ref(term)
+        
+        elif term.type() == term_types.ANY:
+            expr = self.ref('ANY')
+            
         else:
             elements = None
             match term.type():
@@ -149,6 +163,7 @@ class PyBuilder:
         return self.__fix(ast.Compare(left=ops[0], ops=[cmp], comparators=ops[1:]))
         
     def assn(self, var, expr):
+        # I made this mistake so often I added an error for it
         if not isinstance(var, str):
             raise PyBuildError("expecting str in var assn")
             
@@ -172,6 +187,12 @@ class PyBuilder:
             test=cond,
             body=body,
             orelse=ellse if ellse is not None else []))
+    
+    def iif_exp(self, cond, exp, ellse=None):
+        return self.__fix(ast.IfExp(
+            test=cond,
+            body=exp,
+            orelse=ellse if ellse is not None else self.cnst(False)))
     
     def pss(self):
         return self.__fix(ast.Pass())
