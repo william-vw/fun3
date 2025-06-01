@@ -1,7 +1,7 @@
-from n3.ns import xsd
+from n3.ns import xsdNs
 
 def is_numeric(lit):
-    if lit.dt.ns == xsd.iri:
+    if lit.dt.ns == xsdNs.iri:
         match (lit.dt.ln):
             case 'decimal':
                 return True

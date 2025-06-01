@@ -1,6 +1,7 @@
 from functools import reduce
 from n3.terms import Collection, Literal
-from n3.ns import xsd
+from n3.fun.builtins.utils import is_numeric
+from n3.ns import xsdNs
 
 def list_iterate(s, o, ctu):
     if not isinstance(s, Collection):
@@ -12,7 +13,7 @@ def list_iterate(s, o, ctu):
         
         index = None; value = None
         if o[0].is_concrete():
-            if not (isinstance(o[0], Literal) and (o[0].dt == xsd['decimal'] or o[0].dt == xsd['double'] or o[0] == xsd['float'])):
+            if not isinstance(o[0], Literal) and is_numeric(o[0]):
                 return
             index = o[0]
             if index.value > len(s):
@@ -25,7 +26,7 @@ def list_iterate(s, o, ctu):
                 if s[index.value] == value:
                     # (simply return original collection)
                     ctu(s, o) # o_1 (index), o_2 (value) are concrete
-                    return
+                return
             else:
                 value = s[index.value]
                 ctu(s, Collection([ index, value ])) # o_1 (index) is concrete, o_2 (value) is variable
@@ -34,14 +35,14 @@ def list_iterate(s, o, ctu):
             if value is not None:
                 for index, s_i in enumerate(s):
                     if s_i == value:
-                        ctu(s, Collection[ Literal(index, xsd['int']), value ]) # o_1 (index) is variable, o_2 (value) is concrete
-                        return
+                        ctu(s, Collection([ Literal(index, xsdNs['int']), value ])) # o_1 (index) is variable, o_2 (value) is concrete
+                return
     
     for index, s_i in enumerate(s):
         # - o (collection) is concrete but not grounded
         # (else we would have returned somewhere above)
         # - o (collection) is variable
-        ctu(s, Collection(Literal(index, xsd['int']), s_i))
+        ctu(s, Collection([Literal(index, xsdNs['int']), s_i]))
             
 def list_append(s, o, ctu):
     if not isinstance(s, Collection):

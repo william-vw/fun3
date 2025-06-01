@@ -3,7 +3,7 @@ from collections import Counter
 from multidict import MultiDict
 from n3.fun.py_build import PyBuilder, IdxedTerm
 from n3.terms import Var, term_types, Triple, ANY, Iri
-from n3.ns import n3Log, swapNs
+from n3.ns import logNs, swapNs
 from itertools import chain
 from ast import dump, unparse
 
@@ -353,6 +353,7 @@ class GenPython:
         
     def __gen_rule_python(self, rules):   
         self.code_imports.append(self.bld.import_from('n3.terms', ['Iri', 'Var', 'Literal', 'Collection', 'ANY', 'term_types']))
+        self.code_imports.append(self.bld.import_from('n3.ns', ['NS']))
         
         for i, (head, _, body) in enumerate(rules):
             rule = Rule(i, head, body)
@@ -385,7 +386,7 @@ class GenPython:
                 print(f"warning: cannot use rule, length of head > 1 ({rule})")
                 del rules[rule_no]; continue
             # only top-down rules
-            if rule.p == n3Log['implies']:
+            if rule.p == logNs['implies']:
                 print(f"warning: cannot use bottom-up rule ({rule})")
                 del rules[rule_no]; continue
 

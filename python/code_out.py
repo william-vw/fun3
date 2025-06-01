@@ -1,8 +1,9 @@
 from n3.parse import parse_n3
 from n3.terms import Iri, Var, Literal, Collection, ANY, term_types
-from n3.fun.builtins.math import math_sum
+from n3.ns import NS
+from n3.fun.builtins.list import list_iterate
 data = parse_n3('@prefix : <http://example.org/> .\n').data
 
-def rule_0(x_0, y_1, r_2, final_ctu):
-    math_sum(Collection([x_0, y_1]), r_2, lambda s, o: final_ctu(s[0], s[1], o))
-rule_0(Literal(3, Iri('http://www.w3.org/2001/XMLSchema#int')), Literal(4, Iri('http://www.w3.org/2001/XMLSchema#int')), Literal(8, Iri('http://www.w3.org/2001/XMLSchema#int')), lambda a0, a1, a2: print(a0, a1, a2))
+def rule_0(y_0, final_ctu):
+    list_iterate(Collection([Literal('c', NS.xsd['string']), Literal('b', NS.xsd['string']), Literal('c', NS.xsd['string'])]), Collection([Literal(1, NS.xsd['int']), Literal('c', NS.xsd['string'])]), lambda s, o: final_ctu(y_0))
+rule_0(ANY, lambda a0: print(a0))

@@ -6,7 +6,7 @@ from n3.grammar.parser.n3Listener import n3Listener
 
 from n3.model import Model
 from n3.terms import term_types, Iri, Collection, Var, BlankNode, Literal, GraphTerm, Triple
-from n3.ns import rdf, owl, n3Log, xsd
+from n3.ns import rdfNs, owlNs, logNs, xsdNs
 
 class state:
     
@@ -226,11 +226,11 @@ class n3Creator(n3Listener):
             predicate = None
             # 'has' has no side-effects
             match token:
-                case 'a': predicate = rdf['type']
+                case 'a': predicate = rdfNs['type']
                 case 'is': self.state.inv_pred = True
-                case '=': predicate = owl['sameAs']
-                case '=>': predicate = n3Log["implies"]
-                case '<=': predicate = n3Log["impliedBy"]
+                case '=': predicate = owlNs['sameAs']
+                case '=>': predicate = logNs["implies"]
+                case '<=': predicate = logNs["impliedBy"]
 
             if predicate is not None:
                 self.state.path_item = predicate
@@ -342,7 +342,7 @@ class n3Creator(n3Listener):
     def exitLiteral(self, ctx:n3Parser.LiteralContext):
         lit = ctx.BooleanLiteral()
         if lit is not None:
-            self.state.path_item = Literal(self.bool(lit), xsd['boolean'])
+            self.state.path_item = Literal(self.bool(lit), xsdNs['boolean'])
 
     # Enter a parse tree produced by n3Parser#blankNodePropertyList.
     def enterBlankNodePropertyList(self, ctx:n3Parser.BlankNodePropertyListContext):
@@ -428,11 +428,11 @@ class n3Creator(n3Listener):
         n = None; dt = None
         
         if ctx.INTEGER() is not None:
-            n = self.int(ctx.INTEGER()); dt = xsd['int']
+            n = self.int(ctx.INTEGER()); dt = xsdNs['int']
         elif ctx.DOUBLE() is not None:
-            n = self.double(ctx.DOUBLE()); dt = xsd['double']
+            n = self.double(ctx.DOUBLE()); dt = xsdNs['double']
         elif ctx.DECIMAL() is not None:
-            n = self.decimal(ctx.DECIMAL()); dt = xsd['decimal']
+            n = self.decimal(ctx.DECIMAL()); dt = xsdNs['decimal']
         
         if n is not None:
             self.state.path_item = Literal(n, dt)
@@ -601,7 +601,7 @@ class n3Creator(n3Listener):
         self.state.data.add(triple)
         
         if triple.s.type() == term_types.GRAPH and \
-            triple.p.type() == term_types.IRI and (triple.p == n3Log['implies'] or triple.p == n3Log['impliedBy']):
+            triple.p.type() == term_types.IRI and (triple.p == logNs['implies'] or triple.p == logNs['impliedBy']):
             self.state.rules.append(triple)
         
     def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):

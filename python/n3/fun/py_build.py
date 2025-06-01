@@ -1,5 +1,6 @@
 import ast
 from n3.terms import term_types
+from n3.ns import NS, xsdNs
 from ast import dump, unparse
 
 class PyBuildError(Exception):
@@ -61,24 +62,24 @@ class PyBuilder:
         # return self.cnst(r.idx_val())
         term = val if not isinstance(val, IdxedTerm) else val.term
         
+        expr = None
+        
         # replace n3 vars with python vars within scope
         if term.type() == term_types.VAR and term.name in scope_vars:
             expr = self.var_ref(term)
         
-        elif term.type() == term_types.ANY:
-            expr = self.ref('ANY')
-            
         else:
-            args = None
+            cls_name = None; args = None
             match term.type():
+                case term_types.ANY:
+                    expr = self.ref('ANY')
                 case term_types.IRI: 
-                    cls_name = "Iri"
-                    args = [ self.cnst(term.iri) ]
+                    expr = self.iri(term)
                 case term_types.LITERAL: 
                     cls_name = "Literal"
                     args = [ self.cnst(term.value) ]
-                    if term.dt is not None:
-                        args.append(self.val(term.dt))
+                    # TODO deal with non-datatype'd literals
+                    args.append(self.val(term.dt if term.dt is not None else xsdNs['string']))
                 case term_types.COLLECTION: 
                     cls_name = "Collection"
                     args = [ self.lst([ self.val(el, scope_vars) for el in term ]) ]
@@ -90,11 +91,19 @@ class PyBuilder:
                     args = [ self.cnst(term.label) ]
                 case _: print("inconceivable")
             
-            expr = self.constr_obj(self.ref(cls_name), args)
+            if expr is None:
+                expr = self.constr_obj(self.ref(cls_name), args)
             
         if isinstance(val, IdxedTerm):
             expr = self.indexes(expr, val.idxes)
         return expr
+    
+    def iri(self, iri):
+        if NS.has(iri.ns): # try for shorter code; use NS class
+            ns_attr = self.attr_ref_expr(self.ref('NS'), NS.get(iri.ns).name)
+            return self.index(ns_attr, iri.ln)
+        else:
+            return self.constr_obj(self.ref('Iri'), [ self.cnst(iri.iri) ])
     
     def var_ref(self, var):
         term = var if not isinstance(var, IdxedTerm) else var.term
@@ -122,8 +131,8 @@ class PyBuilder:
     def attr_ref_expr(self, expr, attr):
         return self.__fix(ast.Attribute(value=expr, attr=attr, ctx=ast.Load()))
         
-    def index(self, expr, nr):
-        return self.__fix(ast.Subscript(expr, slice=self.cnst(nr), ctx=ast.Load()))
+    def index(self, expr, idx):
+        return self.__fix(ast.Subscript(expr, slice=self.cnst(idx), ctx=ast.Load()))
 
     def indexes(self, expr, idxes):
         if idxes is not None:

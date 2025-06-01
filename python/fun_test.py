@@ -6,7 +6,7 @@ from n3.parse import parse_n3
 from n3.fun.gen import gen_py, InputData, InputCall, RuleFn
 from n3.terms import Triple, Iri, Collection, ANY, Literal
 from n3.model import Model
-from n3.ns import xsd
+from n3.ns import xsdNs
   
 
 class State : 
@@ -255,20 +255,53 @@ def fun3():
 #     data_str = """@prefix : <http://example.org/> .
 # """
     
-#     rule_args = [ Collection([ Literal(2, xsd['int']), Literal(3, xsd['int']) ]), ANY ]
-#     # rule_args = [ Collection([ Literal(2, xsd['int']), Literal(3, xsd['int']) ]), Literal(5, xsd['int']) ]
+#     rule_args = [ Collection([ Literal(2, xsdNs['int']), Literal(3, xsdNs['int']) ]), ANY ]
+#     # rule_args = [ Collection([ Literal(2, xsdNs['int']), Literal(3, xsdNs['int']) ]), Literal(5, xsdNs['int']) ]
 
-# (3) sum with ungrounded list
+# # (3) sum with ungrounded list
+#     rules_str = """@prefix : <http://example.org/> . 
+# @prefix math: <http://www.w3.org/2000/10/swap/math#> .
+# { ( ?x ?y ) :result ?r } <= { ( ?x ?y ) math:sum ?r } .
+# """
+
+#     data_str = """@prefix : <http://example.org/> .
+# """
+
+#     rule_args = [ Literal(3, xsdNs['int']), Literal(4, xsdNs['int']), ANY ]
+#     # rule_args = [ Literal(3, xsdNs['int']), Literal(4, xsdNs['int']), Literal(7, xsdNs['int']) ]
+    
+# # (4) iterate with var object
+#     rules_str = """@prefix : <http://example.org/> . 
+# @prefix list: <http://www.w3.org/2000/10/swap/list#> .
+# { :result :cell ?c } <= { ( 1 2 3 ) list:iterate ?c } .
+# """
+
+#     data_str = """@prefix : <http://example.org/> .
+# """
+
+#     rule_args = [ ANY ]
+    
+# # (5) iterate with ungrounded object
+#     rules_str = """@prefix : <http://example.org/> . 
+# @prefix list: <http://www.w3.org/2000/10/swap/list#> .
+# { :result :cell ( ?x ?y ) } <= { ( 1 2 3 ) list:iterate ( ?x ?y ) } .
+# """
+
+#     data_str = """@prefix : <http://example.org/> .
+# """
+
+#     rule_args = [ ANY, ANY ]
+    
+# (6) iterate with (partially) grounded object
     rules_str = """@prefix : <http://example.org/> . 
-@prefix math: <http://www.w3.org/2000/10/swap/math#> .
-{ ( ?x ?y ) :result ?r } <= { ( ?x ?y ) math:sum ?r } .
+@prefix list: <http://www.w3.org/2000/10/swap/list#> .
+{ :result :value ?x } <= { ( 'c' 'b' 'c' ) list:iterate ( 2 ?x ) } . # ( 2 'c' ), ( ?x 'c' )
 """
 
     data_str = """@prefix : <http://example.org/> .
 """
 
-    rule_args = [ Literal(3, xsd['int']), Literal(4, xsd['int']), ANY ]
-    # rule_args = [ Literal(3, xsd['int']), Literal(4, xsd['int']), Literal(7, xsd['int']) ]
+    rule_args = [ ANY ]
 
     
     # - parse
@@ -283,19 +316,19 @@ def fun3():
     # print(unparse_with_lineno(mod)) # converts the ast to py code with line no
     # unparsed = unparse(mod) # converts the ast to py code
     
-    # 1/ save code
-    mod = gen_py(rules, InputData(data_str=data_str), InputCall(0, rule_args))
-    unparsed = unparse(mod)
-    print(unparsed)
+    # # 1/ save code
+    # mod = gen_py(rules, InputData(data_str=data_str), InputCall(0, rule_args))
+    # unparsed = unparse(mod)
+    # print(unparsed)
     
-    with open("code_out.py", 'w') as fh:
-        fh.write(unparsed)
+    # with open("code_out.py", 'w') as fh:
+    #     fh.write(unparsed)
     
-    # # 2/ run a rule fn
-    # mod = gen_py(rules, InputData(data_str=data_str)) # no call yet (won't work)
+    # 2/ run a rule fn
+    mod = gen_py(rules, InputData(data_str=data_str)) # no call yet (won't work)
     
-    # exec_ret = get_exec(mod, InputData(data_str=data_str))
-    # exec_rule(exec_ret, InputCall(0, rule_args))
+    exec_ret = get_exec(mod, InputData(data_str=data_str))
+    exec_rule(exec_ret, InputCall(0, rule_args))
 
     
 def unparse_with_lineno(ast):
