@@ -23,11 +23,12 @@ def is_numeric(lit):
             
     return False
 
-def divide_buckets(lst, num_buck, buck_no, start_idx, result):
-    if buck_no == num_buck-1:
-        result = result + [ lst[start_idx:len(lst)] ]
-        yield result
+def divide_buckets(lst, num_buck, buck_no=1, start_idx=0, result=[]):
+    if buck_no == num_buck:
+        new_result = result + [ lst[start_idx:len(lst)] ]
+        yield new_result
         return
-    buck_left = num_buck - (buck_no+1)
+    buck_left = num_buck - buck_no
     for next_idx in range(start_idx+1, len(lst)-buck_left+1):
-        yield from divide_buckets(lst, num_buck, buck_no+1, next_idx, result[:] + [ lst[start_idx:next_idx] ])
+        new_result = result[:] + [ lst[start_idx:next_idx] ]
+        yield from divide_buckets(lst, num_buck, buck_no+1, next_idx, new_result)
