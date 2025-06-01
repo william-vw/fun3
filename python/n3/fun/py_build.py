@@ -76,7 +76,9 @@ class PyBuilder:
                     args = [ self.cnst(term.iri) ]
                 case term_types.LITERAL: 
                     cls_name = "Literal"
-                    args = [ self.cnst(term.value), self.val(term.dt) ]
+                    args = [ self.cnst(term.value) ]
+                    if term.dt is not None:
+                        args.append(self.val(term.dt))
                 case term_types.COLLECTION: 
                     cls_name = "Collection"
                     args = [ self.lst([ self.val(el, scope_vars) for el in term ]) ]

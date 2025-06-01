@@ -66,8 +66,8 @@ By passing an argument for that parameter, we ensure that the argument will be u
 Hence, we unified something (whatever was passed) with the match variable (assignment).
 
     - If the clause term is concrete, we simply pass it.
-    - If the clause term is a variable, we similarly pass it.
-But, in the latter case, it is possible that the clause variable's value is "any". So, no unification will happen by passing it.
+    - If the clause term is a variable, we similarly pass it. We can only do this if it was given as a function parameter, though (i.e., it was also in the rule head).
+But, in the latter case, it is also possible that the clause variable's value is "any". So, no unification will happen by passing it.
 In that case, we need to use the argument returned by the matching function. 
 In turn, we use it as an argument for the clause variable's parameter, passing it to the next function call (albeit belonging to the next btp or the final_ctu).
 Hence, we again unified something (whatever was returned) with the clause variable (assignment).
@@ -77,6 +77,6 @@ But, as before, it is possible that the clause variable's value is "any", so the
 In that case, we use the concrete match term, and pass it to the next function call (idem above).
 
 ### Ungrounded collections
-TODO
+TODO: see unify.txt
 
 TODO: also unify multiple occurrences of same variable in same triple

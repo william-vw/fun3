@@ -26,13 +26,13 @@ def fun3():
 # """
 #   rule_args = [ ANY ]
 
-# # (2) call other rules (both terms concrete)
-#     rules_str =  """@prefix : <http://example.org/> . 
-# { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
-# { ?p a :Person } <= { ?p :ability :think } .
-# { ?pe a :Belgian } <= { ?pe :ability :drink } .
-# """
-#   rule_args = [ ANY ]
+# (2) call other rules (both terms concrete)
+    rules_str =  """@prefix : <http://example.org/> . 
+{ ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
+{ ?p a :Person } <= { ?p :ability :think } .
+{ ?pe a :Belgian } <= { ?pe :ability :drink } .
+"""
+    rule_args = [ ANY ]
 
 # # (3) call other rules (clause term concrete, match term var)
 #     rules_str =  """@prefix : <http://example.org/> . 
@@ -67,13 +67,13 @@ def fun3():
 #     # rule_args = [ ANY, ANY ]
 #     rule_args = [ Iri("http://example.org/el"), Iri("http://example.org/Belgian") ]
 
-#     data_str = """@prefix : <http://example.org/> . 
-# :will a :Person ; :address :addr1 . :addr1 :country "CA" .
-# :ed :ability :think ; :address :addr1 ; :describedAs :Person .
-# :el :ability :drink ; :address :addr1 ; :describedAs :Belgian .
-# :dor :ability :think ; :address :addr1 ; :describedAs :German .
-# :soc :name "Socrates" ; :address :addr1 .
-# """
+    data_str = """@prefix : <http://example.org/> . 
+:will a :Person ; :address :addr1 . :addr1 :country "CA" .
+:ed :ability :think ; :address :addr1 ; :describedAs :Person .
+:el :ability :drink ; :address :addr1 ; :describedAs :Belgian .
+:dor :ability :think ; :address :addr1 ; :describedAs :German .
+:soc :name "Socrates" ; :address :addr1 .
+"""
 
 # . test 2
 # non-recursive rules with grounded/ungrounded collections
@@ -158,18 +158,18 @@ def fun3():
 
 #     rule_args = [ ANY, ANY, ANY ]
     
-# (7) ungrounded (some vars); nested lists
-    rules_str =  """@prefix : <http://example.org/> . 
-{ ?a :partLabels ( ?x ?y ) } <= { ?a :parts ( ( 1 2 ) ?b ) . ?x :label ?xl . ?y :label ?yl } . 
-{ ?q :parts ( ?x ( 3 4 ) ) } <= { ?q :hasParts ?a } .
-"""
+# # (7) ungrounded (some vars); nested lists
+#     rules_str =  """@prefix : <http://example.org/> . 
+# { ?a :partLabels ( ?x ?y ) } <= { ?a :parts ( ( 1 2 ) ?b ) . ?x :label ?xl . ?y :label ?yl } . 
+# { ?q :parts ( ?x ( 3 4 ) ) } <= { ?q :hasParts ?a } .
+# """
 
-    data_str = """@prefix : <http://example.org/> . 
-:robocop :hasParts ( :man :machine ).
-:man :label "man" . :machine :label "machine" .
-"""
+#     data_str = """@prefix : <http://example.org/> . 
+# :robocop :hasParts ( :man :machine ).
+# :man :label "man" . :machine :label "machine" .
+# """
 
-    rule_args = [ ANY, ANY, ANY ]
+#     rule_args = [ ANY, ANY, ANY ]
     
 # . test 3
 # non-recursive rules with duplicate vars
@@ -258,19 +258,19 @@ def fun3():
     # print(unparse_with_lineno(mod)) # converts the ast to py code with line no
     # unparsed = unparse(mod) # converts the ast to py code
     
-    # # 1/ save code
-    # mod = gen_py(rules, InputData(data_str=data_str), InputCall(0, rule_args))
-    # unparsed = unparse(mod)
-    # print(unparsed)
+    # 1/ save code
+    mod = gen_py(rules, InputData(data_str=data_str), InputCall(0, rule_args))
+    unparsed = unparse(mod)
+    print(unparsed)
     
-    # with open("code_out.py", 'w') as fh:
-    #     fh.write(unparsed)
+    with open("code_out.py", 'w') as fh:
+        fh.write(unparsed)
     
-    # 2/ run a rule fn
-    mod = gen_py(rules, InputData(data_str=data_str)) # no call yet (won't work)
+    # # 2/ run a rule fn
+    # mod = gen_py(rules, InputData(data_str=data_str)) # no call yet (won't work)
     
-    exec_ret = get_exec(mod, InputData(data_str=data_str))
-    exec_rule(exec_ret, InputCall(0, rule_args))
+    # exec_ret = get_exec(mod, InputData(data_str=data_str))
+    # exec_rule(exec_ret, InputCall(0, rule_args))
 
     
 def unparse_with_lineno(ast):
