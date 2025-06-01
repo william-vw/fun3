@@ -12,9 +12,9 @@ def math_sum(s, o, ctu):
         total += s_i.value
 
     if o.is_concrete():
-        if not (isinstance(s, Literal) and is_numeric(o)):
+        if not (isinstance(o, Literal) and is_numeric(o)):
             return
         if total == o.value:
-            ctu() # o is concrete
+            ctu(s, o) # o is concrete
     else:
-        ctu(total) # o is variable
+        ctu(s, total) # o is variable

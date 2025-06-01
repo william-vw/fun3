@@ -22,3 +22,12 @@ def is_numeric(lit):
             # TODO: https://www.w3.org/TR/xmlschema-2/#built-in-datatypes
             
     return False
+
+def divide_buckets(lst, num_buck, buck_no, start_idx, result):
+    if buck_no == num_buck-1:
+        result = result + [ lst[start_idx:len(lst)] ]
+        yield result
+        return
+    buck_left = num_buck - (buck_no+1)
+    for next_idx in range(start_idx+1, len(lst)-buck_left+1):
+        yield from divide_buckets(lst, num_buck, buck_no+1, next_idx, result[:] + [ lst[start_idx:next_idx] ])

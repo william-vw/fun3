@@ -2,7 +2,7 @@ from enum import Enum
 from collections import Counter
 from multidict import MultiDict
 from n3.fun.py_build import PyBuilder, IdxedTerm
-from n3.terms import Var, term_types, Triple, ANY
+from n3.terms import Var, term_types, Triple, ANY, Iri
 from n3.ns import n3Log, swapNs
 from itertools import chain
 from ast import dump, unparse
@@ -360,7 +360,7 @@ class GenPython:
             
     def __gen_call_python(self, call):
         lmbda_params = [ f"a{i}" for i in range(len(call.args)) ]
-        lmbda_body = self.bld.fn_call(self.bld.ref("print"), [ self.bld.ref(arg) for arg in lmbda_params ])
+        lmbda_body = self.bld.fn_call(self.bld.ref('print'), [ self.bld.ref(arg) for arg in lmbda_params ])
         lmbda_ctu = self.bld.lmbda(lmbda_params, lmbda_body)
         
         args = [ self.bld.val(arg) for arg in call.args ] + [ lmbda_ctu ]
@@ -433,17 +433,16 @@ class GenPython:
 
     def __gen_builtin(self, clause, ctu_call):
         pck_name = clause.tp.p.ns[len(swapNs.iri):-1]
-        fn_name = clause.tp.p.ln
+        name = clause.tp.p.ln
         
-        blt_name = f"{pck_name}_{fn_name}"
-        self.code_imports.append(self.bld.import_from(f'n3.fun.builtins.{pck_name}', [ blt_name ]))
+        fn_name = f"{pck_name}_{name}"
+        self.code_imports.append(self.bld.import_from(f'n3.fun.builtins.{pck_name}', [ fn_name ]))
         
-        a1 = self.bld.val(clause.tp.s, scope_vars=clause.rule.avail_vars)
-        a2 = self.bld.val(clause.tp.o, scope_vars=clause.rule.avail_vars)
-        a3 = ctu_call.ref
+        blt_id = f"{pck_name}#{name}"
+        match_tp = Triple(Var("s"), swapNs[blt_id], Var("o"))
+        fn_call = FnCall(self.bld.ref(fn_name))
         
-        blt_call_bld = self.bld.fn_call(self.bld.ref(blt_name), [ a1, a2, a3 ])
-        yield blt_call_bld
+        yield from self.__gen_match_call(clause, match_tp, fn_call, ctu_call.clone())
 
     def __gen_find_data(self, clause, ctu_call):
         match_tp = Triple(Var("s"), Var("p"), Var("o"))

@@ -109,7 +109,7 @@ class Iri(ConcreteNode):
         
 class Literal(ConcreteNode):
     
-    def __init__(self, value, dt=None, lng=None):
+    def __init__(self, value, dt, lng=None):
         self.value = value
         self.dt = dt
         self.lng = lng

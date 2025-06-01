@@ -4,8 +4,9 @@ from multidict import MultiDict
 
 from n3.parse import parse_n3
 from n3.fun.gen import gen_py, InputData, InputCall, RuleFn
-from n3.terms import Triple, Iri, Collection, ANY
+from n3.terms import Triple, Iri, Collection, ANY, Literal
 from n3.model import Model
+from n3.ns import xsd
   
 
 class State : 
@@ -26,13 +27,13 @@ def fun3():
 # """
 #   rule_args = [ ANY ]
 
-# (2) call other rules (both terms concrete)
-    rules_str =  """@prefix : <http://example.org/> . 
-{ ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
-{ ?p a :Person } <= { ?p :ability :think } .
-{ ?pe a :Belgian } <= { ?pe :ability :drink } .
-"""
-    rule_args = [ ANY ]
+# # (2) call other rules (both terms concrete)
+#     rules_str =  """@prefix : <http://example.org/> . 
+# { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
+# { ?p a :Person } <= { ?p :ability :think } .
+# { ?pe a :Belgian } <= { ?pe :ability :drink } .
+# """
+#     rule_args = [ ANY ]
 
 # # (3) call other rules (clause term concrete, match term var)
 #     rules_str =  """@prefix : <http://example.org/> . 
@@ -67,13 +68,13 @@ def fun3():
 #     # rule_args = [ ANY, ANY ]
 #     rule_args = [ Iri("http://example.org/el"), Iri("http://example.org/Belgian") ]
 
-    data_str = """@prefix : <http://example.org/> . 
-:will a :Person ; :address :addr1 . :addr1 :country "CA" .
-:ed :ability :think ; :address :addr1 ; :describedAs :Person .
-:el :ability :drink ; :address :addr1 ; :describedAs :Belgian .
-:dor :ability :think ; :address :addr1 ; :describedAs :German .
-:soc :name "Socrates" ; :address :addr1 .
-"""
+#     data_str = """@prefix : <http://example.org/> . 
+# :will a :Person ; :address :addr1 . :addr1 :country "CA" .
+# :ed :ability :think ; :address :addr1 ; :describedAs :Person .
+# :el :ability :drink ; :address :addr1 ; :describedAs :Belgian .
+# :dor :ability :think ; :address :addr1 ; :describedAs :German .
+# :soc :name "Socrates" ; :address :addr1 .
+# """
 
 # . test 2
 # non-recursive rules with grounded/ungrounded collections
@@ -234,7 +235,7 @@ def fun3():
 # . test 5
 # builtins
 
-# # (1) simple sum
+# # (1) sum with concrete list
 #     rules_str = """@prefix : <http://example.org/> . 
 # @prefix math: <http://www.w3.org/2000/10/swap/math#> .
 # { :r :result ?r } <= { (1 2) math:sum ?r } .
@@ -244,6 +245,30 @@ def fun3():
 # """
 
 #     rule_args = [ ANY ]
+    
+# # (2) sum with var
+#     rules_str = """@prefix : <http://example.org/> . 
+# @prefix math: <http://www.w3.org/2000/10/swap/math#> .
+# { ?a :result ?r } <= { ?a math:sum ?r } .
+# """
+
+#     data_str = """@prefix : <http://example.org/> .
+# """
+    
+#     rule_args = [ Collection([ Literal(2, xsd['int']), Literal(3, xsd['int']) ]), ANY ]
+#     # rule_args = [ Collection([ Literal(2, xsd['int']), Literal(3, xsd['int']) ]), Literal(5, xsd['int']) ]
+
+# (3) sum with ungrounded list
+    rules_str = """@prefix : <http://example.org/> . 
+@prefix math: <http://www.w3.org/2000/10/swap/math#> .
+{ ( ?x ?y ) :result ?r } <= { ( ?x ?y ) math:sum ?r } .
+"""
+
+    data_str = """@prefix : <http://example.org/> .
+"""
+
+    rule_args = [ Literal(3, xsd['int']), Literal(4, xsd['int']), ANY ]
+    # rule_args = [ Literal(3, xsd['int']), Literal(4, xsd['int']), Literal(7, xsd['int']) ]
 
     
     # - parse
