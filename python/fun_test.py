@@ -235,7 +235,9 @@ def fun3():
 # . test 5
 # builtins
 
-# # (1) sum with concrete list
+# . test 5.1: math:sum
+
+# (1) concrete list
 #     rules_str = """@prefix : <http://example.org/> . 
 # @prefix math: <http://www.w3.org/2000/10/swap/math#> .
 # { :r :result ?r } <= { (1 2) math:sum ?r } .
@@ -246,7 +248,7 @@ def fun3():
 
 #     rule_args = [ ANY ]
     
-# # (2) sum with var
+# # (2) math:sum with var
 #     rules_str = """@prefix : <http://example.org/> . 
 # @prefix math: <http://www.w3.org/2000/10/swap/math#> .
 # { ?a :result ?r } <= { ?a math:sum ?r } .
@@ -258,7 +260,7 @@ def fun3():
 #     rule_args = [ Collection([ Literal(2, xsdNs['int']), Literal(3, xsdNs['int']) ]), ANY ]
 #     # rule_args = [ Collection([ Literal(2, xsdNs['int']), Literal(3, xsdNs['int']) ]), Literal(5, xsdNs['int']) ]
 
-# # (3) sum with ungrounded list
+# # (3) math:sum with ungrounded list
 #     rules_str = """@prefix : <http://example.org/> . 
 # @prefix math: <http://www.w3.org/2000/10/swap/math#> .
 # { ( ?x ?y ) :result ?r } <= { ( ?x ?y ) math:sum ?r } .
@@ -270,7 +272,10 @@ def fun3():
 #     rule_args = [ Literal(3, xsdNs['int']), Literal(4, xsdNs['int']), ANY ]
 #     # rule_args = [ Literal(3, xsdNs['int']), Literal(4, xsdNs['int']), Literal(7, xsdNs['int']) ]
     
-# # (4) iterate with var object
+# . test 5.2
+# list:iterate
+    
+# # (1) list:iterate with var object
 #     rules_str = """@prefix : <http://example.org/> . 
 # @prefix list: <http://www.w3.org/2000/10/swap/list#> .
 # { :result :cell ?c } <= { ( 1 2 3 ) list:iterate ?c } .
@@ -281,7 +286,7 @@ def fun3():
 
 #     rule_args = [ ANY ]
     
-# # (5) iterate with ungrounded object
+# # (2) list:iterate with ungrounded object
 #     rules_str = """@prefix : <http://example.org/> . 
 # @prefix list: <http://www.w3.org/2000/10/swap/list#> .
 # { :result :cell ( ?x ?y ) } <= { ( 1 2 3 ) list:iterate ( ?x ?y ) } .
@@ -292,16 +297,65 @@ def fun3():
 
 #     rule_args = [ ANY, ANY ]
     
-# (6) iterate with (partially) grounded object
+# # (3) list:iterate with (partially) grounded object
+#     rules_str = """@prefix : <http://example.org/> . 
+# @prefix list: <http://www.w3.org/2000/10/swap/list#> .
+# { :result :value ?x } <= { ( 'c' 'b' 'c' ) list:iterate ( 2 ?x ) } . # ( 2 'c' ), ( ?x 'c' )
+# """
+
+#     data_str = """@prefix : <http://example.org/> .
+# """
+
+#     rule_args = [ ANY ]
+    
+# test 5.3:
+# list:append
+    
+# # (1)
+#     rules_str = """@prefix : <http://example.org/> . 
+# @prefix list: <http://www.w3.org/2000/10/swap/list#> .
+# { :result :is ( ?x ) . } <= { ( ?x ) list:append (1 2 3 4) . } .
+# """
+
+#     data_str = """@prefix : <http://example.org/> .
+# """
+
+#     rule_args = [ ANY ]
+
+# # (2)
+#     rules_str = """@prefix : <http://example.org/> . 
+# @prefix list: <http://www.w3.org/2000/10/swap/list#> .
+# { :result :is ( ?x ?y ) . } <= { ( ?x ?y ) list:append (1 2 3 4) . } .
+# """
+
+#     data_str = """@prefix : <http://example.org/> .
+# """
+
+#     rule_args = [ ANY, ANY ]
+    
+# # (3)
+#     rules_str = """@prefix : <http://example.org/> . 
+# @prefix list: <http://www.w3.org/2000/10/swap/list#> .
+# { :result :is ( ?x ?y ?z ?a ) . } <= { ( ?x ?y ?z ?a ) list:append (1 2 3 4) . } .
+# """
+
+#     data_str = """@prefix : <http://example.org/> .
+# """
+
+#     rule_args = [ ANY, ANY, ANY, ANY ]
+
+# (4)
     rules_str = """@prefix : <http://example.org/> . 
 @prefix list: <http://www.w3.org/2000/10/swap/list#> .
-{ :result :value ?x } <= { ( 'c' 'b' 'c' ) list:iterate ( 2 ?x ) } . # ( 2 'c' ), ( ?x 'c' )
+{ :result :is ( ?x ?y ?z ) . } <= { ( (1 2 3) ?x ?y ?z ) list:append (1 2 3 4) . } .
 """
 
     data_str = """@prefix : <http://example.org/> .
 """
 
-    rule_args = [ ANY ]
+    rule_args = [ ANY, ANY, ANY ]
+    
+# (for other tests, checkout test_blt.py)
 
     
     # - parse
@@ -326,6 +380,7 @@ def fun3():
     
     # 2/ run a rule fn
     mod = gen_py(rules, InputData(data_str=data_str)) # no call yet (won't work)
+    # print(unparse(mod))
     
     exec_ret = get_exec(mod, InputData(data_str=data_str))
     exec_rule(exec_ret, InputCall(0, rule_args))

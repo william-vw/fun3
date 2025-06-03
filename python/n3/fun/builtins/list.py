@@ -2,6 +2,7 @@ from functools import reduce
 from n3.terms import Collection, Literal
 from n3.fun.builtins.utils import is_numeric
 from n3.ns import xsdNs
+from n3.fun.builtins.utils import divide_buckets
 
 def list_iterate(s, o, ctu):
     if not isinstance(s, Collection):
@@ -50,15 +51,14 @@ def list_append(s, o, ctu):
     
     var_s = False # any vars in collection?
     for s_i in s:
-        if s_i.is_concrete():
-            # (if concrete, it has to be collection)
-            if not isinstance(s_i, Collection):
-                return
+        # (if concrete, it has to be collection)
+        if s_i.is_concrete() and not isinstance(s_i, Collection):
+            return
         else:
              var_s = True
         
-    if not var_s: # ouph - simply append the constituent collections!
-        result = reduce(lambda s_i, s_j: s_i + s_j, s)
+    if not var_s: # ooph - simply append the constituent collections!
+        o_solution = reduce(lambda s_i, s_j: s_i + s_j, s)
         
     if o.is_concrete():
         # (if concrete, it has to be collection)
@@ -67,17 +67,17 @@ def list_append(s, o, ctu):
         # if o is concrete and no vars to substitute in s,
         # simply compare append result with o
         if not var_s:
-            if result == o:
+            if o_solution == o:
                 ctu(s, o) # s is grounded, o is concrete
         else: 
             # if o is concrete but vars to substitute in s,
             # substitute them here
-            # TODO plugin utils.divide_buckets
-            pass
+            for s_solution in divide_buckets(o, s):
+                ctu(s_solution, o)
             
     else:
         # if o is var (i.e., cannot be deconstructed), 
         # cannot have vars in s
         if var_s: 
             return
-        ctu(s, result) # s is grounded, o is variable
+        ctu(s, o_solution) # s is grounded, o is variable
