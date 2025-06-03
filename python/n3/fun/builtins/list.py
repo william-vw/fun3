@@ -57,7 +57,7 @@ def list_append(s, o, ctu):
         else:
              var_s = True
         
-    if not var_s: # if no vars, append the constituent collections
+    if not var_s: # ouph - simply append the constituent collections!
         result = reduce(lambda s_i, s_j: s_i + s_j, s)
         
     if o.is_concrete():

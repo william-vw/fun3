@@ -22,13 +22,28 @@ def is_numeric(lit):
             # TODO: https://www.w3.org/TR/xmlschema-2/#built-in-datatypes
             
     return False
-
-def divide_buckets(lst, num_buck, buck_no=1, start_idx=0, result=[]):
-    if buck_no == num_buck:
-        new_result = result + [ lst[start_idx:len(lst)] ]
-        yield new_result
+                
+def divide_buckets(lst, buckets, buck_no=0, start_idx=0, result=[]):
+    if buck_no == len(buckets): # out of buckets
+        if start_idx == len(lst): # at end of list
+            yield result
         return
-    buck_left = num_buck - buck_no
-    for next_idx in range(start_idx+1, len(lst)-buck_left+1):
-        new_result = result[:] + [ lst[start_idx:next_idx] ]
-        yield from divide_buckets(lst, num_buck, buck_no+1, next_idx, new_result)
+        
+    bucket = buckets[buck_no]
+    if bucket is not None:
+        # compare bucket contents with list at this point
+        for buck_idx in range(0, len(bucket)):
+            next_idx = start_idx + buck_idx
+            # either:
+            # not yet at end of bucket, but at end of list
+            # bucket element is not the same as list element
+            if next_idx == len(lst) or bucket[buck_idx] != lst[next_idx]:
+                return
+        # at end of bucket; comparison was successful
+        new_result = result + [ bucket ]
+        yield from divide_buckets(lst, buckets, buck_no+1, next_idx+1, new_result)
+    else:
+        # try all remaining elements as content of this bucket
+        for next_idx in range(start_idx, len(lst)+1):
+            new_result = result[:] + [ lst[start_idx:next_idx] ]
+            yield from divide_buckets(lst, buckets, buck_no+1, next_idx, new_result)
