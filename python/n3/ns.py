@@ -1,4 +1,4 @@
-from n3.terms import Iri
+from n3.objects import Iri
 
 class NSMeta(type):
     

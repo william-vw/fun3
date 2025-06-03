@@ -1,4 +1,4 @@
-from n3.terms import Collection, Literal
+from n3.objects import Collection, Literal
 from n3.fun.builtins.utils import is_numeric
 
 def math_sum(s, o, ctu):

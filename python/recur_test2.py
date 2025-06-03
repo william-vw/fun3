@@ -1,5 +1,5 @@
 from n3.parse import parse_n3
-from n3.terms import Iri, Var, Literal
+from n3.objects import Iri, Var, Literal
 
 class State : 
     def __init__(self, stop):

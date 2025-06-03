@@ -1,25 +1,17 @@
 from enum import Enum
-from collections import Counter
 from multidict import MultiDict
+from n3.fun.utils import unique_values
 from n3.fun.py_build import PyBuilder, IdxedTerm
-from n3.terms import Var, term_types, Triple, ANY, Iri
+from n3.objects import Var, term_types, Triple, ANY, Iri, GraphTerm
+from n3.model import Model
 from n3.ns import logNs, swapNs
 from itertools import chain
 from ast import dump, unparse
 
-def gen_py(rules, data, call=None):
+def gen_py(rules, query, data, call_query=True):
     gen = GenPython()
-    return gen.gen_python(rules, data, call)
+    return gen.gen_python(rules, query, data, call_query)
 
-def unique_values(lst):
-    return list(dict.fromkeys(lst)) 
-
-
-class InputCall:
-    
-    def __init__(self, rule_no, args):
-        self.rule_no = rule_no
-        self.args = args
 
 class InputData:
     
@@ -34,13 +26,23 @@ class GenError(Exception):
     pass
 
 
-class Rule:
+class RuleFn:
     
-    def __init__(self, no, head, body):
+    __rule_fn_prefix = "rule"
+    
+    def __init__(self, no, head, body, fn_name=None):
         self.no = no
         self.head = head
         self.body = body
+        if fn_name is None:
+            self.fn_name = self.get_fn_name()
+        else:
+            self.fn_name = fn_name
 
+    def set_input_vars(self, vars):
+        self.input_vars = vars
+        self.avail_vars = vars
+        
     def set_avail_vars(self, vars):
         self.avail_vars = vars
 
@@ -49,7 +51,42 @@ class Rule:
 
     def has_runtime_val(self, r):
         return r.name in self.avail_vars if not r.is_concrete() else False
-        
+    
+    def get_fn_name(self, clause_no=0):
+        return RuleFn.fn_name(self.no, clause_no)
+    
+    @staticmethod
+    def fn_name(rule_no, clause_no=0):
+        """
+        Generates unique function name for a rule head or body triple
+
+        Args:
+        rule_no: rule number (0 if query)
+        clause_no: number of clause
+
+        Returns:
+        Unique function name
+        """
+        if clause_no == 0:
+            return f"{RuleFn.__rule_fn_prefix}_{rule_no}"
+        else:
+            return f"{RuleFn.__rule_fn_prefix}_{rule_no}_{clause_no}"
+    
+class QueryFn(RuleFn):
+    
+    __query_fn_name = "query"
+    
+    def __init__(self, triple):
+        graph = GraphTerm(Model().add(triple))
+        super().__init__(-1, graph, graph, fn_name=QueryFn.fn_name())
+    
+    @staticmethod
+    def fn_name(rule_no=0, clause_no=0):
+        return QueryFn.__query_fn_name
+    
+    def get_fn_name(self, clause_no=0):
+        return self.fn_name
+    
 class Clause:
     
     def __init__(self, rule, no, tp):
@@ -57,37 +94,12 @@ class Clause:
         self.no = no
         self.tp = tp
         
-        self.fn_name = RuleFn.fn_name(self.rule.no, self.no)
+        self.fn_name = rule.get_fn_name(no)
         
     def next_fn_name(self):
-        return RuleFn.fn_name(self.rule.no, self.no + 1)
+        return self.rule.get_fn_name(self.no + 1)
         
-        
-class RuleFn:
-    
-    __fn_prefix = "rule"
-    
-    def __init__(self, rule_no, clause_no):        
-        self.name = RuleFn.fn_name(rule_no, clause_no)
 
-    @staticmethod
-    def fn_name(rule_no, clause_no):
-        """
-        Generates unique function name for a rule head or body triple
-
-        Args:
-        rule_no: rule number
-        clause_no: 0 if rule head, > 0 if body triple ??
-
-        Returns:
-        Unique function name
-        """
-
-        if clause_no == 0:
-            return f"{RuleFn.__fn_prefix}_{rule_no}"
-        else:
-            return f"{RuleFn.__fn_prefix}_{rule_no}_{clause_no}"
-        
 class FnIndex:
     
     """Map of rule predicates to functions (FnIdxEntry) implementing them.
@@ -149,7 +161,7 @@ class RuleProcessor_BuildFnIndex:
         self.fn_idx = FnIndex()
     
     def process(self, rule_no, rule_triple):        
-        entry = FnEntry(rule_triple, RuleFn(rule_no, 0))
+        entry = FnEntry(rule_triple, RuleFn.fn_name(rule_no, 0))
         
         t = rule_triple.s.model.triple_at(0) # only 1 triple
         self.fn_idx.add(t.p, entry)
@@ -168,20 +180,20 @@ class RuleProcessor_UniqueVars:
         body = rule_triple.o
         # all variables (possibly duplicate) in head & body
         triple_it = \
-                chain(head._recur_vars(), body._recur_vars()) \
+                chain(head.recur_vars(), body.recur_vars()) \
             if body.type() == term_types.GRAPH else \
-                head._recur_vars()
+                head.recur_vars()
         # use dict to have 1 entry per variable
         # (head & body can share same variables)
         unique_vars = { v:0 for v in triple_it }
         # for each unique var in head+body, assign unique value "v_i" based on var count
-        unique_vars = { v:f"{v}_{i}" for v,i in 
+        unique_vars = { v:Var(f"{v}_{i}") for v,i in 
                             zip(unique_vars, range(self.var_cnt, len(unique_vars)+self.var_cnt)) }
         
         # rename vars in head & body
-        head._rename_recur_vars(unique_vars)
+        head.replace_recur_vars(unique_vars)
         if body.type() == term_types.GRAPH:
-            body._rename_recur_vars(unique_vars)
+            body.replace_recur_vars(unique_vars)
         
         # update var count
         self.var_cnt += len(unique_vars)
@@ -310,7 +322,7 @@ class FnCall(ConditionalStmt):
     def get_args(self):
         return list(self.args.values())
     
-    def clone(self):
+    def copy_shallow(self):
         return FnCall(self.ref, params=list(self.args.keys()), args=list(self.args.values()))
 
    
@@ -326,14 +338,12 @@ class GenPython:
             'final_ctu': "final_ctu"
         }
 
-    def gen_python(self, rules, data, call):
+    def gen_python(self, rules, query, data, call_query):
         self.__process_rules(rules)
         
         self.code_imports = []; self.code_body = []
         self.__gen_data_python(data)
-        self.__gen_rule_python(rules)
-        if call is not None:
-            self.__gen_call_python(call)
+        self.__gen_rule_python(rules, query, call_query)
         
         return self.bld.module(self.code_imports + self.code_body)
 
@@ -351,22 +361,18 @@ class GenPython:
         
         self.code_body.append(assn)
         
-    def __gen_rule_python(self, rules):   
-        self.code_imports.append(self.bld.import_from('n3.terms', ['Iri', 'Var', 'Literal', 'Collection', 'ANY', 'term_types']))
+    def __gen_rule_python(self, rules, query, call_query):
+        self.code_imports.append(self.bld.import_from('n3.objects', ['Iri', 'Var', 'Literal', 'Collection', 'ANY', 'term_types', 'Triple']))
         self.code_imports.append(self.bld.import_from('n3.ns', ['NS']))
         
-        for i, (head, _, body) in enumerate(rules):
-            rule = Rule(i, head, body)
-            self.__gen_rule(rule)
-            
-    def __gen_call_python(self, call):
-        lmbda_params = [ f"a{i}" for i in range(len(call.args)) ]
-        lmbda_body = self.bld.fn_call(self.bld.ref('print'), [ self.bld.ref(arg) for arg in lmbda_params ])
-        lmbda_ctu = self.bld.lmbda(lmbda_params, lmbda_body)
+        query_fn = self.__gen_rule(QueryFn(query))
         
-        args = [ self.bld.val(arg) for arg in call.args ] + [ lmbda_ctu ]
-        call_bld = self.bld.stmt(self.bld.fn_call(self.bld.ref(RuleFn.fn_name(call.rule_no, 0)), args))
-        self.code_body.append(call_bld)
+        for i, (head, _, body) in enumerate(rules):
+            rule_fn = RuleFn(i, head, body)
+            self.__gen_rule(rule_fn)
+        
+        if call_query:
+            self.__gen_call_rule(query_fn)
         
     def __process_rules(self, rules):
         """
@@ -398,12 +404,12 @@ class GenPython:
     
     def __gen_rule(self, rule):
         head_triple = rule.head.model.triple_at(0)
-        head_vars = unique_values(head_triple._recur_vars(get_name=True))
-        rule.set_avail_vars(head_vars)
+        head_vars = unique_values(head_triple.recur_vars(get_name=True))
+        rule.set_input_vars(head_vars) # also sets avail_vars
         
         for no, tp in enumerate(rule.body.model.triples()):
             clause = Clause(rule, no, tp)
-            new_avail_vars = unique_values(rule.avail_vars + tp._recur_vars(get_name=True))
+            new_avail_vars = unique_values(rule.avail_vars + tp.recur_vars(get_name=True))
 
             if no == len(rule.body.model)-1:
                 ctu_call = self.__get_ctu_call(self.names['final_ctu'], head_vars, final=True)
@@ -412,6 +418,8 @@ class GenPython:
             self.__gen_clause(clause, ctu_call)
 
             rule.set_avail_vars(new_avail_vars)
+
+        return rule
 
     def __gen_clause(self, clause, ctu_call):
         clause_fn_def = self.bld.fn(clause.fn_name, self.__get_fn_params(clause.rule.avail_vars))
@@ -443,27 +451,27 @@ class GenPython:
         match_tp = Triple(Var("s"), swapNs[blt_id], Var("o"))
         fn_call = FnCall(self.bld.ref(fn_name))
         
-        yield from self.__gen_match_call(clause, match_tp, fn_call, ctu_call.clone())
+        yield from self.__gen_match_call(clause, match_tp, fn_call, ctu_call.copy_shallow())
 
     def __gen_find_data(self, clause, ctu_call):
         match_tp = Triple(Var("s"), Var("p"), Var("o"))
         fn_call = FnCall(self.bld.attr_ref('data', 'find'))
         
         # (copy ctu_call as different calls may require different conditions for it)
-        yield from self.__gen_match_call(clause, match_tp, fn_call, ctu_call.clone())
+        yield from self.__gen_match_call(clause, match_tp, fn_call, ctu_call.copy_shallow())
 
     def __gen_find_rules(self, clause, ctu_call):
         matches = self.__fn_idx.find(clause.tp)
             
         for match in matches:
             match_tp = match.rule.s.model.triple_at(0)
-            fn_call = FnCall(self.bld.ref(match.rule_fn.name))
+            fn_call = FnCall(self.bld.ref(match.rule_fn))
             
             # (copy ctu_call as different calls may require different conditions for it)
-            yield from self.__gen_match_call(clause, match_tp, fn_call, ctu_call.clone())
+            yield from self.__gen_match_call(clause, match_tp, fn_call, ctu_call.copy_shallow())
 
     def __gen_match_call(self, clause, match_tp, fn_call, ctu_call):
-        fn_call.set_params(match_tp._recur_vars(get_name=True), default=self.bld.ref('ANY'))
+        fn_call.set_params(match_tp.recur_vars(get_name=True), default=self.bld.ref('ANY'))
 
         if not self.__unify(clause, match_tp, fn_call, ctu_call):
             return
@@ -473,7 +481,7 @@ class GenPython:
         ctu_call_bld = self.bld.fn_call(ctu_call.ref, ctu_args)
         ctu_call_bld = self.__cond_call(ctu_call, ctu_call_bld, as_exp=True)
 
-        lmbda_params = unique_values(match_tp._recur_vars(get_name=True))
+        lmbda_params = unique_values(match_tp.recur_vars(get_name=True))
         lmbda_bld = self.bld.lmbda(lmbda_params, ctu_call_bld)
 
         fn_args = fn_call.get_args()
@@ -492,6 +500,22 @@ class GenPython:
                 return self.bld.iif(self.bld.conj(call.conds), [ call_bld ])
         
         return call_bld
+
+    def __gen_call_rule(self, rule_fn):
+        head_triple = rule_fn.head.model.triple_at(0)
+        ret_args = rule_fn.input_vars
+        
+        lmbda_params = ret_args
+        inst_triple_call = self.bld.fn_call(
+            self.bld.attr_ref_expr(self.bld.triple(head_triple), 'instantiate'),
+            [ self.bld.dct([self.bld.cnst(arg) for arg in ret_args], [self.bld.ref(arg) for arg in ret_args]) ]
+        )
+        lmbda_body = self.bld.fn_call(self.bld.ref('print'), [ inst_triple_call ])
+        lmbda_ctu = self.bld.lmbda(lmbda_params, lmbda_body)
+        
+        args = [ self.bld.val(ANY) for _ in ret_args ] + [ lmbda_ctu ]
+        call_bld = self.bld.stmt(self.bld.fn_call(self.bld.ref(rule_fn.fn_name), args))
+        self.code_body.append(call_bld)
 
     def __unify(self, clause, match_tp, fn_call, ctu_call):
         # print()
@@ -529,7 +553,7 @@ class GenPython:
                             case UDir.FROM_MATCH:
                                 match (op.time):
                                     case UTime.NOW:
-                                        from_vars = match_tp._recur_vars(get_name=True)
+                                        from_vars = match_tp.recur_vars(get_name=True)
                                         ctu_call.set_arg(op.val2.term.name, self.bld.val(op.val1, scope_vars=from_vars))
                                     case UTime.RUNTIME:
                                         ctu_call.set_arg(op.val2.term.name, self.bld.var_ref(op.val1))

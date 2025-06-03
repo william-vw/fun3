@@ -5,7 +5,7 @@ from n3.grammar.parser.n3Parser import n3Parser
 from n3.grammar.parser.n3Listener import n3Listener
 
 from n3.model import Model
-from n3.terms import term_types, Iri, Collection, Var, BlankNode, Literal, GraphTerm, Triple
+from n3.objects import term_types, Iri, Collection, Var, BlankNode, Literal, GraphTerm, Triple
 from n3.ns import rdfNs, owlNs, logNs, xsdNs
 
 class state:
@@ -272,7 +272,7 @@ class n3Creator(n3Listener):
             triple = self.state.triple
             self.emit_triple(triple)
             # so predicateLists etc work
-            self.state.triple = triple.clone()
+            self.state.triple = triple.copy_shallow()
 
 
     # Enter a parse tree produced by n3Parser#expression.

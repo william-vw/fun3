@@ -1,5 +1,5 @@
 from n3.fun.builtins.utils import divide_buckets
-from n3.terms import Var, Collection, Literal
+from n3.objects import Var, Collection, Literal
 from n3.ns import xsdNs
 
 lst = Collection([Literal(1,xsdNs['int']), Literal(2,xsdNs['int']), Literal(3,xsdNs['int']), Literal(4,xsdNs['int'])])

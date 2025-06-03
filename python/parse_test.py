@@ -2,7 +2,7 @@ from ast import dump, unparse
 
 from n3.parse import parse_n3
 from n3.fun.gen import gen_py
-from n3.terms import Iri
+from n3.objects import Iri
 
 def main():
     data = """@base <http://base.org/> .

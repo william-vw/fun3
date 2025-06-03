@@ -1,5 +1,5 @@
 from n3.ns import xsdNs
-from n3.terms import Var, Collection
+from n3.objects import Var, Collection
 
 def is_numeric(lit):
     if lit.dt.ns == xsdNs.iri:
@@ -27,7 +27,7 @@ def is_numeric(lit):
 def divide_buckets(coll, buckets, buck_no=0, start_idx=0, result=[]):
     if buck_no == len(buckets): # out of buckets
         if start_idx == len(coll): # at end of list
-            yield result
+            yield Collection(result)
         return
         
     bucket = buckets[buck_no]
@@ -41,10 +41,10 @@ def divide_buckets(coll, buckets, buck_no=0, start_idx=0, result=[]):
             if next_idx == len(coll) or bucket[buck_idx] != coll[next_idx]:
                 return
         # at end of bucket; comparison was successful
-        new_result = result + [ bucket ]
+        new_result = result + [ Collection(bucket) ]
         yield from divide_buckets(coll, buckets, buck_no+1, next_idx+1, new_result)
     elif not bucket.is_concrete():
         # try all remaining elements as content of this bucket
         for next_idx in range(start_idx, len(coll)+1):
-            new_result = result[:] + [ coll[start_idx:next_idx] ]
+            new_result = result[:] + [ Collection(coll[start_idx:next_idx]) ]
             yield from divide_buckets(coll, buckets, buck_no+1, next_idx, new_result)

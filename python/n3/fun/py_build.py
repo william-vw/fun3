@@ -1,5 +1,5 @@
 import ast
-from n3.terms import term_types
+from n3.objects import term_types
 from n3.ns import NS, xsdNs
 from ast import dump, unparse
 
@@ -112,9 +112,9 @@ class PyBuilder:
         if isinstance(var, IdxedTerm):
             expr = self.indexes(expr, var.idxes)
         return expr
-
-    def term_val(self, expr):
-        return self.fn_call(self.attr_ref_expr(expr, 'idx_val'))
+    
+    def triple(self, triple):
+        return self.constr_obj(self.ref('Triple'), [ self.val(triple.s), self.val(triple.p), self.val(triple.o) ])
 
     def cnst(self, value):        
         return self.__fix(ast.Constant(value=value))
@@ -124,6 +124,9 @@ class PyBuilder:
     
     def tple(self, elts):
         return self.__fix(ast.Tuple(elts = elts, ctx = ast.Load()))
+    
+    def dct(self, keys, values):
+        return self.__fix(ast.Dict(keys = keys, values = values))
     
     def attr_ref(self, var, attr):
         return self.attr_ref_expr(self.ref(var), attr)

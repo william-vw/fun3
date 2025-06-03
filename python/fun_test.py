@@ -3,17 +3,12 @@ from collections import Counter
 from multidict import MultiDict
 
 from n3.parse import parse_n3
-from n3.fun.gen import gen_py, InputData, InputCall, RuleFn
-from n3.terms import Triple, Iri, Collection, ANY, Literal
+from n3.fun.gen import gen_py, InputData, QueryFn
+from n3.objects import Triple, Iri, Collection, ANY, Literal
 from n3.model import Model
 from n3.ns import xsdNs
   
-
-class State : 
-    def __init__(self, stop):
-        self.stop = stop
-
-
+  
 def fun3():
     
 # - input
@@ -314,15 +309,40 @@ def fun3():
 # # (1)
 #     rules_str = """@prefix : <http://example.org/> . 
 # @prefix list: <http://www.w3.org/2000/10/swap/list#> .
+# { :result :is ?x . } <= { ( (1 2) (3 4) ) list:append ?x . } .
+# """
+
+#     data_str = """@prefix : <http://example.org/> .
+# """
+
+#     query_str = """@prefix : <http://example.org/> .
+# :result :is ?x ."""
+
+# # (2)
+#     rules_str = """@prefix : <http://example.org/> . 
+# @prefix list: <http://www.w3.org/2000/10/swap/list#> .
+# { :result :is :works . } <= { ( (1 2) (3 4) ) list:append (1 2 3 4) . } .
+# """
+
+#     data_str = """@prefix : <http://example.org/> .
+# """
+
+#     query_str = """@prefix : <http://example.org/> .
+# :result :is ?x ."""
+    
+# # (3)
+#     rules_str = """@prefix : <http://example.org/> . 
+# @prefix list: <http://www.w3.org/2000/10/swap/list#> .
 # { :result :is ( ?x ) . } <= { ( ?x ) list:append (1 2 3 4) . } .
 # """
 
 #     data_str = """@prefix : <http://example.org/> .
 # """
 
-#     rule_args = [ ANY ]
+#     query_str = """@prefix : <http://example.org/> .
+# :result :is ( ?x ) ."""
 
-# # (2)
+# # (4)
 #     rules_str = """@prefix : <http://example.org/> . 
 # @prefix list: <http://www.w3.org/2000/10/swap/list#> .
 # { :result :is ( ?x ?y ) . } <= { ( ?x ?y ) list:append (1 2 3 4) . } .
@@ -331,36 +351,40 @@ def fun3():
 #     data_str = """@prefix : <http://example.org/> .
 # """
 
-#     rule_args = [ ANY, ANY ]
+#     query_str = """@prefix : <http://example.org/> .
+# :result :is ( ?x ?y ) ."""
     
-# # (3)
-#     rules_str = """@prefix : <http://example.org/> . 
-# @prefix list: <http://www.w3.org/2000/10/swap/list#> .
-# { :result :is ( ?x ?y ?z ?a ) . } <= { ( ?x ?y ?z ?a ) list:append (1 2 3 4) . } .
-# """
-
-#     data_str = """@prefix : <http://example.org/> .
-# """
-
-#     rule_args = [ ANY, ANY, ANY, ANY ]
-
-# (4)
+# (5)
     rules_str = """@prefix : <http://example.org/> . 
 @prefix list: <http://www.w3.org/2000/10/swap/list#> .
-{ :result :is ( ?x ?y ?z ) . } <= { ( (1 2 3) ?x ?y ?z ) list:append (1 2 3 4) . } .
+{ :result :is ( ?x ?y ?z ?a ) . } <= { ( ?x ?y ?z ?a ) list:append (1 2 3 4) . } .
 """
 
     data_str = """@prefix : <http://example.org/> .
 """
 
-    rule_args = [ ANY, ANY, ANY ]
-    
+    query_str = """@prefix : <http://example.org/> .
+:result :is ( ?x ?y ?z ?a ) ."""
+
+# # (6)
+#     rules_str = """@prefix : <http://example.org/> . 
+# @prefix list: <http://www.w3.org/2000/10/swap/list#> .
+# { :result :is ( ?x ?y ?z ) . } <= { ( (1 2 3) ?x ?y ?z ) list:append (1 2 3 4) . } .
+# """
+
+#     data_str = """@prefix : <http://example.org/> .
+# """
+
+#     query_str = """@prefix : <http://example.org/> .
+# :result :is ( ?x ?y ?z ) ."""
+
 # (for other tests, checkout test_blt.py)
 
     
     # - parse
     
     rules = parse_n3(rules_str).rules
+    query = parse_n3(query_str).data.triple_at(0)
     # print("rules:\n", result.rules)
     # print()
     
@@ -371,7 +395,7 @@ def fun3():
     # unparsed = unparse(mod) # converts the ast to py code
     
     # # 1/ save code
-    # mod = gen_py(rules, InputData(data_str=data_str), InputCall(0, rule_args))
+    # mod = gen_py(rules, query, InputData(data_str=data_str))
     # unparsed = unparse(mod)
     # print(unparsed)
     
@@ -379,18 +403,18 @@ def fun3():
     #     fh.write(unparsed)
     
     # 2/ run a rule fn
-    mod = gen_py(rules, InputData(data_str=data_str)) # no call yet (won't work)
+    mod = gen_py(rules, query, InputData(data_str=data_str), call_query=False)
     # print(unparse(mod))
     
     exec_ret = get_exec(mod, InputData(data_str=data_str))
-    exec_rule(exec_ret, InputCall(0, rule_args))
+    exec_query(exec_ret, query)
 
     
 def unparse_with_lineno(ast):
     code = unparse(ast)
     return "\n".join([ f"{i+1}. {line}" for i, line in enumerate(code.split("\n")) ])
 
-def get_exec(mod, in_data): 
+def get_exec(mod, in_data):
     mod_code = compile(mod, "<fun3>", "exec")
     
     global data
@@ -398,18 +422,18 @@ def get_exec(mod, in_data):
     
     new_refs = {}
     exec(mod_code, globals(), new_refs)
-    # print(new_refs)
     
     for name, code in new_refs.items():
         globals()[name] = code
         
     return new_refs
 
-def exec_rule(exec_ret, in_call):
-    fn_name = RuleFn.fn_name(in_call.rule_no, 0)
+def exec_query(exec_ret, query):
+    fn_name = QueryFn.fn_name()
+    variables = query.recur_vars()
     
-    rule_fn = exec_ret[fn_name] 
-    rule_fn(*in_call.args, lambda *args: print(args))
+    query_fn = exec_ret[fn_name]
+    query_fn(*[ANY for _ in variables], lambda *args: print(query.instantiate({ var: args[idx] for idx, var in enumerate(variables) })))
 
 def test_ast():
     print(dump(parse("""a = 'abc'""")))

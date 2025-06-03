@@ -1,4 +1,4 @@
-from n3.terms import Iri
+from n3.objects import Iri
 from n3.model import Model
 from n3.parse import parse_n3
 
@@ -10,7 +10,7 @@ def result_fn(d, a, state):
     print(f"solution: {d} {a}")
     # state.stop = True
             
-from n3.terms import Iri, Var, Literal
+from n3.objects import Iri, Var, Literal
 
 def rule_0(desc, anc, data, state, ctu):
     # print("rule_0", desc, anc)

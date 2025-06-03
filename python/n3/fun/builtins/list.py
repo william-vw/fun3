@@ -1,5 +1,5 @@
 from functools import reduce
-from n3.terms import Collection, Literal
+from n3.objects import Collection, Literal
 from n3.fun.builtins.utils import is_numeric
 from n3.ns import xsdNs
 from n3.fun.builtins.utils import divide_buckets
@@ -52,12 +52,13 @@ def list_append(s, o, ctu):
     var_s = False # any vars in collection?
     for s_i in s:
         # (if concrete, it has to be collection)
-        if s_i.is_concrete() and not isinstance(s_i, Collection):
-            return
+        if s_i.is_concrete():
+            if not isinstance(s_i, Collection):
+                return
         else:
              var_s = True
         
-    if not var_s: # ooph - simply append the constituent collections!
+    if not var_s: # pfew - simply append the elements
         o_solution = reduce(lambda s_i, s_j: s_i + s_j, s)
         
     if o.is_concrete():

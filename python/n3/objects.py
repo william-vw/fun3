@@ -50,6 +50,9 @@ class Any:
     def __repr__(self):
         return self.__str__()
     
+    def copy_deep(self):
+        return self
+    
     
 class ConcreteNode:
     
@@ -105,6 +108,9 @@ class Iri(ConcreteNode):
         return f"<{self.iri}>"
     def __repr__(self):
         return self.__str__()
+    
+    def copy_deep(self):
+        return self
         
         
 class Literal(ConcreteNode):
@@ -142,6 +148,9 @@ class Literal(ConcreteNode):
         return str(value) + (suffix if suffix is not None else "")
     def __repr__(self):
         return self.__str__()
+    
+    def copy_deep(self):
+        return self
 
 
 class VariableNode:
@@ -175,6 +184,9 @@ class Var(VariableNode):
     def __repr__(self):
         return self.__str__()
     
+    def copy_deep(self):
+        return self
+    
 
 class BlankNode(VariableNode):
         
@@ -200,6 +212,9 @@ class BlankNode(VariableNode):
         return f"_:{self.label}"
     def __repr__(self):
         return self.__str__()
+    
+    def copy_deep(self):
+        return self
     
     
 class Container(ConcreteNode):
@@ -259,29 +274,35 @@ class VarContainer(Container):
         pass
         
     def is_grounded(self):
-        return len([ v for v in self._recur_vars() ]) == 0
+        return len([ v for v in self.recur_vars() ]) == 0
     
     # def _parsed_var(self, var):
     #     self.__vars[var] = True
     
     # def _parsed_vars(self, vars):
     #     self.__vars.update(vars)
+    
+    def instantiate(self, concr_terms):
+        inst = self.copy_deep()
+        inst.replace_recur_vars(concr_terms)
         
-    def _rename_recur_vars(self, ren_vars):
+        return inst
+    
+    def replace_recur_vars(self, repl_terms):
         """
-            Renames all (nested) variables in this VarContainer.
+            Replaces (nested) variables in this VarContainer.
             
             Args:
-                ren_vars (dictionary): keys = variables to rename; values = new variable names
+                repl_terms (dictionary): keys = variables to replace; values = new terms
         """
         for pos, term in self._iter_recur_atomics(()):
-            if term.type() == term_types.VAR and term.name in ren_vars: 
+            if term.type() == term_types.VAR and term.name in repl_terms: 
                 # get closest parent container & index of var therein
                 parent = pos[-1][1]; i = pos[-1][0]
-                # replace with ≠variable with new name
-                parent[i] = Var(ren_vars[term.name])
+                # replace with new term
+                parent[i] = repl_terms[term.name]
     
-    def _vars(self,get_name=True):
+    def vars(self,get_name=True):
         """
         Returns a list of all non-nested variables in this VarContainer.
         
@@ -296,7 +317,7 @@ class VarContainer(Container):
         
         return [ v.name if get_name else (i, v) for i, v in enumerate(self) if v.type() == term_types.VAR ]     
        
-    def _recur_vars(self,get_name=True):
+    def recur_vars(self,get_name=True):
         """
         Returns a list of all (nested) variables in this VarContainer. 
         
@@ -316,7 +337,7 @@ class VarContainer(Container):
         
         return [ v for _, v in self.__yield_recur_vars(get_name) ]
     
-    def _recur_vars_pos(self,get_name=True):
+    def recur_vars_pos(self,get_name=True):
         """
         Returns a list of all (nested) variables and their positions in this VarContainer. 
         
@@ -394,9 +415,21 @@ class Collection(VarContainer):
         return self.__elements == other.__elements
         
     def __str__(self):
-        return "( " + " ".join(str(e) for e in self.__elements) + " )"
+        if len(self.__elements) == 0:
+            return "()"
+        else:
+            return "( " + " ".join(str(e) for e in self.__elements) + " )"
     def __repr__(self):
         return self.__str__()
+    
+    def __add__(self, other):
+        if not isinstance(other, Collection):
+            raise NotImplemented
+        else:
+            return Collection(self.__elements + other.__elements)
+    
+    def copy_deep(self):
+        return Collection([ element.copy_deep() for element in self.__elements ])
     
     
 class GraphTerm(VarContainer):
@@ -416,6 +449,9 @@ class GraphTerm(VarContainer):
         return "{ "  + "".join([ str(t) for t in self.model.triples() ])[:-2] + " }"
     def __repr__(self):
         return self.__str__()
+    
+    def copy_deep(self): # TODO
+        pass
 
 
 class Triple(VarContainer):
@@ -428,10 +464,6 @@ class Triple(VarContainer):
         self.s = s
         self.p = p
         self.o = o
-        
-    # (shallow copy)
-    def clone(self):
-        return Triple(self.s, self.p, self.o)
     
     def has_graph(self):
         return any(r.type() == term_types.GRAPH for r in self)
@@ -463,6 +495,12 @@ class Triple(VarContainer):
         return f"{self.s} {self.p} {self.o} ."
     def __repr__(self):
         return self.__str__()
+        
+    def copy_shallow(self):
+        return Triple(self.s, self.p, self.o)
+    
+    def copy_deep(self):
+        return Triple(self.s.copy_deep(), self.p.copy_deep(), self.o.copy_deep())
     
     
 class TripleIt:

@@ -1,4 +1,4 @@
-from n3.terms import term_types
+from n3.objects import term_types
 from n3.model import Model
 from n3.parse import parse_n3
 
