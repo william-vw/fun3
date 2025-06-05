@@ -354,17 +354,17 @@ def fun3():
 #     query_str = """@prefix : <http://example.org/> .
 # :result :is ( ?x ?y ) ."""
     
-# (5)
-    rules_str = """@prefix : <http://example.org/> . 
-@prefix list: <http://www.w3.org/2000/10/swap/list#> .
-{ :result :is ( ?x ?y ?z ?a ) . } <= { ( ?x ?y ?z ?a ) list:append (1 2 3 4) . } .
-"""
+# # (5)
+#     rules_str = """@prefix : <http://example.org/> . 
+# @prefix list: <http://www.w3.org/2000/10/swap/list#> .
+# { :result :is ( ?x ?y ?z ?a ) . } <= { ( ?x ?y ?z ?a ) list:append (1 2 3 4) . } .
+# """
 
-    data_str = """@prefix : <http://example.org/> .
-"""
+#     data_str = """@prefix : <http://example.org/> .
+# """
 
-    query_str = """@prefix : <http://example.org/> .
-:result :is ( ?x ?y ?z ?a ) ."""
+#     query_str = """@prefix : <http://example.org/> .
+# :result :is ( ?x ?y ?z ?a ) ."""
 
 # # (6)
 #     rules_str = """@prefix : <http://example.org/> . 
@@ -380,12 +380,33 @@ def fun3():
 
 # (for other tests, checkout test_blt.py)
 
+# test 6
+# blank nodes
+    rules_str = """@prefix : <http://example.org/> . 
+{ ?p a :Canadian } <= { ?p a :Person . ?p :address _:a . _:a :country "CA" } .
+# { ?p a :Person } <= { ?p :ability :think } .
+"""
+
+    data_str = """@prefix : <http://example.org/> . 
+:will a :Person ; :address :addr1 . :addr1 :country "CA" .
+:ed :ability :think ; :address :addr1 ; :describedAs :Person .
+:el :ability :drink ; :address :addr1 ; :describedAs :Belgian .
+:dor :ability :think ; :address :addr1 ; :describedAs :German .
+:soc :name "Socrates" ; :address :addr1 .
+"""
+
+    query_str = """@prefix : <http://example.org/> .
+?x a :Canadian .
+"""
+
+# TODO more bnode tests
+# featured in rule head etc
     
     # - parse
     
     rules = parse_n3(rules_str).rules
+    # print("rules:\n", rules)
     query = parse_n3(query_str).data.triple_at(0)
-    # print("rules:\n", result.rules)
     # print()
     
     # - generate
@@ -394,20 +415,20 @@ def fun3():
     # print(unparse_with_lineno(mod)) # converts the ast to py code with line no
     # unparsed = unparse(mod) # converts the ast to py code
     
-    # # 1/ save code
-    # mod = gen_py(rules, query, InputData(data_str=data_str))
-    # unparsed = unparse(mod)
-    # print(unparsed)
+    # 1/ save code
+    mod = gen_py(rules, query, InputData(data_str=data_str))
+    unparsed = unparse(mod)
+    print(unparsed)
     
-    # with open("code_out.py", 'w') as fh:
-    #     fh.write(unparsed)
+    with open("code_out.py", 'w') as fh:
+        fh.write(unparsed)
     
-    # 2/ run a rule fn
-    mod = gen_py(rules, query, InputData(data_str=data_str), call_query=False)
+    # # 2/ run a rule fn
+    # mod = gen_py(rules, query, InputData(data_str=data_str), call_query=False)
     # print(unparse(mod))
     
-    exec_ret = get_exec(mod, InputData(data_str=data_str))
-    exec_query(exec_ret, query)
+    # exec_ret = get_exec(mod, InputData(data_str=data_str))
+    # exec_query(exec_ret, query)
 
     
 def unparse_with_lineno(ast):

@@ -1,4 +1,4 @@
-from n3.objects import term_types
+from n3.objects import Terms
 from n3.model import Model
 from n3.parse import parse_n3
 
@@ -31,18 +31,18 @@ def unify_coll(clause_coll, match_coll, pos, stmts, pass_args, in_vars):
         cur_pos = pos + [i]
         match_el = match_coll[i]
         
-        if clause_el.type() == term_types.VAR:
+        if clause_el.type() == Terms.VAR:
             if clause_el.idx_val() in in_vars:
                 stmts.append(f"{clause_el} is None then {clause_el} = match{cur_pos} else {clause_el} == match{cur_pos}")
             else:
                 stmts.append(f"{clause_el} = match{cur_pos}")
         
-        elif clause_el.type() == term_types.COLLECTION and len(clause_el._vars()) > 0:
-            if match_el.type() == term_types.COLLECTION:
+        elif clause_el.type() == Terms.COLLECTION and len(clause_el._vars()) > 0:
+            if match_el.type() == Terms.COLLECTION:
                 unify_coll(clause_el, match_el, cur_pos, stmts, pass_args, in_vars)
         
         # both are concrete
-        elif match_el.type() != term_types.VAR and clause_el != match_el:
+        elif match_el.type() != Terms.VAR and clause_el != match_el:
             return False
         
         if not match_el.is_concrete():

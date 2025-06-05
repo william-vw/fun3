@@ -5,7 +5,7 @@ from n3.grammar.parser.n3Parser import n3Parser
 from n3.grammar.parser.n3Listener import n3Listener
 
 from n3.model import Model
-from n3.objects import term_types, Iri, Collection, Var, BlankNode, Literal, GraphTerm, Triple
+from n3.objects import Terms, Iri, Collection, Var, BlankNode, Literal, GraphTerm, Triple
 from n3.ns import rdfNs, owlNs, logNs, xsdNs
 
 class state:
@@ -73,7 +73,7 @@ class state:
                 # bnodes are only local to current graph
                 # so, only _per scope_, return same bnode for same label
                 # (random ID so not to overlap with bnodes in other graphs)
-                self.bnodes[label] = BlankNode() 
+                self.bnodes[label] = BlankNode(label) 
             
             return self.bnodes[label]
         
@@ -600,8 +600,8 @@ class n3Creator(n3Listener):
         
         self.state.data.add(triple)
         
-        if triple.s.type() == term_types.GRAPH and \
-            triple.p.type() == term_types.IRI and (triple.p == logNs['implies'] or triple.p == logNs['impliedBy']):
+        if triple.s.type() == Terms.GRAPH and \
+            triple.p.type() == Terms.IRI and (triple.p == logNs['implies'] or triple.p == logNs['impliedBy']):
             self.state.rules.append(triple)
         
     def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):

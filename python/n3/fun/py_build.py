@@ -1,5 +1,5 @@
 import ast
-from n3.objects import term_types
+from n3.objects import Terms
 from n3.ns import NS, xsdNs
 from ast import dump, unparse
 
@@ -53,7 +53,7 @@ class PyBuilder:
 
     def get(self, term):
         match (term.type()):
-            case term_types.VAR:
+            case Terms.VAR:
                 return self.var_ref(term)
             case _:
                 return self.val(term)
@@ -65,28 +65,28 @@ class PyBuilder:
         expr = None
         
         # replace n3 vars with python vars within scope
-        if term.type() == term_types.VAR and term.name in scope_vars:
+        if term.type() in (Terms.VAR, Terms.BNODE) and term.var_id in scope_vars:
             expr = self.var_ref(term)
         
         else:
             cls_name = None; args = None
             match term.type():
-                case term_types.ANY:
+                case Terms.ANY:
                     expr = self.ref('ANY')
-                case term_types.IRI: 
+                case Terms.IRI: 
                     expr = self.iri(term)
-                case term_types.LITERAL: 
+                case Terms.LITERAL: 
                     cls_name = "Literal"
                     args = [ self.cnst(term.value) ]
                     # TODO deal with non-datatype'd literals
                     args.append(self.val(term.dt if term.dt is not None else xsdNs['string']))
-                case term_types.COLLECTION: 
+                case Terms.COLLECTION: 
                     cls_name = "Collection"
                     args = [ self.lst([ self.val(el, scope_vars) for el in term ]) ]
-                case term_types.VAR:
+                case Terms.VAR:
                     cls_name = "Var"
                     args = [ self.cnst(term.name) ]
-                case term_types.BNODE:
+                case Terms.BNODE:
                     cls_name = "BlankNode"
                     args = [ self.cnst(term.label) ]
                 case _: print("inconceivable")
@@ -108,7 +108,7 @@ class PyBuilder:
     def var_ref(self, var):
         term = var if not isinstance(var, IdxedTerm) else var.term
         
-        expr = self.ref(term.name)
+        expr = self.ref(term.var_id)
         if isinstance(var, IdxedTerm):
             expr = self.indexes(expr, var.idxes)
         return expr

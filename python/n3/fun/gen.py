@@ -2,7 +2,7 @@ from enum import Enum
 from multidict import MultiDict
 from n3.fun.utils import unique_values
 from n3.fun.py_build import PyBuilder, IdxedTerm
-from n3.objects import Var, term_types, Triple, ANY, Iri, GraphTerm
+from n3.objects import Var, Terms, Triple, ANY, Iri, GraphTerm
 from n3.model import Model
 from n3.ns import logNs, swapNs
 from itertools import chain
@@ -41,7 +41,6 @@ class RuleFn:
 
     def set_input_vars(self, vars):
         self.input_vars = vars
-        self.avail_vars = vars
         
     def set_avail_vars(self, vars):
         self.avail_vars = vars
@@ -50,7 +49,7 @@ class RuleFn:
         self.avail_vars = self.new_vars
 
     def has_runtime_val(self, r):
-        return r.name in self.avail_vars if not r.is_concrete() else False
+        return r.var_id in self.avail_vars if not r.is_concrete() else False
     
     def get_fn_name(self, clause_no=0):
         return RuleFn.fn_name(self.no, clause_no)
@@ -115,7 +114,7 @@ class FnIndex:
         self.idx = MultiDict()
     
     def add(self, pred, entry):
-        if pred.type() == term_types.VAR:
+        if pred.type() == Terms.VAR:
             self.idx.add('var', entry)
         else:
             self.idx.add(pred.idx_val(), entry)
@@ -123,7 +122,7 @@ class FnIndex:
         self.idx.add('all', entry)
         
     def find(self, tp):
-        if tp.p.type() == term_types.VAR:
+        if tp.p.type() == Terms.VAR:
             return self.idx.getall('all')
 
         ret = []
@@ -181,7 +180,7 @@ class RuleProcessor_UniqueVars:
         # all variables (possibly duplicate) in head & body
         triple_it = \
                 chain(head.recur_vars(), body.recur_vars()) \
-            if body.type() == term_types.GRAPH else \
+            if body.type() == Terms.GRAPH else \
                 head.recur_vars()
         # use dict to have 1 entry per variable
         # (head & body can share same variables)
@@ -192,7 +191,7 @@ class RuleProcessor_UniqueVars:
         
         # rename vars in head & body
         head.replace_recur_vars(unique_vars)
-        if body.type() == term_types.GRAPH:
+        if body.type() == Terms.GRAPH:
             body.replace_recur_vars(unique_vars)
         
         # update var count
@@ -231,10 +230,15 @@ class UnifyTerms:
     def unify(self, clause, clause_term, match_term):
         has_runtime_val = clause.rule.has_runtime_val(clause_term)
         
+        # no unification needed; nothing will be passed to/from match
+        if match_term.type() == Terms.BNODE:
+            return
+        
+        # unification proceeds as usual for clause bnodes
         if clause_term.is_concrete():
             if match_term.is_concrete():
                 # look for variables inside ungrounded collections
-                if (clause_term.type()==term_types.COLLECTION and match_term.type()==term_types.COLLECTION) and \
+                if (clause_term.type()==Terms.COLLECTION and match_term.type()==Terms.COLLECTION) and \
                     (not clause_term.is_grounded() or not match_term.is_grounded()): 
                         
                         if len(clause_term) == len(match_term):
@@ -247,18 +251,17 @@ class UnifyTerms:
             else:
                 yield from self.__unify_op(UCmd.PASS, UDir.TO_MATCH, UTime.NOW, clause_term, match_term)
                 
-                if clause_term.type() == term_types.COLLECTION and not clause_term.is_grounded():
+                if clause_term.type() == Terms.COLLECTION and not clause_term.is_grounded():
                     yield from self.__unify_ungrcoll(UCmd.PASS, UDir.FROM_MATCH, match_term, clause_term)
         else:
             if match_term.is_concrete():
                 if has_runtime_val:
                     yield from self.__unify_op(UCmd.CMP, UDir.TO_MATCH, UTime.RUNTIME, clause_term, match_term)
                 
-                # possible that runtime var is ANY (if initial call didn't pass anything)
-                # so also unify by getting result from match
+                # possible that runtime var is ANY (i.e., variable in query), so also get result from match
                 yield from self.__unify_op(UCmd.PASS, UDir.FROM_MATCH, UTime.NOW, match_term, clause_term)
                 
-                if match_term.type() == term_types.COLLECTION and not match_term.is_grounded():
+                if match_term.type() == Terms.COLLECTION and not match_term.is_grounded():
                     yield from self.__unify_ungrcoll(UCmd.PASS, UDir.TO_MATCH, clause_term, match_term)
             else:
                 # idem
@@ -281,12 +284,12 @@ class UnifyTerms:
     def __unify_op(self, cmd, dir, time, term1, term2):
         # (already know term2 won't be concrete)
         if cmd == UCmd.PASS:
-            if term2.name in self.__unif_vars[dir]:
-                cmp1 = self.__unif_vars[dir][term2.name]
+            if term2.var_id in self.__unif_vars[dir]:
+                cmp1 = self.__unif_vars[dir][term2.var_id]
                 cmp2 = term1
                 yield UOp(UCmd.CMP, dir, UTime.RUNTIME, cmp1, cmp2)
             else:
-                self.__unif_vars[dir][term2.name] = term1
+                self.__unif_vars[dir][term2.var_id] = term1
         
         yield UOp(cmd, dir, time, term1, term2)
     
@@ -362,7 +365,7 @@ class GenPython:
         self.code_body.append(assn)
         
     def __gen_rule_python(self, rules, query, call_query):
-        self.code_imports.append(self.bld.import_from('n3.objects', ['Iri', 'Var', 'Literal', 'Collection', 'ANY', 'term_types', 'Triple']))
+        self.code_imports.append(self.bld.import_from('n3.objects', ['Iri', 'Var', 'Literal', 'Collection', 'ANY', 'Terms', 'Triple']))
         self.code_imports.append(self.bld.import_from('n3.ns', ['NS']))
         
         query_fn = self.__gen_rule(QueryFn(query))
@@ -404,12 +407,16 @@ class GenPython:
     
     def __gen_rule(self, rule):
         head_triple = rule.head.model.triple_at(0)
-        head_vars = unique_values(head_triple.recur_vars(get_name=True))
-        rule.set_input_vars(head_vars) # also sets avail_vars
+        # other rules can only pass values for universals (VAR)
+        head_vars = unique_values(head_triple.recur_vars(types=(Terms.VAR,), get_id=True))
+        rule.set_input_vars(head_vars)
+        # also, only universals from head will be available in body
+        rule.set_avail_vars(head_vars)
         
         for no, tp in enumerate(rule.body.model.triples()):
             clause = Clause(rule, no, tp)
-            new_avail_vars = unique_values(rule.avail_vars + tp.recur_vars(get_name=True))
+            # but, bnodes in body triple will be available to subsequent body triples
+            new_avail_vars = unique_values(rule.avail_vars + tp.recur_vars(types=(Terms.VAR,Terms.BNODE),get_id=True))
 
             if no == len(rule.body.model)-1:
                 ctu_call = self.__get_ctu_call(self.names['final_ctu'], head_vars, final=True)
@@ -438,7 +445,7 @@ class GenPython:
         self.code_body.append(clause_fn_def)
 
     def __is_builtin(self, clause):
-        return clause.tp.p.type() == term_types.IRI and clause.tp.p.iri.startswith(swapNs.iri)
+        return clause.tp.p.type() == Terms.IRI and clause.tp.p.iri.startswith(swapNs.iri)
 
     def __gen_builtin(self, clause, ctu_call):
         pck_name = clause.tp.p.ns[len(swapNs.iri):-1]
@@ -471,17 +478,19 @@ class GenPython:
             yield from self.__gen_match_call(clause, match_tp, fn_call, ctu_call.copy_shallow())
 
     def __gen_match_call(self, clause, match_tp, fn_call, ctu_call):
-        fn_call.set_params(match_tp.recur_vars(get_name=True), default=self.bld.ref('ANY'))
-
+        match_vars = unique_values(match_tp.recur_vars(get_id=True))
+        fn_call.set_params(match_vars, default=self.bld.ref('ANY'))
+        
         if not self.__unify(clause, match_tp, fn_call, ctu_call):
             return
 
+        # (some will have been overwritten by unify)
         ctu_args = ctu_call.get_args()
         
         ctu_call_bld = self.bld.fn_call(ctu_call.ref, ctu_args)
         ctu_call_bld = self.__cond_call(ctu_call, ctu_call_bld, as_exp=True)
 
-        lmbda_params = unique_values(match_tp.recur_vars(get_name=True))
+        lmbda_params = unique_values(match_vars)
         lmbda_bld = self.bld.lmbda(lmbda_params, ctu_call_bld)
 
         fn_args = fn_call.get_args()
@@ -518,8 +527,8 @@ class GenPython:
         self.code_body.append(call_bld)
 
     def __unify(self, clause, match_tp, fn_call, ctu_call):
-        # print()
-        # print("unify:\n", clause.tp, "\n", match_tp)
+        print()
+        print("unify:\n", clause.tp, "\n", match_tp)
         
         unifier = UnifyTerms()
         for pos in range(3):
@@ -527,7 +536,7 @@ class GenPython:
             match_term = match_tp[pos]
             
             for op in unifier.unify(clause, clause_term, match_term):
-                # print("op", op)
+                print("op", op)
                 
                 match (op.cmd):
                     case UCmd.CMP:
@@ -546,27 +555,28 @@ class GenPython:
                                 match (op.time):
                                     case UTime.NOW:
                                         to_vars = clause.rule.avail_vars
-                                        fn_call.set_arg(op.val2.term.name, self.bld.val(op.val1, scope_vars=to_vars))
+                                        fn_call.set_arg(op.val2.term.var_id, self.bld.val(op.val1, scope_vars=to_vars))
                                     case UTime.RUNTIME:
-                                        fn_call.set_arg(op.val2.term.name, self.bld.var_ref(op.val1))
+                                        fn_call.set_arg(op.val2.term.var_id, self.bld.var_ref(op.val1))
 
                             case UDir.FROM_MATCH:
                                 match (op.time):
                                     case UTime.NOW:
-                                        from_vars = match_tp.recur_vars(get_name=True)
-                                        ctu_call.set_arg(op.val2.term.name, self.bld.val(op.val1, scope_vars=from_vars))
+                                        from_vars = match_tp.recur_vars(get_id=True)
+                                        ctu_call.set_arg(op.val2.term.var_id, self.bld.val(op.val1, scope_vars=from_vars))
                                     case UTime.RUNTIME:
-                                        ctu_call.set_arg(op.val2.term.name, self.bld.var_ref(op.val1))
-                            
+                                        ctu_call.set_arg(op.val2.term.var_id, self.bld.var_ref(op.val1))
+
         return True
     
     def __get_ctu_call(self, name, params, final=False):
         params = self.__get_fn_params(params, final)
         
         return FnCall(self.bld.ref(name), 
-            params=params, 
+            params=params,
+            # by default, pass the same params to ctu (as args)
+            # some of these will be overwritten by the unification
             args=[self.bld.ref(p) for p in params])
     
     def __get_fn_params(self, params, final=False):
         return params + [ self.names['final_ctu'] ] if not final else params
-            

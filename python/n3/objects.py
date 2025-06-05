@@ -1,8 +1,9 @@
+import pdb
 from enum import Enum
 import string, random
 from n3.model import Model
 
-class term_types(Enum):
+class Terms(Enum):
     IRI = 1
     LITERAL = 2
     COLLECTION = 3
@@ -14,7 +15,7 @@ class term_types(Enum):
 
 class Any:
     def type(self):
-        return term_types.ANY
+        return Terms.ANY
     
     def is_any(self):
         return True
@@ -71,7 +72,7 @@ class Iri(ConcreteNode):
         self.iri = iri
         
     def type(self):
-        return term_types.IRI
+        return Terms.IRI
     
     def is_grounded(self):
         return True
@@ -121,7 +122,7 @@ class Literal(ConcreteNode):
         self.lng = lng
         
     def type(self):
-        return term_types.LITERAL
+        return Terms.LITERAL
     
     def is_grounded(self):
         return True
@@ -155,6 +156,8 @@ class Literal(ConcreteNode):
 
 class VariableNode:
     
+    # id
+            
     def is_concrete(self):
         return False
 
@@ -163,12 +166,12 @@ class VariableNode:
     
 
 class Var(VariableNode):
-        
+    
     def __init__(self, name):
         self.name = name
-        
+                
     def type(self):
-        return term_types.VAR    
+        return Terms.VAR    
     
     def idx_val(self):
         return self.name
@@ -184,20 +187,28 @@ class Var(VariableNode):
     def __repr__(self):
         return self.__str__()
     
+    def __getattr__(self, name):
+        match name:
+            case 'var_id': return self.name
+    
     def copy_deep(self):
         return self
     
 
 class BlankNode(VariableNode):
         
+    cnt = 0
+        
     def __init__(self, label=None):
         if label is None:
-            self.label = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+            # self.label = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+            self.label = f"b{BlankNode.cnt}"
+            BlankNode.cnt += 1
         else:
             self.label = label
         
     def type(self):
-        return term_types.BNODE
+        return Terms.BNODE
     
     def idx_val(self):
         return self.label
@@ -212,6 +223,10 @@ class BlankNode(VariableNode):
         return f"_:{self.label}"
     def __repr__(self):
         return self.__str__()
+    
+    def __getattr__(self, name):
+        match name:
+            case 'var_id': return self.label
     
     def copy_deep(self):
         return self
@@ -259,8 +274,8 @@ class Container(ConcreteNode):
                 1: term: (nested) atomic element
         """
         match term.type():
-            case term_types.COLLECTION: yield from term._iter_recur_atomics(pos)
-            case term_types.GRAPH: yield from term._iter_recur_atomics(pos)
+            case Terms.COLLECTION: yield from term._iter_recur_atomics(pos)
+            case Terms.GRAPH: yield from term._iter_recur_atomics(pos)
             case _: yield (pos, term)
     
     
@@ -288,26 +303,28 @@ class VarContainer(Container):
         
         return inst
     
-    def replace_recur_vars(self, repl_terms):
+    def replace_recur_vars(self, repl_terms, types=(Terms.VAR,)):
         """
             Replaces (nested) variables in this VarContainer.
             
             Args:
+                types: the types of variables you're interested in (var, bnode)
                 repl_terms (dictionary): keys = variables to replace; values = new terms
         """
         for pos, term in self._iter_recur_atomics(()):
-            if term.type() == term_types.VAR and term.name in repl_terms: 
+            if term.type() in types and term.var_id in repl_terms: 
                 # get closest parent container & index of var therein
                 parent = pos[-1][1]; i = pos[-1][0]
                 # replace with new term
-                parent[i] = repl_terms[term.name]
+                parent[i] = repl_terms[term.var_id]
     
-    def vars(self,get_name=True):
+    def vars(self, types=(Terms.VAR,), get_id=True):
         """
         Returns a list of all non-nested variables in this VarContainer.
         
         Args:
-            get_name: whether we are interested in var names or the vars themselves.
+            types: the types of variables you're interested in (var, bnode)
+            get_id: whether we are interested in var names or the vars themselves.
             
         Returns:
             list:
@@ -315,14 +332,15 @@ class VarContainer(Container):
                 1: non-nested var or its name
         """
         
-        return [ v.name if get_name else (i, v) for i, v in enumerate(self) if v.type() == term_types.VAR ]     
+        return [ v.var_id if get_id else (i, v) for i, v in enumerate(self) if v.type() in types ]     
        
-    def recur_vars(self,get_name=True):
+    def recur_vars(self, types=(Terms.VAR,), get_id=True):
         """
         Returns a list of all (nested) variables in this VarContainer. 
         
         Args:
-            get_name: whether we are interested in var names or the vars themselves.
+            types: the types of variables you're interested in (var, bnode)
+            get_id: whether we are interested in var names or the vars themselves.
             
         Returns:
             list:
@@ -331,18 +349,19 @@ class VarContainer(Container):
         
         # return self.__vars
         
-        # return [ (v.name if get_name else v) for _, _, v in self._iter_recur_atomics() if v.type() == term_types.VAR ]
+        # return [ (v.name if get_id else v) for _, _, v in self._iter_recur_atomics() if v.type() == Terms.VAR ]
         # for _, _, v in self._iter_recur_atomics():
-        #     if v.type() == term_types.VAR: yield v
+        #     if v.type() == Terms.VAR: yield v
         
-        return [ v for _, v in self.__yield_recur_vars(get_name) ]
+        return [ v for _, v in self.__yield_recur_vars(types, get_id) ]
     
-    def recur_vars_pos(self,get_name=True):
+    def recur_vars_pos(self, types=(Terms.VAR,), get_id=True):
         """
         Returns a list of all (nested) variables and their positions in this VarContainer. 
         
         Args:
-            get_name: whether we are interested in var names or the vars themselves.
+            types: the types of variables you're interested in (var, bnode)
+            get_id: whether we are interested in var names or the vars themselves.
             
         Returns:
             list:
@@ -351,23 +370,24 @@ class VarContainer(Container):
                     1: (nested) var or its name
         """
         
-        return [ (pos, v) for pos, v in self.__yield_recur_vars(get_name) ]
+        return [ (pos, v) for pos, v in self.__yield_recur_vars(types, get_id) ]
     
-    def __yield_recur_vars(self, get_name):
+    def __yield_recur_vars(self, types=(Terms.VAR,), get_id=True):
         """
         Recursively yields all (nested) variables in this VarContainer.
         
         Args:
-            get_name: whether we are interested in var names or the vars themselves.
+            types: the types of variables you're interested in (var, bnode)
+            get_id: whether we are interested in var names or the vars themselves.
             
         Yields:
             tuple:
                 0: pos (tuple): series of parent containers of element
                 1: (nested) var or its name
         """
-        
+                
         for pos, v in self._iter_recur_atomics(()):
-            if v.type() == term_types.VAR: yield (pos, (v.name if get_name else v))
+            if v.type() in types: yield (pos, (v.var_id if get_id else v))
 
 
 class Collection(VarContainer):
@@ -378,7 +398,7 @@ class Collection(VarContainer):
         self.__elements = [] if elements is None else elements
     
     def type(self):
-        return term_types.COLLECTION
+        return Terms.COLLECTION
     
     def idx_val(self):
         return self.__to_nested_tuples()
@@ -387,7 +407,7 @@ class Collection(VarContainer):
         return Collection(self.__elements + coll.__elements)
     
     def __to_nested_tuples(self):
-        return tuple(e.__to_nested_tuples() if e.type() == term_types.COLLECTION else e.idx_val() for e in self.__elements)
+        return tuple(e.__to_nested_tuples() if e.type() == Terms.COLLECTION else e.idx_val() for e in self.__elements)
     
     def _parsed_el(self, el):
         self.__elements.append(el)
@@ -440,7 +460,7 @@ class GraphTerm(VarContainer):
         self.model = model if model is not None else Model()
         
     def type(self):
-        return term_types.GRAPH
+        return Terms.GRAPH
     
     def _iter_recur_atomics(self, pos):
         for t in self.model.triples(): yield from t._iter_recur_atomics(pos)
@@ -466,7 +486,7 @@ class Triple(VarContainer):
         self.o = o
     
     def has_graph(self):
-        return any(r.type() == term_types.GRAPH for r in self)
+        return any(r.type() == Terms.GRAPH for r in self)
     
     def _iter_recur_atomics(self, pos):
         for i, term in enumerate(self): yield from self._iter_atomic(pos + ((i, self),), term)
