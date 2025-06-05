@@ -1,0 +1,1 @@
+eye data.n3 rules.n3 --query query.n3 --nope
