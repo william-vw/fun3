@@ -1,2 +1,2 @@
 @prefix : <http://example.org/> . 
-{ ?x :y _:z } <= { ?x :b :c } .
+{ ?x :y _:z } <= { ?x _:b _:c } .

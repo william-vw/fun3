@@ -2,7 +2,7 @@ from enum import Enum
 from multidict import MultiDict
 from n3.fun.utils import unique_values
 from n3.fun.py_build import PyBuilder, IdxedTerm
-from n3.objects import Var, Terms, Triple, ANY, Iri, GraphTerm
+from n3.objects import Var, BlankNode, ANY, Triple, Iri, GraphTerm, Terms
 from n3.model import Model
 from n3.ns import logNs, swapNs
 from itertools import chain
@@ -174,14 +174,13 @@ class RuleProcessor_UniqueVars:
         self.var_cnt = 0
     
     # giving up & just giving all vars unique names
-    def process(self, _, rule_triple):
-        head = rule_triple.s
-        body = rule_triple.o
-        # all variables (possibly duplicate) in head & body
-        triple_it = \
-                chain(head.recur_vars(), body.recur_vars()) \
-            if body.type() == Terms.GRAPH else \
-                head.recur_vars()
+    def process(self, _, rule):
+        head = rule.s
+        body = rule.o
+        triple_it = head.recur_vars()
+        if body.type() == Terms.GRAPH:
+            triple_it = chain(triple_it, body.recur_vars())
+            
         # use dict to have 1 entry per variable
         # (head & body can share same variables)
         unique_vars = { v:0 for v in triple_it }
@@ -196,6 +195,12 @@ class RuleProcessor_UniqueVars:
         
         # update var count
         self.var_cnt += len(unique_vars)
+
+        # also _body_ bnodes; local to graph, so cannot clash across rules,
+        # but can clash with s/p/o vars returned by data.find
+        if body.type() == Terms.GRAPH:
+            ren_bnodes = { bn: BlankNode(f"{bn}_bn") for bn in body.recur_vars(types=(Terms.BNODE,)) }
+            body.replace_recur_vars(ren_bnodes, types=(Terms.BNODE,))
 
 
 class UCmd(Enum):
@@ -230,11 +235,15 @@ class UnifyTerms:
     def unify(self, clause, clause_term, match_term):
         has_runtime_val = clause.rule.has_runtime_val(clause_term)
         
-        # no unification needed; nothing will be passed to/from match
+        # deal with _match_ bnodes (unification as usual for _clause_ bnodes)
         if match_term.type() == Terms.BNODE:
-            return
+            # concrete terms in clause shouldn't match bnode in match term
+            if clause_term.is_concrete():
+                # (will always fail)
+                yield from self.__unify_op(UCmd.CMP, UDir.TO_MATCH, UTime.NOW, match_term, clause_term)
+            # clause var nodes always match bnode in match term (no further unification)
+            return                
         
-        # unification proceeds as usual for clause bnodes
         if clause_term.is_concrete():
             if match_term.is_concrete():
                 # look for variables inside ungrounded collections
@@ -284,6 +293,7 @@ class UnifyTerms:
     def __unify_op(self, cmd, dir, time, term1, term2):
         # (already know term2 won't be concrete)
         if cmd == UCmd.PASS:
+            # passing two different args to the same var; unify args
             if term2.var_id in self.__unif_vars[dir]:
                 cmp1 = self.__unif_vars[dir][term2.var_id]
                 cmp2 = term1

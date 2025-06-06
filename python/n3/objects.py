@@ -12,8 +12,24 @@ class Terms(Enum):
     BNODE = 6
     ANY = 7
 
+    
+class Node:
+    
+    def is_any(self):
+        return False
 
-class Any:
+    # implemented by subclasses
+    
+    # NOTE: meant to support the semantics of unification
+    # def __eq__(self, other):  
+    #     pass
+    
+    # NOTE: use this value to index term for retrieval
+    # def idx_val(self):
+    #     pass
+
+class Any(Node):
+    
     def type(self):
         return Terms.ANY
     
@@ -53,12 +69,9 @@ class Any:
     
     def copy_deep(self):
         return self
+   
     
-    
-class ConcreteNode:
-    
-    def is_any(self):
-        return False
+class ConcreteNode(Node):
     
     def is_concrete(self):
         return True
@@ -99,7 +112,7 @@ class Iri(ConcreteNode):
             case _: raise AttributeError(f"unknown attribute: {name}")
             
     def __eq__(self, other):  
-        if not other.is_concrete() or other.is_any():
+        if other.type()==Terms.VAR or other.is_any():
             return True
         if not isinstance(other, Iri):
             return False # NotImplemented
@@ -131,7 +144,7 @@ class Literal(ConcreteNode):
         return self.value
         
     def __eq__(self, other):
-        if not other.is_concrete() or other.is_any():
+        if other.type()==Terms.VAR or other.is_any():
             return True
         if not isinstance(other, Literal):
             return False # NotImplemented
@@ -154,7 +167,7 @@ class Literal(ConcreteNode):
         return self
 
 
-class VariableNode:
+class VariableNode(Node):
     
     # id
             
@@ -178,9 +191,6 @@ class Var(VariableNode):
         
     def __eq__(self, other):  
         return True
-        # if not isinstance(other, Var):
-        #     return NotImplemented
-        # return self.name == other.name
         
     def __str__(self):
         return f"?{self.name}"
@@ -212,12 +222,11 @@ class BlankNode(VariableNode):
     
     def idx_val(self):
         return self.label
-        
-    def __eq__(self, other): 
-        return True
-        # if not isinstance(other, BlankNode):
-        #     return NotImplemented
-        # return self.label == other.label
+    
+    # needed for unification
+    # (blank node only matches var nodes)
+    def __eq__(self, other):
+        return not other.is_concrete()
         
     def __str__(self):
         return f"_:{self.label}"

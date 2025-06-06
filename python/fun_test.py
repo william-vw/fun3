@@ -382,9 +382,35 @@ def fun3():
 
 # test 6
 # blank nodes
+
+# # (1) bnode in body triple
+#     rules_str = """@prefix : <http://example.org/> . 
+# { ?p a :Canadian } <= { ?p a :Person . ?p :address _:a . _:a :country "CA" } .
+# { ?p a :Person } <= { ?p :ability :think } .
+# """
+
+#     query_str = """@prefix : <http://example.org/> .
+# ?x a :Canadian .
+# """
+
+# # (2) bnode in rule head
+#     rules_str = """@prefix : <http://example.org/> . 
+# { ?p a :Canadian } <= { ?p a :Person . ?p :address _:a . _:a :country "CA" } .
+# { ?p a _:p } <= { ?p :ability :think } .
+# """
+
+#     query_str = """@prefix : <http://example.org/> .
+# ?x a :Canadian .
+# """
+
+# (3) same bnode in rule head & body
     rules_str = """@prefix : <http://example.org/> . 
 { ?p a :Canadian } <= { ?p a :Person . ?p :address _:a . _:a :country "CA" } .
-# { ?p a :Person } <= { ?p :ability :think } .
+{ ?p a _:p } <= { _:p :ability :think . _:p :ability :think } .
+"""
+
+    query_str = """@prefix : <http://example.org/> .
+?x a :Canadian .
 """
 
     data_str = """@prefix : <http://example.org/> . 
@@ -393,10 +419,6 @@ def fun3():
 :el :ability :drink ; :address :addr1 ; :describedAs :Belgian .
 :dor :ability :think ; :address :addr1 ; :describedAs :German .
 :soc :name "Socrates" ; :address :addr1 .
-"""
-
-    query_str = """@prefix : <http://example.org/> .
-?x a :Canadian .
 """
 
 # TODO more bnode tests
@@ -415,20 +437,20 @@ def fun3():
     # print(unparse_with_lineno(mod)) # converts the ast to py code with line no
     # unparsed = unparse(mod) # converts the ast to py code
     
-    # 1/ save code
-    mod = gen_py(rules, query, InputData(data_str=data_str))
-    unparsed = unparse(mod)
-    print(unparsed)
+    # # 1/ save code
+    # mod = gen_py(rules, query, InputData(data_str=data_str))
+    # unparsed = unparse(mod)
+    # print(unparsed)
     
-    with open("code_out.py", 'w') as fh:
-        fh.write(unparsed)
+    # with open("code_out.py", 'w') as fh:
+    #     fh.write(unparsed)
     
-    # # 2/ run a rule fn
-    # mod = gen_py(rules, query, InputData(data_str=data_str), call_query=False)
-    # print(unparse(mod))
+    # 2/ run a rule fn
+    mod = gen_py(rules, query, InputData(data_str=data_str), call_query=False)
+    print(unparse(mod) + "\n\n")
     
-    # exec_ret = get_exec(mod, InputData(data_str=data_str))
-    # exec_query(exec_ret, query)
+    exec_ret = get_exec(mod, InputData(data_str=data_str))
+    exec_query(exec_ret, query)
 
     
 def unparse_with_lineno(ast):
