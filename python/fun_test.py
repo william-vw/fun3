@@ -403,10 +403,20 @@ def fun3():
 # ?x a :Canadian .
 # """
 
-# (3) same bnode in rule head & body
+# # (3) same bnode in rule head & body
+#     rules_str = """@prefix : <http://example.org/> . 
+# { ?p a :Canadian } <= { ?p a :Person . ?p :address _:a . _:a :country "CA" } .
+# { ?p a _:p } <= { _:p :ability :think . } .
+# """
+
+#     query_str = """@prefix : <http://example.org/> .
+# ?x a :Canadian .
+# """
+
+# (4) resource path!
     rules_str = """@prefix : <http://example.org/> . 
-{ ?p a :Canadian } <= { ?p a :Person . ?p :address _:a . _:a :country "CA" } .
-{ ?p a _:p } <= { _:p :ability :think . _:p :ability :think } .
+{ ?p a :Canadian } <= { ?p a :Person . ?p!:address!:country :locatedIn "EUR" } .
+{ ?p a _:p } <= { _:p :ability :think . } .
 """
 
     query_str = """@prefix : <http://example.org/> .
@@ -418,11 +428,9 @@ def fun3():
 :ed :ability :think ; :address :addr1 ; :describedAs :Person .
 :el :ability :drink ; :address :addr1 ; :describedAs :Belgian .
 :dor :ability :think ; :address :addr1 ; :describedAs :German .
-:soc :name "Socrates" ; :address :addr1 .
+:soc :name "Socrates" ; a :Person ; :address :addr2 . :addr2 :country "GR" . "GR" :locatedIn "EUR" .
 """
 
-# TODO more bnode tests
-# featured in rule head etc
     
     # - parse
     

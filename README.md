@@ -77,6 +77,29 @@ But, as before, it is possible that the clause variable's value is "any", so the
 In that case, we use the concrete match term, and pass it to the next function call (idem above).
 
 ### Ungrounded collections
-TODO: see unify.txt
+see unify.txt
 
-TODO: also unify multiple occurrences of same variable in same triple
+### Multiple variable occurrences
+Simply, see UnifyTerms.__unif_vars
+
+## Builtins
+Rather simply, accept & return `s`, `o` - let unification pull out variables from result!
+
+## Blank nodes
+Blank nodes (existential variables) are isolated inside their graph term. As a result, blank nodes from the rule head are not accessible in the rule body. 
+(They can thus be considered as a "sink" in the rule head; any values passed to them would not go anywhere.)
+Since the function body does not have access to blank nodes from the rule head, it does not make sense to provide them as input to a rule function.
+(This is in contrast to universal variables in the rule head, of course.)
+Blank nodes in the rule body are more useful: they can be passed to subsequent triples in the body. 
+But, similarly, they are not accessible in the rule head.
+
+Practically, this means:
+- Rule functions don't have parameters for bnodes in their rule head or body. So, they don't accept or return arguments for them.
+- However, bnodes in a body triple are passed to subsequent body triples. This means the corresponding function for the body triple _will_ have parameters for it.
+
+Re unification:
+- If the match term is a bnode (i.e., from a rule head), only clause variables and other bnodes will match it.
+This seems a bit strange since they are existential variables.
+But, in forward reasoning, the head's bnode will be inferred as part of the data (like a concrete term), where it will only "match" identical bnodes.
+So, by analogy, bnodes should be treated as concrete terms in the rule head.
+- If the clause term is a bnode, it is simply treated as a universal variable.
