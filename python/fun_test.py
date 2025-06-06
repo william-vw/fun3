@@ -7,6 +7,7 @@ from n3.fun.gen import gen_py, InputData, QueryFn
 from n3.objects import Triple, Iri, Collection, ANY, Literal
 from n3.model import Model
 from n3.ns import xsdNs
+from n3.get_py import run_py, save_py
   
   
 def fun3():
@@ -17,7 +18,7 @@ def fun3():
 # non-recursive rules without collections
 
 # # (1) only query data
-#     rules_str =  """@prefix : <http://example.org/> . 
+#     rules_str =  """@prefix : <http://_ample.org/> . 
 # { ?p a :Canadian } <= { ?p a :Person . ?p :address ?a . ?a :country "CA" } . 
 # """
 #   rule_args = [ ANY ]
@@ -465,61 +466,13 @@ def fun3():
 :jean_marie a :Person .
 """
 
-
-    # - parse
-    
-    rules = parse_n3(rules_str).rules
-    # print("rules:\n", rules)
-    query = parse_n3(query_str).data.triple_at(0)
-    # print()
-    
-    # - generate
-    
-    # print(dump(mod, indent=4)) # gives an indented version of the ast
-    # print(unparse_with_lineno(mod)) # converts the ast to py code with line no
-    # unparsed = unparse(mod) # converts the ast to py code
-    
     # # 1/ save code
-    # mod = gen_py(rules, query, InputData(data_str=data_str))
-    # unparsed = unparse(mod)
-    # print(unparsed)
-    
-    # with open("code_out.py", 'w') as fh:
-    #     fh.write(unparsed)
+    save_py(query_str, rules_str, data_str, "code_out.py")
     
     # 2/ run a rule fn
-    mod = gen_py(rules, query, InputData(data_str=data_str), call_query=False)
-    print(unparse(mod) + "\n\n")
+    # print(run_py(query_str, rules_str, data_str))
     
-    exec_ret = get_exec(mod, InputData(data_str=data_str))
-    exec_query(exec_ret, query)
-
     
-def unparse_with_lineno(ast):
-    code = unparse(ast)
-    return "\n".join([ f"{i+1}. {line}" for i, line in enumerate(code.split("\n")) ])
-
-def get_exec(mod, in_data):
-    mod_code = compile(mod, "<fun3>", "exec")
-    
-    global data
-    data = parse_n3(in_data.data_str).data
-    
-    new_refs = {}
-    exec(mod_code, globals(), new_refs)
-    
-    for name, code in new_refs.items():
-        globals()[name] = code
-        
-    return new_refs
-
-def exec_query(exec_ret, query):
-    fn_name = QueryFn.fn_name()
-    variables = query.recur_vars()
-    
-    query_fn = exec_ret[fn_name]
-    query_fn(*[ANY for _ in variables], lambda *args: print(query.instantiate({ var: args[idx] for idx, var in enumerate(variables) })))
-
 def test_ast():
     print(dump(parse("""a = 'abc'""")))
     

@@ -1,0 +1,28 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix :        <file:///home/william-vw/projects/n3/jena_n3/testing/N3/list_tests.n3#> .
+@prefix test:    <https://w3c.github.io/N3/tests/test.n3#> .
+@prefix mf:      <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
+@prefix qt:      <http://www.w3.org/2001/sw/DataAccess/tests/test-query#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdft:    <http://www.w3.org/ns/rdftest#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+<>  rdf:type mf:Manifest ;
+    rdfs:label "fun3 test cases" ;
+    mf:entries ( :only_data_find ) .
+
+:only_data_find 
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "only_data_find" ;
+    mf:action [ 
+        qt:query <simple/only_data_find-query.n3> ;
+        test:rules <simple/only_data_find.n3> ;
+        qt:data <simple/person_ca.ttl>
+    ] ;
+    mf:result [
+        qt:data <simple/only_data_find-ref.n3>
+    ] ;
+    rdfs:comment "Single rule only including data find" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .

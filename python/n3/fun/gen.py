@@ -425,6 +425,7 @@ class GenPython:
         
         final_ctu_call = self.__get_ctu_call(self.names['final_ctu'], head_vars, final=True)
         
+        # empty rule body
         if (rule.body.type()==Terms.GRAPH and len(rule.body.model) == 0) or \
             rule.body==Literal(True, xsdNs['boolean']):
             
@@ -450,10 +451,10 @@ class GenPython:
     def __gen_empty_clause(self, clause, ctu_call):
         clause_fn_def = self.bld.fn(clause.fn_name, self.__get_fn_params(clause.rule.avail_vars))
 
+        # directly call ctu with same args
         ctu_call_bld = self.bld.stmt(self.bld.fn_call(ctu_call.ref, ctu_call.get_args()))
         
         self.bld.fn_body_stmts(clause_fn_def, [ ctu_call_bld ])
-        # print(unparse(clause_fn_def))
         
         self.code_body.append(clause_fn_def)
 
@@ -469,7 +470,6 @@ class GenPython:
             )
         
         self.bld.fn_body_stmts(clause_fn_def, clause_fn_body)
-        # print(unparse(clause_fn_def))
         
         self.code_body.append(clause_fn_def)
 
