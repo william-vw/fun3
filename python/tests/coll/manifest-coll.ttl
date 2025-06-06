@@ -1,0 +1,108 @@
+@prefix : <http://example.org/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix test:    <https://w3c.github.io/N3/tests/test.n3#> .
+@prefix mf:      <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
+@prefix qt:      <http://www.w3.org/2001/sw/DataAccess/tests/test-query#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdft:    <http://www.w3.org/ns/rdftest#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+<>  rdf:type mf:Manifest ;
+    rdfs:label "collection test cases" ;
+    mf:entries ( :grcoll :ungrcoll_1 :ungrcoll_2 :ungrcoll_3_1 :ungrcoll_3_2 :ungrcoll_3_3 ) .
+
+:grcoll
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "grcoll" ;
+    mf:action [ 
+        qt:query <grcoll-query.n3> ;
+        test:rules <grcoll.n3> ;
+        qt:data <grcoll-data.n3>
+    ] ;
+    mf:result [
+        qt:data <grcoll-ref.n3>
+    ] ;
+    rdfs:comment "Grounded; same nesting level" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:ungrcoll_1
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "ungrcoll_1" ;
+    mf:action [ 
+        qt:query <ungrcoll_1-query.n3> ;
+        test:rules <ungrcoll_1.n3> ;
+        qt:data <ungrcoll_1-data.n3>
+    ] ;
+    mf:result [
+        qt:data <ungrcoll_1-ref.n3>
+    ] ;
+    rdfs:comment "Ungrounded (some vars); same nesting level" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:ungrcoll_2
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "ungrcoll_2" ;
+    mf:action [ 
+        qt:query <ungrcoll_2-query.n3> ;
+        test:rules <ungrcoll_2.n3> ;
+        qt:data <ungrcoll_2-data.n3>
+    ] ;
+    mf:result [
+        qt:data <ungrcoll_2-ref.n3>
+    ] ;
+    rdfs:comment "Ungrounded (all vars); same nesting level" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:ungrcoll_3_1
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "ungrcoll_3_1" ;
+    mf:action [ 
+        qt:query <ungrcoll_3-query1.n3> ;
+        test:rules <ungrcoll_3.n3> ;
+        qt:data <ungrcoll_3-data.n3>
+    ] ;
+    mf:result [
+        qt:data <ungrcoll_3-ref1.n3>
+    ] ;
+    rdfs:comment "Ungrounded (some vars); different nesting level" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:ungrcoll_3_2
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "ungrcoll_3_2" ;
+    mf:action [ 
+        qt:query <ungrcoll_3-query2.n3> ;
+        test:rules <ungrcoll_3.n3> ;
+        qt:data <ungrcoll_3-data.n3>
+    ] ;
+    mf:result [
+        qt:data <ungrcoll_3-ref2.n3>
+    ] ;
+    rdfs:comment "Ungrounded (some vars); different nesting level" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:ungrcoll_3_3
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "ungrcoll_3_3" ;
+    mf:action [ 
+        qt:query <ungrcoll_3-query3.n3> ;
+        test:rules <ungrcoll_3.n3> ;
+        qt:data <ungrcoll_3-data.n3>
+    ] ;
+    mf:result [
+        qt:data <ungrcoll_3-ref3.n3>
+    ] ;
+    rdfs:comment "Ungrounded (some vars); different nesting level" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .

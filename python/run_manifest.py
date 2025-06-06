@@ -1,12 +1,12 @@
 import sys, os, argparse, logging
 from rdflib import Graph, RDF, Namespace, compare
-sys.path.insert(0, os.path.abspath("../"))
 from n3.get_py import run_py, save_py
 from NTCompare import compare_rdf_graphs
 
 MF = Namespace("http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#")
 QT = Namespace("http://www.w3.org/2001/sw/DataAccess/tests/test-query#")
 N3T = Namespace("https://w3c.github.io/N3/tests/test.n3#")
+RDFT = Namespace("http://www.w3.org/ns/rdftest#")
 
 class Collection:
     def __init__(self, g, list):
@@ -30,14 +30,13 @@ def get_logger():
     logpath = "output.log"
     
     logger = logging.getLogger(__name__)
-    logging.basicConfig(filename=logpath, encoding='utf-8', level=logging.INFO)
+    logging.basicConfig(filename=logpath, filemode='w', encoding='utf-8', level=logging.INFO)
     logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
     
     return logger
 
-def run_manifest(path, test):
+def run_manifest(path, test, logger):
     total_num = 0; noncompl_num = 0
-    global logger; logger = get_logger()
     
     logger.info(f">> loading manifest: {path} <<")
     g = Graph()
@@ -45,23 +44,27 @@ def run_manifest(path, test):
 
     for mf in g.subjects(RDF.type, MF.Manifest):
         # manifest files
-        lst = g.value(mf, MF.include)
-        if lst is not None:
-            for el in Collection(g=g, list=lst):
+        incl = g.value(mf, MF.include)
+        if incl is not None:
+            for el in Collection(g=g, list=incl):
                 path = str(el)
-                run_manifest(path, test)
+                run_manifest(path, test, logger)
+            return
         # test entries
-        lst = g.value(mf, MF.entries)
-        if lst is not None:
-            for el in Collection(g=g, list=lst):
+        entr = g.value(mf, MF.entries)
+        if entr is not None:
+            for el in Collection(g=g, list=entr):
+                name = str(g.value(el, MF.name))
                 if test is not None:
-                    name = str(g.value(el, MF.name))
                     if name != test: continue
+                if g.value(el, RDFT.approval) != RDFT.Approved:
+                    logger.info(f"skipping unapproved test: {name}")
+                    continue
                 is_compl = run_test(g, el)
                 if not is_compl: noncompl_num += 1
                 total_num += 1
     
-    logger.info(f"# total: {total_num}; # non-compliant: {noncompl_num}")
+    logger.info(f"# total: {total_num}; # non-compliant: {noncompl_num}\n")
 
 def run_test(g, test):    
     name = str(g.value(test, MF.name))
@@ -133,4 +136,6 @@ if __name__ == '__main__':
     path = args.manifest
     test = args.test
     
-    run_manifest(path, test)
+    logger = get_logger()
+    
+    run_manifest(path, test, logger)

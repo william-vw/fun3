@@ -1,0 +1,7 @@
+@prefix : <http://example.org/> . 
+
+:will :label :Person .
+:el :label :Belgian .
+:ed :label :Person .
+:dor :label :German .
+:soc :label :Greek .

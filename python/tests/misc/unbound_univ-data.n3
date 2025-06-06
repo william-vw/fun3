@@ -1,0 +1,3 @@
+@prefix : <http://example.org/> . 
+
+:soc :name "Socrates" ; :address :addr1 . :addr1 :country "CA" .

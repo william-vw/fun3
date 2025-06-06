@@ -1,0 +1,4 @@
+@prefix : <http://example.org/> . 
+
+{ ?p :label ?t } <= { ?p a ?t . } .
+{ ?p a ?t } <= { ?p :name "Socrates" } . # (t not used in body)

@@ -1,0 +1,4 @@
+@prefix : <http://example.org/> . 
+
+:will a :Canadian .
+:ed a :Canadian .

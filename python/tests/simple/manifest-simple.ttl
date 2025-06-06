@@ -1,0 +1,113 @@
+@prefix : <http://example.org/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix test:    <https://w3c.github.io/N3/tests/test.n3#> .
+@prefix mf:      <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
+@prefix qt:      <http://www.w3.org/2001/sw/DataAccess/tests/test-query#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdft:    <http://www.w3.org/ns/rdftest#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+<>  rdf:type mf:Manifest ;
+    rdfs:label "simple test cases" ;
+    mf:entries ( :only_data_find :call_rules :call_rules2 :call_rules3 :call_rules4 :call_rules5 ) .
+
+:only_data_find 
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "only_data_find" ;
+    mf:action [ 
+        qt:query <only_data_find-query.n3> ;
+        test:rules <only_data_find.n3> ;
+        qt:data <person_ca.ttl>
+    ] ;
+    mf:result [
+        qt:data <only_data_find-ref.n3>
+    ] ;
+    rdfs:comment "Single rule only including data find" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+
+:call_rules 
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "call_rules" ;
+    mf:action [ 
+        qt:query <call_rules-query.n3> ;
+        test:rules <call_rules.n3> ;
+        qt:data <person_ca.ttl>
+    ] ;
+    mf:result [
+        qt:data <call_rules-ref.n3>
+    ] ;
+    rdfs:comment "Call other rules (both terms concrete)" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+
+:call_rules2 
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "call_rules2" ;
+    mf:action [ 
+        qt:query <call_rules2-query.n3> ;
+        test:rules <call_rules2.n3> ;
+        qt:data <person_ca.ttl>
+    ] ;
+    mf:result [
+        qt:data <call_rules2-ref.n3>
+    ] ;
+    rdfs:comment "Call other rules (clause term concrete, match term var)" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+
+:call_rules3
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "call_rules3" ;
+    mf:action [ 
+        qt:query <call_rules3-query.n3> ;
+        test:rules <call_rules3.n3> ;
+        qt:data <person_ca.ttl>
+    ] ;
+    mf:result [
+        qt:data <call_rules3-ref.n3>
+    ] ;
+    rdfs:comment "Call other rules (clause term var, match term concrete)" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+
+:call_rules4
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "call_rules4" ;
+    mf:action [ 
+        qt:query <call_rules4-query.n3> ;
+        test:rules <call_rules4.n3> ;
+        qt:data <person_ca.ttl>
+    ] ;
+    mf:result [
+        qt:data <call_rules4-ref.n3>
+    ] ;
+    rdfs:comment "Call other rules (clause term var with runtime value, match term concrete)" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+
+:call_rules5
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "call_rules5" ;
+    mf:action [ 
+        qt:query <call_rules5-query.n3> ;
+        test:rules <call_rules5.n3> ;
+        qt:data <person_ca.ttl>
+    ] ;
+    mf:result [
+        qt:data <call_rules5-ref.n3>
+    ] ;
+    rdfs:comment "Call other rules (2 other rules; mixed level of specificity)" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .

@@ -1,0 +1,21 @@
+INFO:__main__:>> loading manifest: tests/coll/manifest-coll.ttl <<
+INFO:__main__:>> running test: grcoll
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: ungrcoll_1
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: ungrcoll_2
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: ungrcoll_3_1
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: ungrcoll_3_2
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: ungrcoll_3_3
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:# total: 6; # non-compliant: 0
+
