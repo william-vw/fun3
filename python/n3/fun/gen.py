@@ -2,9 +2,9 @@ from enum import Enum
 from multidict import MultiDict
 from n3.fun.utils import unique_values
 from n3.fun.py_build import PyBuilder, IdxedTerm
-from n3.objects import Var, BlankNode, ANY, Triple, Iri, GraphTerm, Terms
+from n3.objects import Var, BlankNode, ANY, Triple, Iri, Literal, GraphTerm, Terms
 from n3.model import Model
-from n3.ns import logNs, swapNs
+from n3.ns import logNs, swapNs, xsdNs
 from itertools import chain
 from ast import dump, unparse
 
@@ -423,20 +423,39 @@ class GenPython:
         # also, only universals from head will be available in body
         rule.set_avail_vars(head_vars)
         
-        for no, tp in enumerate(rule.body.model.triples()):
-            clause = Clause(rule, no, tp)
-            # but, bnodes in body triple will be available to subsequent body triples
-            new_avail_vars = unique_values(rule.avail_vars + tp.recur_vars(types=(Terms.VAR,Terms.BNODE),get_id=True))
+        final_ctu_call = self.__get_ctu_call(self.names['final_ctu'], head_vars, final=True)
+        
+        if (rule.body.type()==Terms.GRAPH and len(rule.body.model) == 0) or \
+            rule.body==Literal(True, xsdNs['boolean']):
+            
+            clause = Clause(rule, 0, None)
+            self.__gen_empty_clause(clause, final_ctu_call)
+        
+        elif rule.body.type()==Terms.GRAPH:
+            for no, tp in enumerate(rule.body.model.triples()):
+                clause = Clause(rule, no, tp)
+                # but, bnodes in body triple will be available to subsequent body triples
+                new_avail_vars = unique_values(rule.avail_vars + tp.recur_vars(types=(Terms.VAR,Terms.BNODE),get_id=True))
 
-            if no == len(rule.body.model)-1:
-                ctu_call = self.__get_ctu_call(self.names['final_ctu'], head_vars, final=True)
-            else:
-                ctu_call = self.__get_ctu_call(clause.next_fn_name(), new_avail_vars)
-            self.__gen_clause(clause, ctu_call)
+                if no == len(rule.body.model)-1:
+                    ctu_call = final_ctu_call
+                else:
+                    ctu_call = self.__get_ctu_call(clause.next_fn_name(), new_avail_vars)
+                self.__gen_clause(clause, ctu_call)
 
-            rule.set_avail_vars(new_avail_vars)
+                rule.set_avail_vars(new_avail_vars)
 
         return rule
+
+    def __gen_empty_clause(self, clause, ctu_call):
+        clause_fn_def = self.bld.fn(clause.fn_name, self.__get_fn_params(clause.rule.avail_vars))
+
+        ctu_call_bld = self.bld.stmt(self.bld.fn_call(ctu_call.ref, ctu_call.get_args()))
+        
+        self.bld.fn_body_stmts(clause_fn_def, [ ctu_call_bld ])
+        # print(unparse(clause_fn_def))
+        
+        self.code_body.append(clause_fn_def)
 
     def __gen_clause(self, clause, ctu_call):
         clause_fn_def = self.bld.fn(clause.fn_name, self.__get_fn_params(clause.rule.avail_vars))
@@ -537,8 +556,8 @@ class GenPython:
         self.code_body.append(call_bld)
 
     def __unify(self, clause, match_tp, fn_call, ctu_call):
-        print()
-        print("unify:\n", clause.tp, "\n", match_tp)
+        # print()
+        # print("unify:\n", clause.tp, "\n", match_tp)
         
         unifier = UnifyTerms()
         for pos in range(3):
@@ -546,7 +565,7 @@ class GenPython:
             match_term = match_tp[pos]
             
             for op in unifier.unify(clause, clause_term, match_term):
-                print("op", op)
+                # print("op", op)
                 
                 match (op.cmd):
                     case UCmd.CMP:

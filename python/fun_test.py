@@ -413,25 +413,59 @@ def fun3():
 # ?x a :Canadian .
 # """
 
-# (4) resource path!
+# # (4) resource path!
+#     rules_str = """@prefix : <http://example.org/> . 
+# { ?p a :Canadian } <= { ?p a :Person . ?p!:address!:country :locatedIn "EUR" } .
+# { ?p a _:p } <= { _:p :ability :think . } .
+# """
+
+#     query_str = """@prefix : <http://example.org/> .
+# ?x a :Canadian .
+# """
+
+#     data_str = """@prefix : <http://example.org/> . 
+# :will a :Person ; :address :addr1 . :addr1 :country "CA" .
+# :ed :ability :think ; :address :addr1 ; :describedAs :Person .
+# :el :ability :drink ; :address :addr1 ; :describedAs :Belgian .
+# :dor :ability :think ; :address :addr1 ; :describedAs :German .
+# :soc :name "Socrates" ; a :Person ; :address :addr2 . :addr2 :country "GR" . "GR" :locatedIn "EUR" .
+# """
+
+# test 7
+# empty rule body
+
+# # (1)
+#     rules_str = """@prefix : <http://example.org/> . 
+# { ( ?p ?p2 ) a :French } <= { ?p a :Person . ?p2 a :Person .?p :loves ?p2 } . # ?p :loves ?p
+# # { ?p :loves ?p } <= {} .
+# { ?p :loves ?p } <= true .
+# """
+
+#     query_str = """@prefix : <http://example.org/> .
+# ?x a :French .
+# """
+
+#     data_str = """@prefix : <http://example.org/> . 
+# :francois a :Person .
+# :jean_marie a :Person .
+# """
+
+# (2) silly but works
     rules_str = """@prefix : <http://example.org/> . 
-{ ?p a :Canadian } <= { ?p a :Person . ?p!:address!:country :locatedIn "EUR" } .
-{ ?p a _:p } <= { _:p :ability :think . } .
+{ ?p a :French } <= { ?p a :Person . ?p :loves ?p } .
+{ ?p :loves ?p } <= {} .
 """
 
     query_str = """@prefix : <http://example.org/> .
-?x a :Canadian .
+?x a :French .
 """
 
     data_str = """@prefix : <http://example.org/> . 
-:will a :Person ; :address :addr1 . :addr1 :country "CA" .
-:ed :ability :think ; :address :addr1 ; :describedAs :Person .
-:el :ability :drink ; :address :addr1 ; :describedAs :Belgian .
-:dor :ability :think ; :address :addr1 ; :describedAs :German .
-:soc :name "Socrates" ; a :Person ; :address :addr2 . :addr2 :country "GR" . "GR" :locatedIn "EUR" .
+:francois a :Person .
+:jean_marie a :Person .
 """
 
-    
+
     # - parse
     
     rules = parse_n3(rules_str).rules
