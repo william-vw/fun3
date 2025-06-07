@@ -1,6 +1,6 @@
 from enum import Enum
 from multidict import MultiDict
-from n3.fun.utils import unique_values
+from n3.fun.utils import unique_sorted
 from n3.fun.py_build import PyBuilder, IdxedTerm
 from n3.objects import Var, BlankNode, ANY, Triple, Iri, Literal, GraphTerm, Terms
 from n3.model import Model
@@ -418,7 +418,7 @@ class GenPython:
     def __gen_rule(self, rule):
         head_triple = rule.head.model.triple_at(0)
         # other rules can only pass values for universals (VAR)
-        head_vars = unique_values(head_triple.recur_vars(types=(Terms.VAR,), get_id=True))
+        head_vars = unique_sorted(head_triple.recur_vars(types=(Terms.VAR,), get_id=True))
         rule.set_input_vars(head_vars)
         # also, only universals from head will be available in body
         rule.set_avail_vars(head_vars)
@@ -436,7 +436,7 @@ class GenPython:
             for no, tp in enumerate(rule.body.model.triples()):
                 clause = Clause(rule, no, tp)
                 # but, bnodes in body triple will be available to subsequent body triples
-                new_avail_vars = unique_values(rule.avail_vars + tp.recur_vars(types=(Terms.VAR,Terms.BNODE),get_id=True))
+                new_avail_vars = unique_sorted(rule.avail_vars + tp.recur_vars(types=(Terms.VAR,Terms.BNODE),get_id=True))
 
                 if no == len(rule.body.model)-1:
                     ctu_call = final_ctu_call
@@ -507,7 +507,7 @@ class GenPython:
             yield from self.__gen_match_call(clause, match_tp, fn_call, ctu_call.copy_shallow())
 
     def __gen_match_call(self, clause, match_tp, fn_call, ctu_call):
-        match_vars = unique_values(match_tp.recur_vars(get_id=True))
+        match_vars = unique_sorted(match_tp.recur_vars(get_id=True))
         fn_call.set_params(match_vars, default=self.bld.ref('ANY'))
         
         if not self.__unify(clause, match_tp, fn_call, ctu_call):
@@ -519,7 +519,7 @@ class GenPython:
         ctu_call_bld = self.bld.fn_call(ctu_call.ref, ctu_args)
         ctu_call_bld = self.__cond_call(ctu_call, ctu_call_bld, as_exp=True)
 
-        lmbda_params = unique_values(match_vars)
+        lmbda_params = unique_sorted(match_vars)
         lmbda_bld = self.bld.lmbda(lmbda_params, ctu_call_bld)
 
         fn_args = fn_call.get_args()

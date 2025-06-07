@@ -1,0 +1,4 @@
+@prefix : <http://example.org/> . 
+
+{ ?x :descendantOf ?y } <= { ?x :hasParent ?y } .
+{ ?x :descendantOf ?z } <= { ?x :descendantOf ?y . ?y :descendantOf ?z } .

@@ -1,0 +1,3 @@
+@prefix : <http://example.org/> . 
+
+:result :cell ( 0 1 ), ( 1 2 ), ( 2 3 ) .

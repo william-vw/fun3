@@ -1,0 +1,4 @@
+@prefix : <http://example.org/> . 
+
+:robocop :hasParts ( :man :man ).
+:man :label "man" . :machine :label "machine" .

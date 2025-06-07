@@ -1,0 +1,76 @@
+@prefix : <http://example.org/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix test:    <https://w3c.github.io/N3/tests/test.n3#> .
+@prefix mf:      <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
+@prefix qt:      <http://www.w3.org/2001/sw/DataAccess/tests/test-query#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdft:    <http://www.w3.org/ns/rdftest#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+<>  rdf:type mf:Manifest ;
+    rdfs:label "blank node test cases" ;
+    mf:entries ( :bnode_1 :bnode_2 :bnode_3 :bnode_4 ) .
+
+:bnode_1
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "bnode_1" ;
+    mf:action [ 
+        qt:query <bnode_1-query.n3> ;
+        test:rules <bnode_1.n3> ;
+        qt:data <person_ca_eur.n3>
+    ] ;
+    mf:result [
+        qt:data <bnode_1-ref.n3>
+    ] ;
+    rdfs:comment "Bnode in body triple" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:bnode_2
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "bnode_2" ;
+    mf:action [ 
+        qt:query <bnode_2-query.n3> ;
+        test:rules <bnode_2.n3> ;
+        qt:data <person_ca_eur.n3>
+    ] ;
+    mf:result [
+        qt:data <bnode_2-ref.n3>
+    ] ;
+    rdfs:comment "Bnode in rule head" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:bnode_3
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "bnode_3" ;
+    mf:action [ 
+        qt:query <bnode_3-query.n3> ;
+        test:rules <bnode_3.n3> ;
+        qt:data <person_ca_eur.n3>
+    ] ;
+    mf:result [
+        qt:data <bnode_3-ref.n3>
+    ] ;
+    rdfs:comment "Same bnode in rule head & body" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:bnode_4
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "bnode_4" ;
+    mf:action [ 
+        qt:query <bnode_4-query.n3> ;
+        test:rules <bnode_4.n3> ;
+        qt:data <person_ca_eur.n3>
+    ] ;
+    mf:result [
+        qt:data <bnode_4-ref.n3>
+    ] ;
+    rdfs:comment "Resource path" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .

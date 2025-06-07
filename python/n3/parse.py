@@ -317,7 +317,7 @@ class n3Creator(n3Listener):
         prior_step = self.state.path_step
         pred = self.state.path_item
         next_step = BlankNode()
-        print(prior_step, pred, next_step)
+        # print(prior_step, pred, next_step)
         if self.state.path_dir == "!":
             self.emit_triple(Triple(prior_step, pred, next_step))
         else:

@@ -1,0 +1,4 @@
+@prefix : <http://example.org/> . 
+
+( :jean_marie :jean_marie ) a :French .
+( :francois :francois ) a :French . 

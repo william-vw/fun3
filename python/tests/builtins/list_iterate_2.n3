@@ -1,0 +1,4 @@
+@prefix : <http://example.org/> . 
+@prefix list: <http://www.w3.org/2000/10/swap/list#> .
+
+{ :result :cell ( ?x ?y ) } <= { ( 1 2 3 ) list:iterate ( ?x ?y ) } .

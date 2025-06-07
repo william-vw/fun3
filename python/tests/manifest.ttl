@@ -9,4 +9,12 @@
 
 <> rdf:type mf:Manifest ;
    rdfs:label "all fun3 test cases" ;
-   mf:include ( <simple/manifest-simple.ttl> <misc/manifest-misc.ttl> <coll/manifest-coll.ttl> ) .
+   mf:include ( 
+      <simple/manifest-simple.ttl> 
+      <misc/manifest-misc.ttl> 
+      <coll/manifest-coll.ttl> 
+      <dupl_vars/manifest-dupl_vars.ttl> 
+      <recur/manifest-recur.ttl>  
+      <builtins/manifest-builtins.ttl>
+      <bnodes/manifest-bnodes.ttl>
+   ) .

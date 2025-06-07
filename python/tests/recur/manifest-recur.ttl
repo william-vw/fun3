@@ -1,0 +1,28 @@
+@prefix : <http://example.org/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix test:    <https://w3c.github.io/N3/tests/test.n3#> .
+@prefix mf:      <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
+@prefix qt:      <http://www.w3.org/2001/sw/DataAccess/tests/test-query#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdft:    <http://www.w3.org/ns/rdftest#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+<>  rdf:type mf:Manifest ;
+    rdfs:label "recursion test cases" ;
+    mf:entries ( :recur_1 ) .
+
+:recur_1
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "recur_1" ;
+    mf:action [ 
+        qt:query <recur_1-query.n3> ;
+        test:rules <recur_1.n3> ;
+        qt:data <recur_1-data.n3>
+    ] ;
+    mf:result [
+        qt:data <recur_1-ref.n3>
+    ] ;
+    rdfs:comment "recursive rules" ;
+    rdft:approval rdft:Proposed ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .

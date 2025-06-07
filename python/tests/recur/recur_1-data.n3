@@ -1,0 +1,5 @@
+@prefix : <http://example.org/> . 
+
+:will :hasParent :paul .
+:paul :hasParent :edward .
+:edward :hasParent :peter . 

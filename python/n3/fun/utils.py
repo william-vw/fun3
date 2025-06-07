@@ -1,2 +1,2 @@
-def unique_values(lst):
+def unique_sorted(lst):
     return list(dict.fromkeys(lst)) 

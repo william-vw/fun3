@@ -9,7 +9,7 @@
 
 <>  rdf:type mf:Manifest ;
     rdfs:label "collection test cases" ;
-    mf:entries ( :grcoll :ungrcoll_1 :ungrcoll_2 :ungrcoll_3_1 :ungrcoll_3_2 :ungrcoll_3_3 ) .
+    mf:entries ( :grcoll :ungrcoll_1 :ungrcoll_2 :ungrcoll_3_1 :ungrcoll_3_2 :ungrcoll_3_3 :ungrcoll_4 :ungrcoll_5 ) .
 
 :grcoll
     a   test:TestN3Query ;
@@ -104,5 +104,53 @@
         qt:data <ungrcoll_3-ref3.n3>
     ] ;
     rdfs:comment "Ungrounded (some vars); different nesting level" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:ungrcoll_4
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "ungrcoll_4" ;
+    mf:action [ 
+        qt:query <ungrcoll_4-query.n3> ;
+        test:rules <ungrcoll_4.n3> ;
+        qt:data <ungrcoll_4-data.n3>
+    ] ;
+    mf:result [
+        qt:data <ungrcoll_4-ref.n3>
+    ] ;
+    rdfs:comment "Ungrounded (some vars); different nesting level" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:ungrcoll_5
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "ungrcoll_5" ;
+    mf:action [ 
+        qt:query <ungrcoll_5-query.n3> ;
+        test:rules <ungrcoll_5.n3> ;
+        qt:data <ungrcoll_5-data.n3>
+    ] ;
+    mf:result [
+        qt:data <ungrcoll_5-ref.n3>
+    ] ;
+    rdfs:comment "Ungrounded (some vars); different nesting level" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:ungrcoll_6
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "ungrcoll_6" ;
+    mf:action [ 
+        qt:query <ungrcoll_6-query.n3> ;
+        test:rules <ungrcoll_6.n3> ;
+        qt:data <ungrcoll_6-data.n3>
+    ] ;
+    mf:result [
+        qt:data <ungrcoll_6-ref.n3>
+    ] ;
+    rdfs:comment "Ungrounded (some vars); nested lists" ;
     rdft:approval rdft:Approved ;
     test:options [ test:conclusions "true"^^xsd:boolean ] .

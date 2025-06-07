@@ -1,0 +1,4 @@
+@prefix : <http://example.org/> . 
+
+{ ?p a :Canadian } <= { ?p a :Person . ?p :address _:a . _:a :country "CA" } .
+{ ?p a _:p } <= { ?p :ability :think } .

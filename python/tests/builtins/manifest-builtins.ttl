@@ -1,0 +1,221 @@
+@prefix : <http://example.org/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix test:    <https://w3c.github.io/N3/tests/test.n3#> .
+@prefix mf:      <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
+@prefix qt:      <http://www.w3.org/2001/sw/DataAccess/tests/test-query#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdft:    <http://www.w3.org/ns/rdftest#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+<>  rdf:type mf:Manifest ;
+    rdfs:label "builtin test cases" ;
+    mf:entries ( :math_sum :math_sum_2 :math_sum_3 :list_iterate :list_iterate_2 :list_iterate_3 :list_iterate_4 :list_iterate_5 
+        :list_append :list_append_2 :list_append_3 :list_append_4 :list_append_5 ) .
+
+:math_sum
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "math_sum" ;
+    mf:action [ 
+        qt:query <math_sum-query.n3> ;
+        test:rules <math_sum.n3> ;
+        qt:data <math_sum-data.n3>
+    ] ;
+    mf:result [
+        qt:data <math_sum-ref.n3>
+    ] ;
+    rdfs:comment "math:sum with concrete list" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:math_sum_2
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "math_sum_2" ;
+    mf:action [ 
+        qt:query <math_sum_2-query.n3> ;
+        test:rules <math_sum_2.n3> ;
+        qt:data <math_sum_2-data.n3>
+    ] ;
+    mf:result [
+        qt:data <math_sum_2-ref.n3>
+    ] ;
+    rdfs:comment "math:sum with var list" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:math_sum_3
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "math_sum_3" ;
+    mf:action [ 
+        qt:query <math_sum_3-query.n3> ;
+        test:rules <math_sum_3.n3> ;
+        qt:data <math_sum_3-data.n3>
+    ] ;
+    mf:result [
+        qt:data <math_sum_3-ref.n3>
+    ] ;
+    rdfs:comment "math:sum with ungrounded list" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:list_iterate
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "list_iterate" ;
+    mf:action [ 
+        qt:query <list_iterate-query.n3> ;
+        test:rules <list_iterate.n3> ;
+        qt:data <list_iterate-data.n3>
+    ] ;
+    mf:result [
+        qt:data <list_iterate-ref.n3>
+    ] ;
+    rdfs:comment "list:iterate with var object" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:list_iterate_2
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "list_iterate_2" ;
+    mf:action [ 
+        qt:query <list_iterate_2-query.n3> ;
+        test:rules <list_iterate_2.n3> ;
+        qt:data <list_iterate_2-data.n3>
+    ] ;
+    mf:result [
+        qt:data <list_iterate_2-ref.n3>
+    ] ;
+    rdfs:comment "list:iterate with ungrounded object" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:list_iterate_3
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "list_iterate_3" ;
+    mf:action [ 
+        qt:query <list_iterate_3-query.n3> ;
+        test:rules <list_iterate_3.n3> ;
+        qt:data <list_iterate_3-data.n3>
+    ] ;
+    mf:result [
+        qt:data <list_iterate_3-ref.n3>
+    ] ;
+    rdfs:comment "list:iterate with partially grounded object" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:list_iterate_4
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "list_iterate_4" ;
+    mf:action [ 
+        qt:query <list_iterate_4-query.n3> ;
+        test:rules <list_iterate_4.n3> ;
+        qt:data <list_iterate_4-data.n3>
+    ] ;
+    mf:result [
+        qt:data <list_iterate_4-ref.n3>
+    ] ;
+    rdfs:comment "list:iterate with partially grounded object" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:list_iterate_5
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "list_iterate_5" ;
+    mf:action [ 
+        qt:query <list_iterate_5-query.n3> ;
+        test:rules <list_iterate_5.n3> ;
+        qt:data <list_iterate_5-data.n3>
+    ] ;
+    mf:result [
+        qt:data <list_iterate_5-ref.n3>
+    ] ;
+    rdfs:comment "list:iterate with partially grounded object" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:list_append
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "list_append" ;
+    mf:action [ 
+        qt:query <list_append-query.n3> ;
+        test:rules <list_append.n3> ;
+        qt:data <list_append-data.n3>
+    ] ;
+    mf:result [
+        qt:data <list_append-ref.n3>
+    ] ;
+    rdfs:comment "list:append with concrete subject" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:list_append_2
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "list_append_2" ;
+    mf:action [ 
+        qt:query <list_append_2-query.n3> ;
+        test:rules <list_append_2.n3> ;
+        qt:data <list_append_2-data.n3>
+    ] ;
+    mf:result [
+        qt:data <list_append_2-ref.n3>
+    ] ;
+    rdfs:comment "list:append with concrete subject & object" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:list_append_3
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "list_append_3" ;
+    mf:action [ 
+        qt:query <list_append_3-query.n3> ;
+        test:rules <list_append_3.n3> ;
+        qt:data <list_append_3-data.n3>
+    ] ;
+    mf:result [
+        qt:data <list_append_3-ref.n3>
+    ] ;
+    rdfs:comment "list:append with ungrounded subject" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:list_append_4
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "list_append_4" ;
+    mf:action [ 
+        qt:query <list_append_4-query.n3> ;
+        test:rules <list_append_4.n3> ;
+        qt:data <list_append_4-data.n3>
+    ] ;
+    mf:result [
+        qt:data <list_append_4-ref.n3>
+    ] ;
+    rdfs:comment "list:append with ungrounded subject" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:list_append_5
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "list_append_5" ;
+    mf:action [ 
+        qt:query <list_append_5-query.n3> ;
+        test:rules <list_append_5.n3> ;
+        qt:data <list_append_5-data.n3>
+    ] ;
+    mf:result [
+        qt:data <list_append_5-ref.n3>
+    ] ;
+    rdfs:comment "list:append with ungrounded subject" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .

@@ -1,0 +1,4 @@
+@prefix : <http://example.org/> . 
+
+{ ?a :partLabels ( ?x ?xl ) } <= { ?a :parts ( ?x ?x ) . ?x :label ?xl } . 
+{ ?q :parts ( ?k ?l ) } <= { ?q :hasParts ( ?k ?l ) } .

@@ -1,0 +1,4 @@
+@prefix : <http://example.org/> . 
+
+{ ?p a :French } <= { ?p a :Person . ?p :loves ?p } .
+{ ?p :loves ?p } <= {} .

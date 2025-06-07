@@ -1,0 +1,7 @@
+@prefix : <http://example.org/> . 
+
+:will a :Person ; :address :addr1 . :addr1 :country "CA" .
+:ed :ability :think ; :address :addr1 ; :describedAs :Person .
+:el :ability :drink ; :address :addr1 ; :describedAs :Belgian .
+:dor :ability :think ; :address :addr1 ; :describedAs :German .
+:soc :name "Socrates" ; a :Person ; :address :addr2 . :addr2 :country "GR" . "GR" :locatedIn "EUR" .

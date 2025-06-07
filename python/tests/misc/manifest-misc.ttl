@@ -9,7 +9,7 @@
 
 <>  rdf:type mf:Manifest ;
     rdfs:label "misc test cases" ;
-    mf:entries ( :unbound_univ ) .
+    mf:entries ( :unbound_univ :empty_body :empty_body_2 ) .
 
 :unbound_univ
     a   test:TestN3Query ;
@@ -25,4 +25,36 @@
     ] ;
     rdfs:comment "Unbound universals returned by query" ;
     rdft:approval rdft:Proposed ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:empty_body
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "empty_body" ;
+    mf:action [ 
+        qt:query <empty_body-query.n3> ;
+        test:rules <empty_body.n3> ;
+        qt:data <french.n3>
+    ] ;
+    mf:result [
+        qt:data <empty_body-ref.n3>
+    ] ;
+    rdfs:comment "Empty rule body" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:empty_body_2
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "empty_body_2" ;
+    mf:action [ 
+        qt:query <empty_body_2-query.n3> ;
+        test:rules <empty_body_2.n3> ;
+        qt:data <french.n3>
+    ] ;
+    mf:result [
+        qt:data <empty_body_2-ref.n3>
+    ] ;
+    rdfs:comment "Empty rule body (this one is silly)" ;
+    rdft:approval rdft:Approved ;
     test:options [ test:conclusions "true"^^xsd:boolean ] .

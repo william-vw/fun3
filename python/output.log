@@ -1,4 +1,36 @@
-INFO:__main__:>> loading manifest: tests/coll/manifest-coll.ttl <<
+INFO:__main__:>> loading manifest: tests/manifest.ttl <<
+INFO:__main__:>> loading manifest: file:///Users/wvw/git/n3/fun3/python/tests/simple/manifest-simple.ttl <<
+INFO:__main__:>> running test: only_data_find
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: call_rules
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: call_rules2
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: call_rules3
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: call_rules4
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: call_rules5
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:# total: 6; # non-compliant: 0
+
+INFO:__main__:>> loading manifest: file:///Users/wvw/git/n3/fun3/python/tests/misc/manifest-misc.ttl <<
+INFO:__main__:skipping unapproved test: unbound_univ
+INFO:__main__:>> running test: empty_body
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: empty_body_2
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:# total: 2; # non-compliant: 0
+
+INFO:__main__:>> loading manifest: file:///Users/wvw/git/n3/fun3/python/tests/coll/manifest-coll.ttl <<
 INFO:__main__:>> running test: grcoll
 INFO:__main__:compliant
 INFO:__main__:
@@ -17,5 +49,90 @@ INFO:__main__:
 INFO:__main__:>> running test: ungrcoll_3_3
 INFO:__main__:compliant
 INFO:__main__:
-INFO:__main__:# total: 6; # non-compliant: 0
+INFO:__main__:>> running test: ungrcoll_4
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: ungrcoll_5
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:# total: 8; # non-compliant: 0
+
+INFO:__main__:>> loading manifest: file:///Users/wvw/git/n3/fun3/python/tests/dupl_vars/manifest-dupl_vars.ttl <<
+INFO:__main__:>> running test: dupl_vars_1_1
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: dupl_vars_1_2
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: dupl_vars_1_3
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: dupl_vars_2
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: dupl_vars_3
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:# total: 5; # non-compliant: 0
+
+INFO:__main__:>> loading manifest: file:///Users/wvw/git/n3/fun3/python/tests/recur/manifest-recur.ttl <<
+INFO:__main__:skipping unapproved test: recur_1
+INFO:__main__:>> loading manifest: file:///Users/wvw/git/n3/fun3/python/tests/builtins/manifest-builtins.ttl <<
+INFO:__main__:>> running test: math_sum
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: math_sum_2
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: math_sum_3
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: list_iterate
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: list_iterate_2
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: list_iterate_3
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: list_iterate_4
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: list_iterate_5
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: list_append
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: list_append_2
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: list_append_3
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: list_append_4
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: list_append_5
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:# total: 13; # non-compliant: 0
+
+INFO:__main__:>> loading manifest: file:///Users/wvw/git/n3/fun3/python/tests/bnodes/manifest-bnodes.ttl <<
+INFO:__main__:>> running test: bnode_1
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: bnode_2
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: bnode_3
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:>> running test: bnode_4
+INFO:__main__:compliant
+INFO:__main__:
+INFO:__main__:# total: 4; # non-compliant: 0
+
+INFO:__main__:# all total: 38; # all non-compliant: 0
 

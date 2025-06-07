@@ -1,7 +1,7 @@
 import sys, os, argparse, logging
-from rdflib import Graph, RDF, Namespace, compare
-from n3.get_py import run_py, save_py
-from NTCompare import compare_rdf_graphs
+from rdflib import Graph, RDF, Namespace, compare, Literal
+from n3.to_py import run_py, save_py
+
 
 MF = Namespace("http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#")
 QT = Namespace("http://www.w3.org/2001/sw/DataAccess/tests/test-query#")
@@ -35,12 +35,19 @@ def get_logger():
     
     return logger
 
-def run_manifest(path, test, logger):
+def run_manifest(path, test, logger, main=False):
+    recur_total_num = 0; recur_noncompl_num = 0
     total_num = 0; noncompl_num = 0
     
     logger.info(f">> loading manifest: {path} <<")
     g = Graph()
     g.parse(path, format='turtle')
+
+    if test is not None:
+        for t in g.triples((None, MF.name, Literal(test))):
+            return run_test(g, t[0])
+        logger.info(f"cannot find test with MF.name {test}")
+        return
 
     for mf in g.subjects(RDF.type, MF.Manifest):
         # manifest files
@@ -48,8 +55,9 @@ def run_manifest(path, test, logger):
         if incl is not None:
             for el in Collection(g=g, list=incl):
                 path = str(el)
-                run_manifest(path, test, logger)
-            return
+                this_total_num, this_noncompl_num = run_manifest(path, test, logger)
+                recur_total_num += this_total_num
+                recur_noncompl_num += this_noncompl_num
         # test entries
         entr = g.value(mf, MF.entries)
         if entr is not None:
@@ -64,7 +72,16 @@ def run_manifest(path, test, logger):
                 if not is_compl: noncompl_num += 1
                 total_num += 1
     
-    logger.info(f"# total: {total_num}; # non-compliant: {noncompl_num}\n")
+    recur_total_num += total_num
+    recur_noncompl_num += noncompl_num
+    
+    if total_num > 0:
+        logger.info(f"# total: {total_num}; # non-compliant: {noncompl_num}\n")
+    
+    if main:
+        logger.info(f"# all total: {recur_total_num}; # all non-compliant: {recur_noncompl_num}\n")
+    else:
+        return ( recur_total_num, recur_noncompl_num )
 
 def run_test(g, test):    
     name = str(g.value(test, MF.name))
@@ -89,7 +106,7 @@ def run_test(g, test):
 def do_test(query, rules, data):
     with open(query, 'r') as query_fh, open(rules, 'r') as rules_fh, open(data, 'r') as data_fh:
         query_str = query_fh.read(); rules_str = rules_fh.read(); data_str = data_fh.read()
-        return run_py(query_str, rules_str, data_str)
+        return run_py(query_str, rules_str, data_str)#, print_code=True)
 
 def compare_with(out_str, ref_path):
     with open(ref_path, 'r') as ref_fh:
@@ -138,4 +155,4 @@ if __name__ == '__main__':
     
     logger = get_logger()
     
-    run_manifest(path, test, logger)
+    run_manifest(path, test, logger, main=True)
