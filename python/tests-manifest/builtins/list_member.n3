@@ -1,0 +1,4 @@
+@prefix list: <http://www.w3.org/2000/10/swap/list#> .
+@prefix : <http://example.org/> .
+
+{ :result :element ?m } <= { ( "a" 1 2 ) list:member ?m }.

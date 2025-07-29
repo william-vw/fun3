@@ -92,7 +92,7 @@ class PyBuilder:
                 case Terms.BNODE:
                     cls_name = "BlankNode"
                     args = [ self.cnst(term.label) ]
-                case _: raise BuildException("inconceivable:", term.type())
+                case _: raise BuildException("inconceivable: " + str(term.type()))
             
             if expr is None:
                 expr = self.constr_obj(self.ref(cls_name), args, keywords)

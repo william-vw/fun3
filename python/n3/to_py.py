@@ -17,7 +17,7 @@ def __proc_inputs(query, rules, data):
     # print(query); print(rules); print(data)
     return (query, rules, data)
 
-def run_py(query, rules, data, print_code=False):
+def run_py(query, rules, data, print_code=False, save_to=None):
     query, rules, data = __proc_inputs(query, rules, data)
     
     mod = gen_py(rules, query, data, call_query=False)
@@ -25,7 +25,12 @@ def run_py(query, rules, data, print_code=False):
         print(unparse(mod) + "\n\n")
     
     exec_ret = __get_exec(mod)
-    return __exec_query(exec_ret, query)
+    output = __exec_query(exec_ret, query)
+    if save_to is None:
+        return output
+    else:
+        with open(save_to, 'w') as fh:
+            fh.write(output)
        
 def save_py(query, rules, data, out_path, print_code=False, add_tracing=False, code_dir=False):
     query, rules, data = __proc_inputs(query, rules, data)
@@ -65,8 +70,8 @@ def __exec_query(exec_ret, query):
     
     query_fn = exec_ret[fn_name]
     
-    out = []
-    query_fn(*[ANY for _ in variables], lambda *args: out.append(str(query.instantiate({ var: args[idx] for idx, var in enumerate(variables) }))))
+    out = set()
+    query_fn(*[ANY for _ in variables], lambda *args: out.add(str(query.instantiate({ var: args[idx] for idx, var in enumerate(variables) }))))
     
     return "\n".join(out)
 

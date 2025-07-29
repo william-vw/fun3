@@ -1,3 +1,8 @@
+# import sys
+# sys.insert(0, "..")
+# from n3.model import MultiDictModel
+
+# no need for MultiDictModel here
 emitted = set()
 def emit(t, inst_dict):
     global emitted

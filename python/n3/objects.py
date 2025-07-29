@@ -198,6 +198,8 @@ class Literal(ConcreteNode):
                 suffix = f"@{self.lng}"
             elif self.dt is not None and self.dt != Iri("http://www.w3.org/2001/XMLSchema#string"):
                 suffix = f"^^{self.dt}"
+        elif isinstance(self.value, bool):
+            value = str(self.value).lower()
         return str(value) + (suffix if suffix is not None else "")
     def __repr__(self):
         return self.__str__()

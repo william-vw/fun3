@@ -1,3 +1,4 @@
+@prefix list: <http://www.w3.org/2000/10/swap/list#> .
 @prefix : <http://example.org/> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix test:    <https://w3c.github.io/N3/tests/test.n3#> .
@@ -10,7 +11,7 @@
 <>  rdf:type mf:Manifest ;
     rdfs:label "builtin test cases" ;
     mf:entries ( :math_sum :math_sum_2 :math_sum_3 :list_iterate :list_iterate_2 :list_iterate_3 :list_iterate_4 :list_iterate_5 
-        :list_append :list_append_2 :list_append_3 :list_append_4 :list_append_5 ) .
+        :list_append :list_append_2 :list_append_3 :list_append_4 :list_append_5 :list_member ) .
 
 :math_sum
     a   test:TestN3Query ;
@@ -217,5 +218,21 @@
         qt:data <list_append_5-ref.n3>
     ] ;
     rdfs:comment "list:append with ungrounded subject" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:list_member
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "list_member" ;
+    mf:action [ 
+        qt:query <list_member-query.n3> ;
+        test:rules <list_member.n3> ;
+        qt:data <list_member-data.n3>
+    ] ;
+    mf:result [
+        qt:data <list_member-ref.n3>
+    ] ;
+    rdfs:comment "list:member" ;
     rdft:approval rdft:Approved ;
     test:options [ test:conclusions "true"^^xsd:boolean ] .

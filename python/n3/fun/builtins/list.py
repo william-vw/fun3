@@ -4,6 +4,20 @@ from n3.fun.builtins.utils import is_numeric
 from n3.ns import xsdNs
 from n3.fun.builtins.utils import divide_buckets
 
+def list_in(s, o, ctu):
+    list_member(o, s, ctu)
+
+def list_member(s, o, ctu):
+    if not isinstance(s, Collection):
+        return
+        
+    if o.is_concrete():
+        if o in s:
+            ctu(s, o)
+    else:
+        for s_i in s:
+            ctu(s, s_i)
+
 def list_iterate(s, o, ctu):
     if not isinstance(s, Collection):
         return

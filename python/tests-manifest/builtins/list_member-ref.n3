@@ -1,0 +1,6 @@
+@prefix list: <http://www.w3.org/2000/10/swap/list#> .
+@prefix : <http://example.org/> .
+
+:result :element "a" .
+:result :element 1 .
+:result :element 2 .

@@ -403,7 +403,7 @@ class GenPython:
             self.__gen_call_rule(query_fn)
         
     def __process_query(self, query):
-        query_rule = Triple(query, Iri(logNs['implies']), Literal(True, xsdNs['boolean']))
+        query_rule = Triple(query, logNs['implies'], Literal(True, xsdNs['boolean']))
         self.__rule_renameVars.process(-1, query_rule)
         
     def __process_rules(self, rules):
@@ -424,7 +424,7 @@ class GenPython:
                 print(f"warning: cannot use rule, length of head > 1 ({rule})")
                 del rules[rule_no]; continue
             # only top-down rules
-            if rule.p == logNs['implies']:
+            if rule.p.iri == logNs['implies'].iri:
                 print(f"warning: cannot use bottom-up rule ({rule})")
                 del rules[rule_no]; continue
 

@@ -604,8 +604,10 @@ class n3Creator(n3Listener):
         
         self.state.data.add(triple)
         
+        # something weird going on with imports
+        # it doesn't look like logNs[..] Iri type is the same as the Iri type imported here
         if triple.s.type() == Terms.GRAPH and \
-            triple.p.type() == Terms.IRI and (triple.p == logNs['implies'] or triple.p == logNs['impliedBy']):
+            triple.p.type() == Terms.IRI and (triple.p.iri == logNs['implies'].iri or triple.p.iri == logNs['impliedBy'].iri):
             self.state.rules.append(triple)
         
     def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
@@ -627,13 +629,13 @@ class n3ParseResult:
         self.rules = state.rules
 
 import time
-def parse_n3_file(path):
+def parse_n3_file(path, has_vars=False):
     # start = time.time()
     string = open(path, 'r').read()
     # end = time.time()
     # print("read time:", (end-start))
     
-    return parse_n3(string)
+    return parse_n3(string, has_vars)
 
 def parse_n3(string, has_vars=False):
     # start = time.time()
