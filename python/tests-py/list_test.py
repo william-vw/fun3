@@ -1,5 +1,5 @@
 from n3.objects import Terms
-from n3.model import Model
+from n3.model import ListModel
 from n3.parse import parse_n3
 
 # if clause_el is coll w/ vars:

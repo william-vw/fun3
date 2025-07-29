@@ -1,5 +1,5 @@
 from enum import Enum
-from n3.model import Model
+from n3.model import ListModel
 # from n3.ns import NS
 
 class Terms(Enum):
@@ -14,8 +14,6 @@ class Terms(Enum):
     
 class Node:
     
-    pass
-
     # implemented by subclasses
     
     # is_any
@@ -30,6 +28,12 @@ class Node:
     # NOTE: use this value to index term for retrieval
     # def idx_val(self):
     #     pass
+    
+    # used by MultiDictModel
+    # if true, then one cannot index on the node
+    # (i.e., manual comparison is needed)
+    def is_wildcard(self):
+        return self.type() == Terms.VAR or self.is_any()
 
 class Any(Node):
     
@@ -64,6 +68,13 @@ class Any(Node):
     
     def __setitem__(self, key, value):
         pass
+    
+    def __getattr__(self, name):
+        match name:
+            case 'var_id': return str(self)
+    
+    def __hash__(self):
+        return hash(str(self))
     
     def __eq__(self, other): 
         return True
@@ -220,6 +231,12 @@ class Var(VariableNode):
     
     def idx_val(self):
         return self.name
+    
+    # needed for getting hashcode of composites
+    # (will not give same value for "equal" variables, 
+    # since all variables are "equal", see __eq__)
+    def __hash__(self):
+        return hash(self.name)
         
     def __eq__(self, other):  
         return True
@@ -344,7 +361,11 @@ class VarComposite(Composite):
         pass
         
     def is_grounded(self):
-        return len([ v for v in self.recur_vars() ]) == 0
+        return len(list(self.recur_vars())) == 0
+    
+    def is_wildcard(self):
+        is_grounded = len(list(self.recur_vars(types=(Terms.VAR, Terms.ANY)))) == 0
+        return not is_grounded
     
     # def _parsed_var(self, var):
     #     self.__vars[var] = True
@@ -392,7 +413,7 @@ class VarComposite(Composite):
         Returns a list of all non-nested variables in this VarComposite.
         
         Args:
-            types: the types of variables you're interested in (var, bnode)
+            types: the types of variables you're interested in (var, bnode, any)
             get_id: whether we are interested in var names or the vars themselves.
             
         Returns:
@@ -408,7 +429,7 @@ class VarComposite(Composite):
         Returns a list of all (nested) variables in this VarComposite. 
         
         Args:
-            types: the types of variables you're interested in (var, bnode)
+            types: the types of variables you're interested in (var, bnode, any)
             get_id: whether we are interested in var names or the vars themselves.
             
         Returns:
@@ -429,7 +450,7 @@ class VarComposite(Composite):
         Returns a list of all (nested) variables and their positions in this VarComposite. 
         
         Args:
-            types: the types of variables you're interested in (var, bnode)
+            types: the types of variables you're interested in (var, bnode, any)
             get_id: whether we are interested in var names or the vars themselves.
             
         Returns:
@@ -446,7 +467,7 @@ class VarComposite(Composite):
         Recursively yields all (nested) variables in this VarComposite.
         
         Args:
-            types: the types of variables you're interested in (var, bnode)
+            types: the types of variables you're interested in (var, bnode, any)
             get_id: whether we are interested in var names or the vars themselves.
             
         Yields:
@@ -545,9 +566,9 @@ class GraphTerm(Container):
         if model is not None:
             self.model = model
         elif triples is not None:
-            self.model = Model(triples)
+            self.model = ListModel(triples)
         else:
-            self.model = Model()
+            self.model = ListModel()
         
     def type(self):
         return Terms.GRAPH

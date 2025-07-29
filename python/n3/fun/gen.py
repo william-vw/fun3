@@ -4,7 +4,7 @@ from pathlib import Path
 from n3.fun.utils import unique_sorted
 from n3.fun.py_build import PyBuilder, IdxedTerm
 from n3.objects import Var, BlankNode, ANY, Triple, Iri, Literal, GraphTerm, Terms
-from n3.model import Model
+from n3.model import ListModel
 from n3.ns import logNs, swapNs, xsdNs
 from itertools import chain
 from ast import dump, unparse

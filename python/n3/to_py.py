@@ -7,10 +7,10 @@ from n3.fun.utils import unique_sorted
 
 def __proc_inputs(query, rules, data):
     query_str = query.open('r').read() if isinstance(query, Path) else query
-    query = parse_n3(query_str).data.triple_at(0)
+    query = parse_n3(query_str, has_vars=True).data.triple_at(0)
     
     rules_str = rules.open('r').read() if isinstance(rules, Path) else rules
-    rules = parse_n3(rules_str).rules
+    rules = parse_n3(rules_str, has_vars=True).rules
     
     data = InputData(path=data) if isinstance(data, Path) else InputData(data_str=data)    
     
@@ -73,7 +73,6 @@ def __exec_query(exec_ret, query):
 def __use_code_dir(code, parent_dir):
     return f"""import sys # noqa
 sys.path.insert(0, "{parent_dir}") # noqa
-
 """ + code
 
 # assumed that code_dir will point to folder with "lib/trace"

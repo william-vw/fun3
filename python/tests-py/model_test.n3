@@ -1,0 +1,15 @@
+@prefix : <http://example.org/> .
+
+1 2 3 .
+1 4 5 .
+"a" 1 "b" .
+"a" 1 "c" .
+"a" 2 "b" .
+"a" 2 "c" .
+_:b0 "address" _:ba0 .
+_:ba0 "street" 123 .
+_:b1 "address" _:ba1 .
+_:ba1 "street" 123 .
+
+:x :top ( 1 2 3 ) .
+( 4 5 6 ) :topOf :y .

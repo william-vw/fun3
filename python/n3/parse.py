@@ -4,7 +4,7 @@ from n3.grammar.parser.n3Lexer import n3Lexer
 from n3.grammar.parser.n3Parser import n3Parser
 from n3.grammar.parser.n3Listener import n3Listener
 
-from n3.model import Model
+from n3.model import MultiDictModel, ListModel
 from n3.objects import Terms, Iri, Collection, Var, BlankNode, Literal, GraphTerm, Triple
 from n3.ns import rdfNs, owlNs, logNs, xsdNs
 
@@ -30,7 +30,7 @@ class state:
     # bnodes
     # rules    
     
-    def __init__(self, parent=None, new_scope=False):
+    def __init__(self, parent=None, new_scope=False, has_vars=False):
         self.parent = parent
         self.path_item = None
         self.triple = Triple()
@@ -53,7 +53,11 @@ class state:
             self.base = None; self.prefixes = {}
         
         if parent is None or new_scope:
-            self.data = Model()
+            # cannot hash variables in multidict model...
+            if parent is None and not has_vars:
+                self.data = MultiDictModel()
+            else: # use listmodel for graph terms
+                self.data = ListModel()
             self.bnodes = {}
         else:
             self.data = parent.data
@@ -113,8 +117,8 @@ class n3ParseError(Exception):
 
 class n3Creator(n3Listener):
     
-    def __init__(self):
-        self.state = state()
+    def __init__(self, has_vars=False):
+        self.state = state(has_vars=has_vars)
     
     # Enter a parse tree produced by n3Parser#n3Doc.
     def enterN3Doc(self, ctx:n3Parser.N3DocContext):
@@ -631,9 +635,9 @@ def parse_n3_file(path):
     
     return parse_n3(string)
 
-def parse_n3(string):
+def parse_n3(string, has_vars=False):
     # start = time.time()
-    creator = n3Creator()
+    creator = n3Creator(has_vars=has_vars)
     
     lexer = n3Lexer(InputStream(string))
     stream = CommonTokenStream(lexer)

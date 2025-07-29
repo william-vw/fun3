@@ -223,7 +223,6 @@ def add_tracer(path):
         # (avoids vscode to move it to wrong place)
         code = """from lib.trace import trace_calls
 sys.settrace(trace_calls)
-
 """ + code
         fh.seek(0)
         fh.write(code)
@@ -235,7 +234,6 @@ def add_rel_import(path):
         code = """import sys # noqa
 import pathlib # noqa
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent.parent.resolve())) # noqa
-
 """ + code
         fh.seek(0)
         fh.write(code)
