@@ -1,0 +1,43 @@
+@prefix list: <http://www.w3.org/2000/10/swap/list#> .
+
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX fh: <http://hl7.org/fhir/>
+PREFIX ut: <http://example.org/utils#>
+PREFIX zk: <http://example.org/zika#>
+
+# https://www.cdc.gov/zika/hc-providers/testing-guidance.html
+
+
+{ ?id zk:testForZika true } <= {
+    ?p zk:isPregnant true .
+
+    ?p fh:id ?id .
+} .
+
+{ ?p zk:isPregnant true } <= {
+    ?p a fh:Patient .
+    ?p ut:hasCondition ?c .    
+    ?c fh:code ?ccode . ?ccode ut:hasCodeValue 77386006 . # (SNOMED) pregnancy
+    ?c fh:clinicalStatus ?cstatus . ?cstatus ut:hasCodeValue "active" .
+    ?c fh:verificationStatus ?vstatus . ?vstatus ut:hasCodeValue "confirmed" .
+} .
+
+# utilities
+
+{ ?p ut:has ?r } <= {
+    ?p fh:id ?id .
+    ?r fh:subject ?id .
+} .
+
+{ ?r ut:hasCodeValue ?c } <= { 
+    ?r fh:coding ?cod . 
+    ?cod fh:code ?c 
+} .
+
+{ ?p ut:hasCondition ?c } <= {
+    ?p ut:has ?c .
+    ?c a fh:Condition .
+} .

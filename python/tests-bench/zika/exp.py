@@ -1,5 +1,6 @@
-import os, subprocess, re
+import os, subprocess, re, multiprocess
 from datetime import datetime
+import pandas as pd
 
 def run(cmd):    
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -50,5 +51,52 @@ def runNSave(cmd, out_path, get_times_eye=True):
    
    return ret_times
 
+def get_times_file(path, system):
+    times_file = os.path.join(path, f"times_{system}.csv")
+    exists = os.path.exists(times_file)
+    times_fh = open(times_file, 'a')
+    if not exists:
+        header = "run,query,data,netw_time,reas_time"
+        if system == "fun3":
+            header += ",gen_time,exec_time"
+        header += "\n"
+        times_fh.write(header)
+        
+    return times_fh
+
 def record_eye(times_file, run, query, data, netw_time, reas_time):
     times_file.write(f"{run},{query},{data},{netw_time},{reas_time}\n")
+    
+def record_fun3(times_file, run, query, data, netw_time, reas_time, gen_time, exec_time):
+    times_file.write(f"{run},{query},{data},{netw_time},{reas_time},{gen_time},{exec_time}\n")
+    
+    
+def __load_n3_time(path):
+    df_n3 = pd.read_csv(path)
+
+    # drop all times for query with at least 1 failed phase
+    df_n3['id'] = df_n3.apply(lambda x: f"{x['query']},{x['type']}", axis=1)
+    df_n3_failed = df_n3[df_n3['reas_time'] == -1]['id']
+    df_n3_filt = df_n3[~df_n3['id'].isin(df_n3_failed)]
+
+    return df_n3_filt
+
+
+def load_n3_times(path, pt):
+    df_n3 = pd.read_csv(path)
+    df_n3 = df_n3[df_n3['data'].str.contains(pt)]
+    
+    df_n3['total_time'] = df_n3['netw_time'] + df_n3['reas_time']
+
+    return df_n3
+
+def load_n3_agg(path, pt):
+    df_n3 = load_n3_times(path, pt)
+    df_n3_agg = df_n3.groupby(['query', 'data'])[['netw_time', 'reas_time', 'total_time']].mean().reset_index()
+
+    df_n3_agg['query_id'] = df_n3_agg['query'].str.slice(len("rules_red"), -len(".n3")).astype(int)
+    df_n3_agg['data_id'] = df_n3_agg['data'].str.slice(
+        len("gen"), -len("_ptx.n3")).astype(int)
+    df_n3_agg = df_n3_agg.sort_values(by=['query_id', 'data_id'])
+
+    return df_n3_agg

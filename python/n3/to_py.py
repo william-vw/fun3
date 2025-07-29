@@ -1,4 +1,5 @@
 from pathlib import Path
+import time
 from ast import dump, unparse, parse
 from n3.parse import parse_n3
 from n3.objects import ANY
@@ -18,19 +19,33 @@ def __proc_inputs(query, rules, data):
     return (query, rules, data)
 
 def run_py(query, rules, data, print_code=False, save_to=None):
+    start = time.perf_counter()
     query, rules, data = __proc_inputs(query, rules, data)
+    netw_time = round((time.perf_counter() - start)*1000,0)
     
-    mod = gen_py(rules, query, data, call_query=False)
+    start = time.perf_counter()
+    mod = gen_py(rules, query, data, call_query=False)    
+    gen_time = round((time.perf_counter() - start)*1000,0)
+    
     if print_code:
         print(unparse(mod) + "\n\n")
     
+    start = time.perf_counter()
     exec_ret = __get_exec(mod)
     output = __exec_query(exec_ret, query)
+    exec_time = round((time.perf_counter() - start)*1000,0)
+    
+    reas_time = gen_time + exec_time
+    
     if save_to is None:
         return output
     else:
+        start = time.perf_counter()
         with open(save_to, 'w') as fh:
             fh.write(output)
+        netw_time += round((time.perf_counter() - start)*1000,0)
+        
+    return (netw_time, gen_time, exec_time, reas_time)
        
 def save_py(query, rules, data, out_path, print_code=False, add_tracing=False, code_dir=False):
     query, rules, data = __proc_inputs(query, rules, data)
