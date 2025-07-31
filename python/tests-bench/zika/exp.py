@@ -93,16 +93,20 @@ def load_n3_times(path, pt=None, q=None):
 
     return df_n3
 
-def load_n3_agg(path, pt=None,q=None):
+def load_n3_agg(path, pt=None, q=None, grouper=['data']):
     df_n3 = load_n3_times(path, pt=pt, q=q)
     cols = ['netw_time', 'reas_time', 'total_time']
     if "fun3" in path:
         cols.append("gen_time")
-    df_n3_agg = df_n3.groupby(['query', 'data'])[cols].mean().reset_index()
+    df_n3_agg = df_n3.groupby(grouper)[cols].mean().reset_index()
 
-    df_n3_agg['query_id'] = df_n3_agg['query'].str.slice(len("rules_red"), -len(".n3")).astype(int)
-    df_n3_agg['data_id'] = df_n3_agg['data'].str.slice(
-        len("gen"), -len("_ptx.n3")).astype(int)
-    df_n3_agg = df_n3_agg.sort_values(by=['query_id', 'data_id'])
+    if 'query' in grouper:
+        df_n3_agg['query_id'] = df_n3_agg['query'].str.slice(len("rules_red"), -len(".n3")).astype(int)
+    if 'data' in grouper:
+        df_n3_agg['data_id'] = df_n3_agg['data'].str.slice(
+            len("gen"), -len("_ptx.n3")).astype(int)
+    
+    sorter = [ f"{g}_id" for g in grouper ]
+    df_n3_agg = df_n3_agg.sort_values(by=sorter)
 
     return df_n3_agg
