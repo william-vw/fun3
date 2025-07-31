@@ -82,18 +82,23 @@ def __load_n3_time(path):
     return df_n3_filt
 
 
-def load_n3_times(path, pt=None):
+def load_n3_times(path, pt=None, q=None):
     df_n3 = pd.read_csv(path)
     if pt is not None:
         df_n3 = df_n3[df_n3['data'].str.contains(pt)]
+    if q is not None:
+        df_n3 = df_n3[df_n3['query'].str.contains(q)]
     
     df_n3['total_time'] = df_n3['netw_time'] + df_n3['reas_time']
 
     return df_n3
 
-def load_n3_agg(path, pt=None):
-    df_n3 = load_n3_times(path, pt)
-    df_n3_agg = df_n3.groupby(['query', 'data'])[['netw_time', 'reas_time', 'total_time']].mean().reset_index()
+def load_n3_agg(path, pt=None,q=None):
+    df_n3 = load_n3_times(path, pt=pt, q=q)
+    cols = ['netw_time', 'reas_time', 'total_time']
+    if "fun3" in path:
+        cols.append("gen_time")
+    df_n3_agg = df_n3.groupby(['query', 'data'])[cols].mean().reset_index()
 
     df_n3_agg['query_id'] = df_n3_agg['query'].str.slice(len("rules_red"), -len(".n3")).astype(int)
     df_n3_agg['data_id'] = df_n3_agg['data'].str.slice(
