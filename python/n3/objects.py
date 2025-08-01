@@ -1,5 +1,5 @@
 from enum import Enum
-from n3.model import Model
+from n3.model import ListModel
 # from n3.ns import NS
 
 class Terms(Enum):
@@ -14,18 +14,26 @@ class Terms(Enum):
     
 class Node:
     
-    def is_any(self):
-        return False
-
     # implemented by subclasses
     
-    # NOTE: meant to support the semantics of unification
+    # is_any
+    # is_concrete
+    # is_grounded
+    # is_container
+    
+    # NOTE: meant to support unification
     # def __eq__(self, other):  
     #     pass
     
     # NOTE: use this value to index term for retrieval
     # def idx_val(self):
     #     pass
+    
+    # used by MultiDictModel
+    # if true, then one cannot index on the node
+    # (i.e., manual comparison is needed)
+    def is_wildcard(self):
+        return self.type() == Terms.VAR or self.is_any()
 
 class Any(Node):
     
@@ -39,6 +47,9 @@ class Any(Node):
         return False
     
     def is_grounded(self):
+        return False
+    
+    def is_container(self):
         return False
     
     def idx_val(self):
@@ -58,6 +69,13 @@ class Any(Node):
     def __setitem__(self, key, value):
         pass
     
+    def __getattr__(self, name):
+        match name:
+            case 'var_id': return str(self)
+    
+    def __hash__(self):
+        return hash(str(self))
+    
     def __eq__(self, other): 
         return True
         
@@ -72,8 +90,15 @@ class Any(Node):
     
 class ConcreteNode(Node):
     
+    def is_any(self):
+        return False
+    
     def is_concrete(self):
         return True
+    
+    # implemented by subclasses:
+    # is_grounded
+    # is_container
 
 
 class Iri(ConcreteNode):
@@ -88,6 +113,9 @@ class Iri(ConcreteNode):
     
     def is_grounded(self):
         return True
+    
+    def is_container(self):
+        return False
     
     def idx_val(self):
         return self.iri
@@ -110,11 +138,14 @@ class Iri(ConcreteNode):
             case 'ln': return Iri.get_ln(self.iri)
             case _: raise AttributeError(f"unknown attribute: {name}")
             
+    def __hash__(self):
+        return hash(self.iri)
+        
     def __eq__(self, other):  
         if other.type()==Terms.VAR or other.is_any():
             return True
         if not isinstance(other, Iri):
-            return False # NotImplemented
+            return False
         return self.iri == other.iri
         
     def __str__(self):
@@ -142,14 +173,20 @@ class Literal(ConcreteNode):
     def is_grounded(self):
         return True
     
+    def is_container(self):
+        return False
+    
     def idx_val(self):
         return self.value
+        
+    def __hash__(self):
+        return hash(self.value)
         
     def __eq__(self, other):
         if other.type()==Terms.VAR or other.is_any():
             return True
         if not isinstance(other, Literal):
-            return False # NotImplemented
+            return False
         return self.value == other.value
         
     def __str__(self):
@@ -161,6 +198,8 @@ class Literal(ConcreteNode):
                 suffix = f"@{self.lng}"
             elif self.dt is not None and self.dt != Iri("http://www.w3.org/2001/XMLSchema#string"):
                 suffix = f"^^{self.dt}"
+        elif isinstance(self.value, bool):
+            value = str(self.value).lower()
         return str(value) + (suffix if suffix is not None else "")
     def __repr__(self):
         return self.__str__()
@@ -171,12 +210,16 @@ class Literal(ConcreteNode):
 
 class VariableNode(Node):
     
-    # id
-            
+    def is_any(self):
+        return False
+    
     def is_concrete(self):
         return False
 
     def is_grounded(self):
+        return False
+    
+    def is_container(self):
         return False
     
 
@@ -190,6 +233,12 @@ class Var(VariableNode):
     
     def idx_val(self):
         return self.name
+    
+    # needed for getting hashcode of composites
+    # (will not give same value for "equal" variables, 
+    # since all variables are "equal", see __eq__)
+    def __hash__(self):
+        return hash(self.name)
         
     def __eq__(self, other):  
         return True
@@ -225,10 +274,20 @@ class BlankNode(VariableNode):
     def idx_val(self):
         return self.label
     
-    # needed for unification
-    # (blank node only matches var nodes)
-    def __eq__(self, other):
-        return not other.is_concrete()
+    # based on jena
+    def __hash__(self):
+        prime = 31
+        result = prime + hash(self.label)
+        return result
+    
+    # (treats bnode as a data term)
+    def __eq__(self, other):        
+        if other.type() == Terms.VAR or other.is_any():
+            return True
+        if not isinstance(other, BlankNode):
+            return False
+        return self.label == other.label
+        
         
     def __str__(self):
         return f"_:{self.label}"
@@ -243,9 +302,13 @@ class BlankNode(VariableNode):
         return self
     
     
-class Container(ConcreteNode):
+class Composite(ConcreteNode):
     
-    # (implemented by subclasses)
+    # called by others (start point)
+    def iter_atomics(self):
+        return self._iter_recur_atomics(())
+    
+    # implemented by subclasses
     def _iter_recur_atomics(self, pos):
         """
         Recursively yields all (nested) atomic elements in the container.
@@ -267,12 +330,12 @@ class Container(ConcreteNode):
         """
         pass
     
+    # convenience method
     # (called by subclasses)
-    # iterate over the atomic elements of this container
-    def _iter_atomic(self, pos, term):
+    def _iter_recur_term(self, pos, term):
         """
         Utility function for iterating over container elements. Given an element:
-        - If the element is itself a collection, call the _iter_recur_atomics function on it recursively
+        - If the element is itself a container, call the _iter_recur_atomics function on it recursively
         - Else, return the element.
         
         Args:
@@ -290,7 +353,7 @@ class Container(ConcreteNode):
             case _: yield (pos, term)
     
     
-class VarContainer(Container):
+class VarComposite(Composite):
     
     # TODO cache vars once code is fleshed out
     # (see parse.py)
@@ -300,7 +363,11 @@ class VarContainer(Container):
         pass
         
     def is_grounded(self):
-        return len([ v for v in self.recur_vars() ]) == 0
+        return len(list(self.recur_vars())) == 0
+    
+    def is_wildcard(self):
+        is_grounded = len(list(self.recur_vars(types=(Terms.VAR, Terms.ANY)))) == 0
+        return not is_grounded
     
     # def _parsed_var(self, var):
     #     self.__vars[var] = True
@@ -317,7 +384,7 @@ class VarContainer(Container):
             if term.is_any():
                 concr_terms[key] = BlankNode()
             # ANY's may also be nested in collections or graph terms
-            elif isinstance(term, VarContainer):
+            elif isinstance(term, VarComposite):
                 term.replace_recur_vars(lambda id: BlankNode(),types=(Terms.ANY,))
         
         inst.replace_recur_vars_map(concr_terms, types=(Terms.VAR,))
@@ -329,13 +396,13 @@ class VarContainer(Container):
     
     def replace_recur_vars(self, repl_fn, types=(Terms.VAR,)):
         """
-            Replaces (nested) variables in this VarContainer.
+            Replaces (nested) variables in this VarComposite.
             
             Args:
                 types: the types of variables you're interested in (var, bnode)
                 repl_fn (function)
         """
-        for pos, term in self._iter_recur_atomics(()):
+        for pos, term in self.iter_atomics():
             if term.type() in types:
                 repl = repl_fn(term.var_id)
                 # get closest parent container & index of var therein
@@ -345,10 +412,10 @@ class VarContainer(Container):
     
     def vars(self, types=(Terms.VAR,), get_id=True):
         """
-        Returns a list of all non-nested variables in this VarContainer.
+        Returns a list of all non-nested variables in this VarComposite.
         
         Args:
-            types: the types of variables you're interested in (var, bnode)
+            types: the types of variables you're interested in (var, bnode, any)
             get_id: whether we are interested in var names or the vars themselves.
             
         Returns:
@@ -361,10 +428,10 @@ class VarContainer(Container):
        
     def recur_vars(self, types=(Terms.VAR,), get_id=True):
         """
-        Returns a list of all (nested) variables in this VarContainer. 
+        Returns a list of all (nested) variables in this VarComposite. 
         
         Args:
-            types: the types of variables you're interested in (var, bnode)
+            types: the types of variables you're interested in (var, bnode, any)
             get_id: whether we are interested in var names or the vars themselves.
             
         Returns:
@@ -374,18 +441,18 @@ class VarContainer(Container):
         
         # return self.__vars
         
-        # return [ (v.name if get_id else v) for _, _, v in self._iter_recur_atomics() if v.type() == Terms.VAR ]
-        # for _, _, v in self._iter_recur_atomics():
+        # return [ (v.name if get_id else v) for _, _, v in self.iter_atomics() if v.type() == Terms.VAR ]
+        # for _, _, v in self.iter_atomics():
         #     if v.type() == Terms.VAR: yield v
         
         return [ v for _, v in self.__yield_recur_vars(types, get_id) ]
     
     def recur_vars_pos(self, types=(Terms.VAR,), get_id=True):
         """
-        Returns a list of all (nested) variables and their positions in this VarContainer. 
+        Returns a list of all (nested) variables and their positions in this VarComposite. 
         
         Args:
-            types: the types of variables you're interested in (var, bnode)
+            types: the types of variables you're interested in (var, bnode, any)
             get_id: whether we are interested in var names or the vars themselves.
             
         Returns:
@@ -399,10 +466,10 @@ class VarContainer(Container):
     
     def __yield_recur_vars(self, types=(Terms.VAR,), get_id=True):
         """
-        Recursively yields all (nested) variables in this VarContainer.
+        Recursively yields all (nested) variables in this VarComposite.
         
         Args:
-            types: the types of variables you're interested in (var, bnode)
+            types: the types of variables you're interested in (var, bnode, any)
             get_id: whether we are interested in var names or the vars themselves.
             
         Yields:
@@ -411,11 +478,21 @@ class VarContainer(Container):
                 1: (nested) var or its name
         """
                 
-        for pos, v in self._iter_recur_atomics(()):
+        for pos, v in self.iter_atomics():
             if v.type() in types: yield (pos, (v.var_id if get_id else v))
 
 
-class Collection(VarContainer):
+class Container(VarComposite):
+    
+    def is_container(self):
+        return True
+    
+    # implemented by subclasses
+    def iter_terms(self):
+        pass
+    
+
+class Collection(Container):
     
     # __elements
     
@@ -428,17 +505,20 @@ class Collection(VarContainer):
     def idx_val(self):
         return self.__to_nested_tuples()
     
-    def append(self, coll):
-        return Collection(self.__elements + coll.__elements)
-    
     def __to_nested_tuples(self):
         return tuple(e.__to_nested_tuples() if e.type() == Terms.COLLECTION else e.idx_val() for e in self.__elements)
+    
+    def append(self, coll):
+        return Collection(self.__elements + coll.__elements)
     
     def _parsed_el(self, el):
         self.__elements.append(el)
     
+    def iter_terms(self):
+        return self.__iter__()
+    
     def _iter_recur_atomics(self, pos):
-        for i, el in enumerate(self): yield from self._iter_atomic(pos + ((i, self),), el)
+        for i, el in enumerate(self): yield from self._iter_recur_term(pos + ((i, self),), el)
     
     def __iter__(self):
         return self.__elements.__iter__()
@@ -452,11 +532,14 @@ class Collection(VarContainer):
     def __setitem__(self, key, value):
         self.__elements[key] = value
     
+    def __hash__(self):
+        return hash(tuple(self.__elements))
+    
     def __eq__(self, other):
-        if not other.is_concrete() or other.is_any():
+        if other.type() == Terms.VAR or other.is_any():
             return True
         if not isinstance(other, Collection):
-            return False # NotImplemented
+            return False
         return self.__elements == other.__elements
         
     def __str__(self):
@@ -477,30 +560,60 @@ class Collection(VarContainer):
         return Collection([ element.copy_deep() for element in self.__elements ])
     
     
-class GraphTerm(VarContainer):
+class GraphTerm(Container):
     
     # triples
     
-    def __init__(self, triples=None):
-        self.__triples = triples if triples is not None else []
-        # self.model = model if model is not None else Model()
+    def __init__(self, model=None, triples=None):
+        if model is not None:
+            self.model = model
+        elif triples is not None:
+            self.model = ListModel(triples)
+        else:
+            self.model = ListModel()
         
     def type(self):
         return Terms.GRAPH
     
+    def iter_terms(self):
+        for t in self:
+            yield from t.__iter__()
+    
     def _iter_recur_atomics(self, pos):
-        for t in self.__triples: yield from t._iter_recur_atomics(pos)
+        for i, t in enumerate(self.model.triples()): yield from t._iter_recur_atomics(pos + ((i, self),))
+    
+    def __iter__(self):
+        return self.model.__iter__()
+    
+    def __len__(self):
+        return len(self.model)
+    
+    def __getitem__(self, key):
+        return self.model.triple_at(key)
+    
+    def __hash__(self):
+        return hash(self.model)
+    
+    def __eq__(self, other):
+        if other.type() == Terms.VAR or other.is_any():
+            return True
+        if not isinstance(other, GraphTerm):
+            return False
+        return self.model == other.model
         
     def __str__(self):
-        return "{ "  + "\n".join([ str(t) for t in self.__triples ])[:-2] + " }"
+        if len(self.model) == 0:
+            return "{}"
+        else:
+            return "{ " + " ".join(str(e) for e in self.model.triples())[:-2] + " }"
     def __repr__(self):
         return self.__str__()
     
     def copy_deep(self):
-        return GraphTerm([ triple.copy_deep() for triple in self.__triples ])
+        return GraphTerm(triples=[ t.copy_deep() for t in self.model.triples() ])
 
 
-class Triple(VarContainer):
+class Triple(VarComposite):
     
     spo = ['s', 'p','o']
     
@@ -515,7 +628,7 @@ class Triple(VarContainer):
         return any(r.type() == Terms.GRAPH for r in self)
     
     def _iter_recur_atomics(self, pos):
-        for i, term in enumerate(self): yield from self._iter_atomic(pos + ((i, self),), term)
+        for i, term in enumerate(self): yield from self._iter_recur_term(pos + ((i, self),), term)
     
     def __len__(self):
         return 3
@@ -528,14 +641,23 @@ class Triple(VarContainer):
             case 0: return self.s
             case 1: return self.p
             case 2: return self.o
-            case _: print("inconceivable!"); return None
+            case _: raise "inconceivable!"
     
     def __setitem__(self, key, value):
         match key:
             case 0: self.s = value
             case 1: self.p = value
             case 2: self.o = value
-            case _: print("inconceivable!");
+            case _: raise "inconceivable!"
+    
+    # based on jena
+    def __hash__(self):
+        return (hash(self.s) >> 1 ^ hash(self.p) ^ hash(self.o) << 1)
+    
+    def __eq__(self, other):
+        if not isinstance(other, Triple):
+            return False
+        return self.s == other.s and self.p == other.p and self.o == other.o
     
     def __str__(self):
         return f"{self.s} {self.p} {self.o} ."

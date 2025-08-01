@@ -1,0 +1,27 @@
+# Processed by EYE v11.19.7 (2025-06-01)
+# eye --quiet ./red/rules_red0.n3 ./red/data/gen200_pt1.n3 --query ./query_eye.n3 --nope
+
+PREFIX zk: <http://example.org/zika#>
+
+"Patient/p5086" zk:testForZika true.
+"Patient/p5094" zk:testForZika true.
+"Patient/p5108" zk:testForZika true.
+"Patient/p5133" zk:testForZika true.
+"Patient/p5135" zk:testForZika true.
+"Patient/p5147" zk:testForZika true.
+"Patient/p5148" zk:testForZika true.
+"Patient/p5149" zk:testForZika true.
+"Patient/p5154" zk:testForZika true.
+"Patient/p5155" zk:testForZika true.
+"Patient/p5170" zk:testForZika true.
+"Patient/p5180" zk:testForZika true.
+"Patient/p5194" zk:testForZika true.
+"Patient/p5262" zk:testForZika true.
+"Patient/p5272" zk:testForZika true.
+"Patient/p5276" zk:testForZika true.
+"Patient/p5291" zk:testForZika true.
+"Patient/p5292" zk:testForZika true.
+"Patient/p5298" zk:testForZika true.
+"Patient/p5309" zk:testForZika true.
+# 2025-07-31T14:37:46.515Z in=1888 out=20 ent=20 step=20 brake=1 inf=2330688 sec=0.157 inf/sec=14845146
+# ENDS

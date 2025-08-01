@@ -1,5 +1,5 @@
 from n3.objects import Iri
-from n3.model import Model
+from n3.model import ListModel
 from n3.parse import parse_n3
 
 class State : 

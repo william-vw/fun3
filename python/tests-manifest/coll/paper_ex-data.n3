@@ -1,0 +1,6 @@
+@prefix dc: <http://purl.org/dc/terms/> .
+@prefix : <http://example.org/> . 
+
+:will :top (:lotr :hhgttg :hobbit). 
+
+:lotr dc:title "Lord of the Rings".

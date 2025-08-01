@@ -69,7 +69,7 @@ class PyBuilder:
             expr = self.var_ref(term)
         
         else:
-            cls_name = None; args = None
+            cls_name = None; args = None; keywords = None
             match term.type():
                 case Terms.ANY:
                     expr = self.ref('ANY')
@@ -83,20 +83,28 @@ class PyBuilder:
                 case Terms.COLLECTION: 
                     cls_name = "Collection"
                     args = [ self.lst([ self.val(el, scope_vars) for el in term ]) ]
+                case Terms.GRAPH:
+                    cls_name = "GraphTerm"
+                    keywords = [ self.keyword('triples', self.lst([ self.triple(t, scope_vars) for t in term.model.triples() ])) ]
                 case Terms.VAR:
                     cls_name = "Var"
                     args = [ self.cnst(term.name) ]
                 case Terms.BNODE:
                     cls_name = "BlankNode"
                     args = [ self.cnst(term.label) ]
-                case _: print("inconceivable")
+                case _: raise BuildException("inconceivable: " + str(term.type()))
             
             if expr is None:
-                expr = self.constr_obj(self.ref(cls_name), args)
+                expr = self.constr_obj(self.ref(cls_name), args, keywords)
             
         if isinstance(val, IdxedTerm):
             expr = self.indexes(expr, val.idxes)
         return expr
+    
+    def triple(self, t, scope_vars=[]):
+        return self.constr_obj(self.ref('Triple'), 
+            [ self.val(t.s, scope_vars), self.val(t.p, scope_vars), self.val(t.o, scope_vars) ]
+        )
     
     def iri(self, iri):
         if NS.has(iri.ns): # try for shorter code; use NS class
@@ -112,9 +120,6 @@ class PyBuilder:
         if isinstance(var, IdxedTerm):
             expr = self.indexes(expr, var.idxes)
         return expr
-    
-    def triple(self, triple):
-        return self.constr_obj(self.ref('Triple'), [ self.val(triple.s), self.val(triple.p), self.val(triple.o) ])
 
     def cnst(self, value):        
         return self.__fix(ast.Constant(value=value))
@@ -134,6 +139,9 @@ class PyBuilder:
     def attr_ref_expr(self, expr, attr):
         return self.__fix(ast.Attribute(value=expr, attr=attr, ctx=ast.Load()))
         
+    def keyword(self, arg, expr):
+        return self.__fix(ast.keyword(arg, expr))
+        
     def index(self, expr, idx):
         return self.__fix(ast.Subscript(expr, slice=self.cnst(idx), ctx=ast.Load()))
 
@@ -143,11 +151,11 @@ class PyBuilder:
                 expr = self.index(expr, idx)
         return expr
 
-    def fn_call(self, fn, args=None):
-        return self.__fix(ast.Call(func=fn, args=(args if args is not None else []), keywords=[]))
+    def fn_call(self, fn, args=None, keywords=None):
+        return self.__fix(ast.Call(func=fn, args=(args if args is not None else []), keywords=(keywords if keywords is not None else [])))
     
-    def constr_obj(self, cls_name, args=None):
-        return self.fn_call(cls_name, args)
+    def constr_obj(self, cls_name, args=None, keywords=None):
+        return self.fn_call(cls_name, args, keywords)
     
     def lmbda(self, params, expr):
         args = [self.__fix(ast.arg(arg=p)) for p in params]
@@ -176,7 +184,7 @@ class PyBuilder:
             case 'lte': cmp = ast.LtE()
             case 'is': cmp = ast.Is()
             case 'is not': cmp = ast.IsNot()
-            case _: print("inconceivable"); return
+            case _: raise BuildException("inconceivable")
         self.__fix(cmp)
         
         return self.__fix(ast.Compare(left=ops[0], ops=[cmp], comparators=ops[1:]))
@@ -229,3 +237,11 @@ class PyBuilder:
         if 'end_col_offset' in node._attributes:
             node.end_col_offset = end_col_offset
         return node
+    
+    
+class BuildException(Exception):
+    def __init__(self, m):
+        self.m = m
+    
+    def __str__(self):
+        return self.m

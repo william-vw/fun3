@@ -9,7 +9,7 @@
 
 <>  rdf:type mf:Manifest ;
     rdfs:label "collection test cases" ;
-    mf:entries ( :grcoll :ungrcoll_1 :ungrcoll_2 :ungrcoll_3_1 :ungrcoll_3_2 :ungrcoll_3_3 :ungrcoll_4 :ungrcoll_5 ) .
+    mf:entries ( :grcoll :ungrcoll_1 :ungrcoll_2 :ungrcoll_3_1 :ungrcoll_3_2 :ungrcoll_3_3 :ungrcoll_4 :ungrcoll_5 :paper_ex ) .
 
 :grcoll
     a   test:TestN3Query ;
@@ -152,5 +152,21 @@
         qt:data <ungrcoll_6-ref.n3>
     ] ;
     rdfs:comment "Ungrounded (some vars); nested lists" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:paper_ex
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "paper_ex" ;
+    mf:action [ 
+        qt:query <paper_ex-query.n3> ;
+        test:rules <paper_ex.n3> ;
+        qt:data <paper_ex-data.n3>
+    ] ;
+    mf:result [
+        qt:data <paper_ex-ref.n3>
+    ] ;
+    rdfs:comment "Example for RuleML RC paper" ;
     rdft:approval rdft:Approved ;
     test:options [ test:conclusions "true"^^xsd:boolean ] .

@@ -4,10 +4,11 @@ from pathlib import Path
 from n3.fun.utils import unique_sorted
 from n3.fun.py_build import PyBuilder, IdxedTerm
 from n3.objects import Var, BlankNode, ANY, Triple, Iri, Literal, GraphTerm, Terms
-from n3.model import Model
+from n3.model import ListModel
 from n3.ns import logNs, swapNs, xsdNs
 from itertools import chain
 from ast import dump, unparse
+
 
 def gen_py(rules, query, data, call_query=True):
     gen = GenPython()
@@ -79,9 +80,8 @@ class QueryFn(RuleFn):
     
     __query_fn_name = "query"
     
-    def __init__(self, triple):
-        graph = GraphTerm(Model().add(triple))
-        super().__init__(-1, graph, graph, fn_name=QueryFn.fn_name())
+    def __init__(self, query):
+        super().__init__(-1, query, query, fn_name=QueryFn.fn_name())
     
     @staticmethod
     def fn_name(rule_no=0, clause_no=0):
@@ -153,7 +153,7 @@ class FnEntry:
         self.rule_fn = rule_fn
 
     def __str__(self):
-        return f"<{self.rule_fn.name} - {str(self.rule)}>"
+        return f"<{self.rule_fn} - {str(self.rule)}>"
     def __repr__(self):
         return self.__str__()
     
@@ -250,13 +250,13 @@ class UnifyTerms:
         
         if clause_term.is_concrete():
             if match_term.is_concrete():
-                # look for variables inside ungrounded collections
-                if (clause_term.type()==Terms.COLLECTION and match_term.type()==Terms.COLLECTION) and \
+                # look for variables inside ungrounded collections & graph terms
+                if (clause_term.is_container() and match_term.is_container()) and \
                     (not clause_term.is_grounded() or not match_term.is_grounded()):
                         
-                        if len(clause_term) == len(match_term):
-                            for idx in range(len(clause_term)):
-                                yield from self.unify(clause, clause_term[idx], match_term[idx])
+                        if clause_term.type() == match_term.type() and len(clause_term) == len(match_term):
+                            for clause_term2, match_term2 in zip(clause_term.iter_terms(), match_term.iter_terms()):
+                                yield from self.unify(clause, clause_term2, match_term2)
                             return
 
                 yield from self.__unify_op(UCmd.CMP, UDir.TO_MATCH, UTime.NOW, clause_term, match_term)
@@ -264,34 +264,34 @@ class UnifyTerms:
             else:
                 yield from self.__unify_op(UCmd.PASS, UDir.TO_MATCH, UTime.NOW, clause_term, match_term)
                 
-                if clause_term.type() == Terms.COLLECTION and not clause_term.is_grounded():
-                    yield from self.__unify_ungrcoll(UCmd.PASS, UDir.FROM_MATCH, match_term, clause_term)
+                if clause_term.is_container() and not clause_term.is_grounded():
+                    yield from self.__unify_var_ungrcont(UCmd.PASS, UDir.FROM_MATCH, match_term, clause_term)
         else:
             if match_term.is_concrete():
                 if has_runtime_val:
+                    # (compare also takes care of checking variable's type, length etc)
                     yield from self.__unify_op(UCmd.CMP, UDir.TO_MATCH, UTime.RUNTIME, clause_term, match_term)
                 
-                # possible that runtime var is ANY (i.e., variable in query), so also get result from match
+                # (possible that runtime var is ANY (i.e., variable in query), so also get result from match)
                 yield from self.__unify_op(UCmd.PASS, UDir.FROM_MATCH, UTime.NOW, match_term, clause_term)
                 
-                if match_term.type() == Terms.COLLECTION and not match_term.is_grounded():
-                    yield from self.__unify_ungrcoll(UCmd.PASS, UDir.TO_MATCH, clause_term, match_term)
+                if match_term.is_container() and not match_term.is_grounded():
+                    yield from self.__unify_var_ungrcont(UCmd.PASS, UDir.TO_MATCH, clause_term, match_term)
             else:
-                # idem
+                # (idem)
                 if has_runtime_val:
                     yield from self.__unify_op(UCmd.PASS, UDir.TO_MATCH, UTime.RUNTIME, clause_term, match_term)
 
                 yield from self.__unify_op(UCmd.PASS, UDir.FROM_MATCH, UTime.RUNTIME, match_term, clause_term)
         
-    def __unify_ungrcoll(self, cmd, dir, var_term, coll_term):
-        for atomic in coll_term._iter_recur_atomics(()):
+    def __unify_var_ungrcont(self, cmd, dir, var_term, coll_term):
+        for atomic in coll_term.iter_atomics():
             atomic_term = atomic[1]
-            
-            positions = atomic[0]
-            idxes = [ position[0] for position in positions ]
             
             # only need values for variables
             if not atomic_term.is_concrete():
+                positions = atomic[0]
+                idxes = [ position[0] for position in positions ]
                 yield from self.__unify_op(cmd, dir, UTime.RUNTIME, IdxedTerm(var_term, idxes), atomic_term)
 
     def __unify_op(self, cmd, dir, time, term1, term2):
@@ -356,6 +356,8 @@ class GenPython:
         }
 
     def gen_python(self, rules, query, data, call_query):
+        query = GraphTerm(triples=[query])
+        self.__process_query(query)
         self.__process_rules(rules)
         
         self.code_imports = []; self.code_body = []
@@ -387,8 +389,9 @@ class GenPython:
         self.code_body.append(assn)
         
     def __gen_rule_python(self, rules, query, call_query):
-        self.code_imports.append(self.bld.import_from('n3.objects', ['Iri', 'Var', 'Literal', 'Collection', 'ANY', 'Terms', 'Triple']))
+        self.code_imports.append(self.bld.import_from('n3.objects', ['ANY', 'Terms', 'Iri', 'Var', 'Literal', 'Collection', 'GraphTerm', 'Triple']))
         self.code_imports.append(self.bld.import_from('n3.ns', ['NS']))
+        self.code_imports.append(self.bld.import_from('lib.emit', ['emit']))
         
         query_fn = self.__gen_rule(QueryFn(query))
         
@@ -398,6 +401,10 @@ class GenPython:
         
         if call_query:
             self.__gen_call_rule(query_fn)
+        
+    def __process_query(self, query):
+        query_rule = Triple(query, logNs['implies'], Literal(True, xsdNs['boolean']))
+        self.__rule_renameVars.process(-1, query_rule)
         
     def __process_rules(self, rules):
         """
@@ -417,7 +424,7 @@ class GenPython:
                 print(f"warning: cannot use rule, length of head > 1 ({rule})")
                 del rules[rule_no]; continue
             # only top-down rules
-            if rule.p == logNs['implies']:
+            if rule.p.iri == logNs['implies'].iri:
                 print(f"warning: cannot use bottom-up rule ({rule})")
                 del rules[rule_no]; continue
 
@@ -510,9 +517,13 @@ class GenPython:
 
     def __gen_find_rules(self, clause, ctu_call):
         matches = self.__fn_idx.find(clause.tp)
-            
+        
         for match in matches:
             match_tp = match.rule.s.model.triple_at(0)
+            # for recursive rules (referring to themselves)
+            # rename vars in match tp to avoid overlap with this tp (both are same tp!)
+            match_tp = Triple(*[Var(f"{t.name}_m") if t.type() == Terms.VAR else t for t in match_tp])
+            
             fn_call = FnCall(self.bld.ref(match.rule_fn))
             
             # (copy ctu_call as different calls may require different conditions for it)
@@ -556,11 +567,13 @@ class GenPython:
         ret_args = rule_fn.input_vars
         
         lmbda_params = ret_args
-        inst_triple_call = self.bld.fn_call(
-            self.bld.attr_ref_expr(self.bld.triple(head_triple), 'instantiate'),
-            [ self.bld.dct([self.bld.cnst(arg) for arg in ret_args], [self.bld.ref(arg) for arg in ret_args]) ]
-        )
-        lmbda_body = self.bld.fn_call(self.bld.ref('print'), [ inst_triple_call ])
+        # inst_triple_call = self.bld.fn_call(
+        #     self.bld.attr_ref_expr(self.bld.triple(head_triple), 'instantiate'),
+        #     [ self.bld.dct([self.bld.cnst(arg) for arg in ret_args], [self.bld.ref(arg) for arg in ret_args]) ]
+        # )
+        lmbda_body = self.bld.fn_call(self.bld.ref('emit'), [ self.bld.triple(head_triple), 
+                                                             self.bld.dct([self.bld.cnst(arg) for arg in ret_args], 
+                                                                          [self.bld.ref(arg) for arg in ret_args]) ])
         lmbda_ctu = self.bld.lmbda(lmbda_params, lmbda_body)
         
         args = [ self.bld.val(ANY) for _ in ret_args ] + [ lmbda_ctu ]

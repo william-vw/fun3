@@ -1,0 +1,3 @@
+PREFIX zk: <http://example.org/zika#>
+
+?x zk:testForZika true.

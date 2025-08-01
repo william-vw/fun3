@@ -25,6 +25,11 @@ E.g., if the predicate is 'label', then [ rule_2 ] are returned. (See above.)
 E.g., if the predicate is a variable, then all entries [ rule_0, rule_1, rule_2 ] are always returned.
 
 In each rule, we also rename all rule variables so they are unique across all rules. They will retain their original name, but with a unique counter attached to it. E.g., a variable ?p will be renamed ?p_0. This is greatly simplifies the ensuing process.
+NOTE: for recursive rules (i.e., rules calling themselves), we still need to avoid variable name clashes. E.g., 
+def rule_1_1(x_4, z_5, y_6, final_ctu):
+    rule_1(y_6, z_5, lambda x_4, z_5: final_ctu(x_4, z_5))
+(here, we need the "x_4" from the function scope, not lambda scope)
+See below for a solution.
 
 ## Generate functions
 Generate functions for all rules.
@@ -46,7 +51,7 @@ Whenever we refer to parameters, we mean those representing variables (so, not t
 A function will try to resolve a tp by finding matches in the data, and finding matching function rules (using the aforementioned predicate map).
 For that purpose, it will call data.find and matching rule functions, respectively.
 The latter functions, after finding a succesful match, will call (the ctu that itself calls) the function for the next btp, with arguments for its parameters.
-These arguments are from a matching data triple, or the matching rule's htp.
+These arguments are from a matching data triple, or the matching rule's htp. NOTE: to deal with recursive functions (see above), we first rename all variables in the matching rule htp (append "_m"). That way, we avoid variable clashes with the functions' own btp.
 If the tp is the last in the body, the function will call the aforementioned "final_ctu" function.
 
 ## Unification
@@ -94,7 +99,7 @@ Blank nodes in the rule body are more useful: they can be passed to subsequent t
 But, similarly, they are not accessible in the rule head.
 
 Practically, this means:
-- Rule functions don't have parameters for bnodes in their rule head or body. So, they don't accept or return arguments for them.
+- Rule functions don't have parameters for bnodes in their rule head. So, they don't accept or return arguments for them.
 - However, bnodes in a body triple are passed to subsequent body triples. This means the corresponding function for the body triple _will_ have parameters for it.
 
 Re unification:
@@ -104,6 +109,3 @@ But, in forward reasoning, the head's bnode will be inferred as part of the data
 So, by analogy, bnodes should be treated as concrete terms in the rule head.
 - If the clause term is a bnode, it is simply treated as a universal variable.
 
-# TODO
-unbound universals being returned
-duplicate statements being returned

@@ -1,4 +1,4 @@
 @prefix : <http://example.org/> . 
 
 { ?x :descendantOf ?y } <= { ?x :hasParent ?y } .
-{ ?x :descendantOf ?z } <= { ?x :descendantOf ?y . ?y :descendantOf ?z } .
+{ ?x :descendantOf ?z } <= { ?x :hasParent ?y . ?y :descendantOf ?z } .

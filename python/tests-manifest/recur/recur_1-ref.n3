@@ -1,0 +1,6 @@
+<http://example.org/will> <http://example.org/descendantOf> <http://example.org/paul> .
+<http://example.org/paul> <http://example.org/descendantOf> <http://example.org/edward> .
+<http://example.org/edward> <http://example.org/descendantOf> <http://example.org/peter> .
+<http://example.org/will> <http://example.org/descendantOf> <http://example.org/edward> .
+<http://example.org/will> <http://example.org/descendantOf> <http://example.org/peter> .
+<http://example.org/paul> <http://example.org/descendantOf> <http://example.org/peter> .

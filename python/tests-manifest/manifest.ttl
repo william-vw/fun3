@@ -17,4 +17,5 @@
       <recur/manifest-recur.ttl>  
       <builtins/manifest-builtins.ttl>
       <bnodes/manifest-bnodes.ttl>
+      <gterm/manifest-gterm.ttl>
    ) .

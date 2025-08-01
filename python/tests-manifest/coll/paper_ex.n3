@@ -1,0 +1,5 @@
+@prefix dc: <http://purl.org/dc/terms/> .
+@prefix : <http://example.org/> . 
+
+{ ?person :loves ?title } <= { ?person :top ( ?book1 ?book2 ?book3 ). 
+                               ?book1 dc:title ?title } .

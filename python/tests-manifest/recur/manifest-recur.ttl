@@ -24,5 +24,5 @@
         qt:data <recur_1-ref.n3>
     ] ;
     rdfs:comment "recursive rules" ;
-    rdft:approval rdft:Proposed ;
+    rdft:approval rdft:Approved ;
     test:options [ test:conclusions "true"^^xsd:boolean ] .

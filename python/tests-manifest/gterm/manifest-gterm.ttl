@@ -1,0 +1,108 @@
+@prefix : <http://example.org/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix test:    <https://w3c.github.io/N3/tests/test.n3#> .
+@prefix mf:      <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
+@prefix qt:      <http://www.w3.org/2001/sw/DataAccess/tests/test-query#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdft:    <http://www.w3.org/ns/rdftest#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+<>  rdf:type mf:Manifest ;
+    rdfs:label "graph term test cases" ;
+    mf:entries ( :ggraph1 :ungraph1 :ungraph2 :ungraph2_2 :ungraph3 :ungraph3_2 ) .
+
+:ggraph1
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "ggraph1" ;
+    mf:action [ 
+        qt:query <ggraph1-query.n3> ;
+        test:rules <ggraph1.n3> ;
+        qt:data <ggraph1-data.n3>
+    ] ;
+    mf:result [
+        qt:data <ggraph1-ref.n3>
+    ] ;
+    rdfs:comment "Both gterms are grounded" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:ungraph1
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "ungraph1" ;
+    mf:action [ 
+        qt:query <ungraph1-query.n3> ;
+        test:rules <ungraph1.n3> ;
+        qt:data <ungraph1-data.n3>
+    ] ;
+    mf:result [
+        qt:data <ungraph1-ref.n3>
+    ] ;
+    rdfs:comment "Both gterms are ungrounded" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:ungraph2
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "ungraph2" ;
+    mf:action [ 
+        qt:query <ungraph2-query.n3> ;
+        test:rules <ungraph2.n3> ;
+        qt:data <ungraph2-data.n3>
+    ] ;
+    mf:result [
+        qt:data <ungraph2-ref.n3>
+    ] ;
+    rdfs:comment "Unify var with gterm" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:ungraph2_2
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "ungraph2_2" ;
+    mf:action [ 
+        qt:query <ungraph2-query2.n3> ;
+        test:rules <ungraph2.n3> ;
+        qt:data <ungraph2-data.n3>
+    ] ;
+    mf:result [
+        qt:data <ungraph2-ref.n3>
+    ] ;
+    rdfs:comment "Unify var with gterm; var value given in query" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:ungraph3
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "ungraph3" ;
+    mf:action [ 
+        qt:query <ungraph3-query.n3> ;
+        test:rules <ungraph3.n3> ;
+        qt:data <ungraph3-data.n3>
+    ] ;
+    mf:result [
+        qt:data <ungraph3-ref.n3>
+    ] ;
+    rdfs:comment "Unify gterm with var" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .
+
+:ungraph3_2
+    a   test:TestN3Query ;
+    a   test:TestN3Positive ;
+    mf:name "ungraph3_2" ;
+    mf:action [ 
+        qt:query <ungraph3-query2.n3> ;
+        test:rules <ungraph3.n3> ;
+        qt:data <ungraph3-data.n3>
+    ] ;
+    mf:result [
+        qt:data <ungraph3-ref.n3>
+    ] ;
+    rdfs:comment "Unify gterm with var; gterm nested var given in query" ;
+    rdft:approval rdft:Approved ;
+    test:options [ test:conclusions "true"^^xsd:boolean ] .

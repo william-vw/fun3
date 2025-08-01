@@ -1,5 +1,8 @@
 # Processed by EYE v11.19.7 (2025-06-01)
-# eye --quiet /Users/wvw/git/n3/fun3/python/tests-manifest/gterms/graph1.n3 /Users/wvw/git/n3/fun3/python/tests-manifest/gterms/graph1-data.n3 --query /Users/wvw/git/n3/fun3/python/tests-manifest/gterms/graph1-query_eye.n3 --nope
+# eye --quiet /Users/wvw/git/n3/fun3/python/tests-manifest/gterm/ungraph3.n3 /Users/wvw/git/n3/fun3/python/tests-manifest/gterm/ungraph3-data.n3 --query /Users/wvw/git/n3/fun3/python/tests-manifest/gterm/ungraph3-query2_eye.n3 --nope
 
-# 2025-07-05T07:45:36.298Z in=6 out=0 ent=0 step=0 brake=1 inf=31385 sec=0.024 inf/sec=1307708
+@prefix : <http://example.org/>.
+
+:robocop :partType :machine.
+# 2025-07-28T16:18:43.730Z in=4 out=1 ent=1 step=1 brake=1 inf=30826 sec=0.025 inf/sec=1233040
 # ENDS
