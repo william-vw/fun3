@@ -105,6 +105,5 @@ So, by analogy, bnodes should be treated as concrete terms in the rule head.
 - If the clause term is a bnode, it is simply treated as a universal variable.
 
 # TODO
-to_py: accept data paths (instead of just strings)
 unbound universals being returned
 duplicate statements being returned
