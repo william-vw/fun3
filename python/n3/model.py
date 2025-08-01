@@ -116,7 +116,7 @@ class MultiDictModel(Model):
     def add(self, triple):
         subj, pred, obj = triple
         if subj.is_wildcard() or pred.is_wildcard() or obj.is_wildcard():
-            raise Exception("MultiDictModel does not support triples with wildcards")
+            raise Exception(f"MultiDictModel does not support triples with wildcards: {triple}")
         
         spo = self.spo
         if subj in spo:

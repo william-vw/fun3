@@ -1,2 +1,2 @@
-INFO:__main__:>> loading manifest: tests-manifest/builtins/manifest-builtins.ttl <<
-INFO:__main__:>> generating code: list_member
+INFO:__main__:>> loading manifest: tests-manifest/misc/manifest-misc.ttl <<
+INFO:__main__:>> generating code: pred_var

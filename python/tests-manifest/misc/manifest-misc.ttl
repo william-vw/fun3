@@ -67,7 +67,7 @@
     mf:action [ 
         qt:query <pred_var-query.n3> ;
         test:rules <pred_var.n3> ;
-        qt:data <pred_var.n3>
+        qt:data <pred_var-data.n3>
     ] ;
     mf:result [
         qt:data <pred_var-ref.n3>

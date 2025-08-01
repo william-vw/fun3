@@ -1,0 +1,4 @@
+@prefix : <http://example.org/> .
+
+{:a ?x :b} <= {:a ?x :c}. 
+{?y :k :c} <= {?y :m ?z}.
