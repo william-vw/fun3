@@ -1,3 +1,5 @@
+# Example usage:
+
 # python run_manifest.py --system eye --manifest tests-manifest/gterm/manifest-gterm.ttl
 # python run_manifest.py --system eye --manifest tests-manifest/gterm/manifest-gterm.ttl --test ggraph1
 

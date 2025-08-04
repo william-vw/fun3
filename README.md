@@ -1,111 +1,71 @@
 # fun3
-Stands for **fun**ctional programming for **N3**, or, alternatively, **fun** with **N3**.
+Stands for **fun**ctions implementing **N3**, or, alternatively, **fun** with **N3**.
 
-# General process
+## Notation3 (N3)
+For more on N3, checkout the [W3C Community Group report](https://w3c.github.io/N3/reports/20230703/) or the [N3 primer](https://notation3.org/).
 
-## Function map
-Build a "function map" (technically, a multimap) from predicates to function names. E.g., for rules
-{ ?p a :Canadian } <= { ... } .
-{ ?p a :Canadian } <= { ... } .
-{ :elbert ?x :will } <= { ... } .
+## Implementation
+Currently, there is only a Python implementation that also targets Python as the imperative language. This is located in the [`python`](python/) folder. Some very initial experimentation with Rust can be found in the [`rust`](rust/) folder.
 
-We create a map:
-    a -> [ rule_0, rule_1 ]
-    'var' -> [ rule_2 ]
-    'all' -> [ rule_0, rule_1, rule_2 ]
+[`python/requirements.txt`](python/requirements.txt): use this file to easily install fun3's dependencies.
 
-Where rule_0, rule_1 and rule_2 are functions each implementing one of the 3 rules.
-If a concrete term is used as predicate, its function is added to the term's entry.
-If a variable is used as predicate, its function is added to a 'var' entry.
-All functions are added to an 'all' entry.
+[`python/n3/fun`](python/n3/fun) folder: contains the implementation of fun3.
 
-When a mapped predicate is encountered in a body triple pattern (btp), we will try to resolve the btp by calling the mapped functions.
-E.g., if the predicate is 'a', then [ rule_0, rule_1, rule_2 ] are returned. (I.e., functions mapped to a variable predicate are always returned.)
-E.g., if the predicate is 'label', then [ rule_2 ] are returned. (See above.)
-E.g., if the predicate is a variable, then all entries [ rule_0, rule_1, rule_2 ] are always returned.
+- [`gen.py`](python/n3/fun/gen.py) implements the translation process.  
+- [`builtins/`](python/n3/fun/builtins/) includes builtin implementations.
+- Utility functions:  
+  - [`py_build.py`](python/n3/fun/py_build.py) contains convenience methods to programmatically construct Python code.
+  - [`utils.py`](python/n3/fun/utils.py) contains miscellaneous utility functions.
 
-In each rule, we also rename all rule variables so they are unique across all rules. They will retain their original name, but with a unique counter attached to it. E.g., a variable ?p will be renamed ?p_0. This is greatly simplifies the ensuing process.
-NOTE: for recursive rules (i.e., rules calling themselves), we still need to avoid variable name clashes. E.g., 
-def rule_1_1(x_4, z_5, y_6, final_ctu):
-    rule_1(y_6, z_5, lambda x_4, z_5: final_ctu(x_4, z_5))
-(here, we need the "x_4" from the function scope, not lambda scope)
-See below for a solution.
+[`python/n3/`](python/n3/) folder:
 
-## Generate functions
-Generate functions for all rules.
-Per rule, we generate separate functions for each of their btps.
-The first function name corresponds to the above mapped function name (e.g., rule_0). So, it will be called whenever the rule is used to resolve a tp.
-The subsequent functions will be called rule_0_1, rule_0_2, etc.
+- [`grammar/`](python/n3/grammar/) folder: contains the N3 grammar and an auto-generated parser implementation using [ANTLR4](https://www.antlr.org/). 
 
-These functions will have parameters, which are based on rule variables (e.g., ?p), and will be called with arguments.
-Within the function, the parameter arguments will be used to find data matches and matching rule functions.
-Hence, they drive the assignment aspect of unification (see below).
+- [`model.py`](python/n3/model.py) implements two data stores:  
+    - `ListModel`: simply keeps all triples in a list. When searching for matching triples, it simply iterates over this list. Used for debugging.
+    - `MultiDictModel`: keeps `spo`, `pos`, and `osp` indicates for indexing triples. When searching for matching triples, it will use one of these indices.
 
-For the first function, the parameters will include the variables found in the rule head. So, when resolving a tp using the rule - calling its corresponding function - arguments will be passed for these parameters ("Any" may also be passed, which represents any value).
-For subsequent functions, these parameters will be expanded to include the variables from the prior btps. For instance, for the second function, the parameters will include the rule head variables, and the variables of the first btp. This way, we always pass on any variable values that may have been collected until that point. (Note: it is possible that the subsequent btp's won't need these variable values, i.e., they don't occur there. This simplifies matters.)
+- [`objects.py`](python/n3/objects.py) implements a series of abstractions for working with N3.
 
-There is an extra parameter for "internal" use:
-. "final_ctu", which is the function that will finally be called when all "btp" functions were successful, which passes arguments for the head variables. This final_ctu fn is either a top-level continuation (ctu) (e.g., which prints the rule results); or a ctu passed by another function, which used this function to resolve one of its btp's.
-Whenever we refer to parameters, we mean those representing variables (so, not this internal one), unless explicitly stated.
+- [`parse.py`](python/n3/parse.py) relies on the ANTLR4 parser to parse N3 triples.
 
-A function will try to resolve a tp by finding matches in the data, and finding matching function rules (using the aforementioned predicate map).
-For that purpose, it will call data.find and matching rule functions, respectively.
-The latter functions, after finding a succesful match, will call (the ctu that itself calls) the function for the next btp, with arguments for its parameters.
-These arguments are from a matching data triple, or the matching rule's htp. NOTE: to deal with recursive functions (see above), we first rename all variables in the matching rule htp (append "_m"). That way, we avoid variable clashes with the functions' own btp.
-If the tp is the last in the body, the function will call the aforementioned "final_ctu" function.
+- [`to_py.py`](python/n3/to_py.py) will likely be your entry point into using fun3:  
+    - The `run_py` function generates and runs Python code given a query, ruleset and dataset, and returns the results.  
+    - The `save_py` function generates and saves the generated Python code given a query, ruleset and dataset.
 
-## Unification
+[`lib/`](python/lib): contains utility functions for generated Python code:  
+- [`emit.py`](python/lib/emit.py): instantiate and emit an N3 triple returned by the Python code as a query answer.
+- [`trace.py`](python/lib/trace.py): a function that can be passed to `sys.settrace()` to print an execution trace of the Python functions.
 
-When considering unification as part comparison, and part assignment, we (a) compare constants with each other at compile time, and, at runtime, comparing them with variables (comparison); and (b) passing arguments for parameters at runtime (assignment).
 
-Regarding (b), data search and rule functions are called with arguments for their parameters; they themselves call a continuation function with arguments for the continuation's parameters.
-The former are both referred to as match functions. We say that arguments are "passed" to them; and the latter "return" arguments (although they technically also pass arguments to the continuation).
+## Testing
 
-Unification commences by comparing terms from the the btp ("clause") and htp ("match") in a pair-wise way.
-For data searches, the following htp is assumed: ?s ?p ?o.
+[`tests-bench/`](python/tests-bench/) folder: lists performance benchmarks.  
 
-- If both terms are concrete (literals/iri's), we compare them at compile time: if they are unequal, we won't call the match function.  
+- [`zika/`](python/tests-bench/zika/) folder: keeps all artifacts related to the "Zika" benchmark. See the [README](python/tests-bench/zika/README.md) there for more.
 
-- If the match term is a variable, then its match function will have a parameter for it.
-By passing an argument for that parameter, we ensure that the argument will be used by the match function.
-Hence, we unified something (whatever was passed) with the match variable (assignment).
+[`tests-manifest/`](python/tests-manifest/) folder: lists a range of tests for soundness and completeness, grouped by category. It uses the "manifest" test structure described [here](https://www.w3.org/2001/sw/DataAccess/tests/test-manifest#).  
 
-    - If the clause term is concrete, we simply pass it.
-    - If the clause term is a variable, we similarly pass it. We can only do this if it was given as a function parameter, though (i.e., it was also in the rule head).
-But, in the latter case, it is also possible that the clause variable's value is "any". So, no unification will happen by passing it.
-In that case, we need to use the argument returned by the matching function. 
-In turn, we use it as an argument for the clause variable's parameter, passing it to the next function call (albeit belonging to the next btp or the final_ctu).
-Hence, we again unified something (whatever was returned) with the clause variable (assignment).
+- [`run_manifest.py`](python/run_manifest.py) runs the tests in the above folder.  
 
-- If the clause term is a variable, and the match term is concrete, we add a runtime comparison between the clause and match term.
-But, as before, it is possible that the clause variable's value is "any", so the comparison will always be true.
-In that case, we use the concrete match term, and pass it to the next function call (idem above).
+The following command runs all tests and checks whether the output is compliant:
+```
+python run_manifest.py --system fun3 --what run --manifest tests-manifest/manifest.ttl
+```
 
-### Ungrounded collections
-see unify.txt
+The following command generates and saves the Python code of all tests:
+```
+python run_manifest.py --system fun3 --what gen --manifest tests-manifest/manifest.ttl
+```
 
-### Multiple variable occurrences
-Simply, see UnifyTerms.__unif_vars
+(You can substitute `tests-manifest/manifest.ttl` with a manifest file under one of the subfolders.)
 
-## Builtins
-Rather simply, accept & return `s`, `o` - let unification pull out variables from result!
+To run / generate only a single test:
 
-## Blank nodes
-Blank nodes (existential variables) are isolated inside their graph term. As a result, blank nodes from the rule head are not accessible in the rule body. 
-(They can thus be considered as a "sink" in the rule head; any values passed to them would not go anywhere.)
-Since the function body does not have access to blank nodes from the rule head, it does not make sense to provide them as input to a rule function.
-(This is in contrast to universal variables in the rule head, of course.)
-Blank nodes in the rule body are more useful: they can be passed to subsequent triples in the body. 
-But, similarly, they are not accessible in the rule head.
+```
+python run_manifest.py --system fun3 --what run --manifest tests-manifest/gterm/manifest-gterm.ttl --test ggraph1
+```
 
-Practically, this means:
-- Rule functions don't have parameters for bnodes in their rule head. So, they don't accept or return arguments for them.
-- However, bnodes in a body triple are passed to subsequent body triples. This means the corresponding function for the body triple _will_ have parameters for it.
+- [`test.ipynb`](python/test.ipynb) simply calls the functions from `to_py.py` for a single set of inputs.
 
-Re unification:
-- If the match term is a bnode (i.e., from a rule head), only clause variables and other bnodes will match it.
-This seems a bit strange since they are existential variables.
-But, in forward reasoning, the head's bnode will be inferred as part of the data (like a concrete term), where it will only "match" identical bnodes.
-So, by analogy, bnodes should be treated as concrete terms in the rule head.
-- If the clause term is a bnode, it is simply treated as a universal variable.
-
+[`tests-py/`](python/tests-py/) folder: contains miscellaneous tests.

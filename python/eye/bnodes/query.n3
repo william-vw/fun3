@@ -1,3 +1,0 @@
-@prefix : <http://example.org/> . 
-{ ?x :y 1 } => { ?x :result1 1 } . # doesn't work
-{ ?x :y _:a } => { ?x :result2 1 } . # works

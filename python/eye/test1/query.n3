@@ -1,3 +1,0 @@
-@prefix : <http://example.org/> . 
-
-{ ?x :descendantOf ?y } => { ?x :descendantOf ?y } .
