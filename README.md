@@ -4,6 +4,11 @@ Stands for **fun**ctions implementing **N3**, or, alternatively, **fun** with **
 ## Notation3 (N3)
 For more on N3, checkout the [W3C Community Group report](https://w3c.github.io/N3/reports/20230703/) or the [N3 primer](https://notation3.org/).
 
+## Demo
+You can run fun3 with custom tests on your own machine using [`test.ipynb`](python/test.ipynb).
+
+You can run the performance benchmarks and test suite as described [below](#testing).
+
 ## Implementation
 Currently, there is only a Python implementation that also targets Python as the imperative language. This is located in the [`python`](python/) folder. Some very initial experimentation with Rust can be found in the [`rust`](rust/) folder.
 
