@@ -1,4 +1,4 @@
-# Performance Experiments: Zika use case
+# Benchmark: Zika use case
 
 ## Setup
 We implemented the [CDC testing guidelines](https://www.cdc.gov/zika/hc-providers/testing-guidance.html) using N3 rules. 
@@ -40,3 +40,9 @@ The datasets can be found in the [`data/`](data/) folder. For instance, [`gen500
 ## Run
 
 Checkout the [`exp.ipynb`](exp.ipynb) notebook to run the experiments. 
+
+
+## Results
+
+The benchmark was conducted on a MacBook Pro with an Apple M1 Pro processor, 32 GB of RAM, and a 1 TB SSD, running macOS Sonoma 14.6.1.
+Performance results and generated inferences can be found under the [`results/`](results/) folder.

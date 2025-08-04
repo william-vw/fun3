@@ -44,7 +44,7 @@ Currently, there is only a Python implementation that also targets Python as the
 
 - [`zika/`](python/tests-bench/zika/) folder: keeps all artifacts related to the "Zika" benchmark. See the [README](python/tests-bench/zika/README.md) there for more.
 
-[`tests-manifest/`](python/tests-manifest/) folder: lists a range of tests for soundness and completeness, grouped by category. It uses the "manifest" test structure described [here](https://www.w3.org/2001/sw/DataAccess/tests/test-manifest#).  
+[`tests-manifest/`](python/tests-manifest/) folder: test suite with a range of tests for soundness and completeness, grouped by category. It uses the "manifest" test structure described [here](https://www.w3.org/2001/sw/DataAccess/tests/test-manifest#).  
 
 - [`run_manifest.py`](python/run_manifest.py) runs the tests in the above folder.  
 
