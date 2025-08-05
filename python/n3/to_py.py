@@ -1,3 +1,5 @@
+import sys
+sys.path.insert(0, "../../")
 from pathlib import Path
 import time
 from ast import dump, unparse, parse
@@ -18,7 +20,7 @@ def __proc_inputs(query, rules, data):
     # print(query); print(rules); print(data)
     return (query, rules, data)
 
-def run_py(query, rules, data, print_code=False, save_to=None):
+def run_py(query, rules, data, print_code=False, save_to=None, all_stdout=False):
     start = time.perf_counter()
     query, rules, data = __proc_inputs(query, rules, data)
     netw_time = round((time.perf_counter() - start)*1000,0)
@@ -27,7 +29,7 @@ def run_py(query, rules, data, print_code=False, save_to=None):
     mod = gen_py(rules, query, data, call_query=False)    
     gen_time = round((time.perf_counter() - start)*1000,0)
     
-    if print_code:
+    if not all_stdout and print_code:
         print(unparse(mod) + "\n\n")
     
     start = time.perf_counter()
@@ -37,13 +39,19 @@ def run_py(query, rules, data, print_code=False, save_to=None):
     
     reas_time = gen_time + exec_time
     
-    if save_to is None:
-        return output
+    if all_stdout:
+        print(output)
+        print("-- START CODE --")
+        print(unparse(mod))
+
     else:
-        start = time.perf_counter()
-        with open(save_to, 'w') as fh:
-            fh.write(output)
-        netw_time += round((time.perf_counter() - start)*1000,0)
+        if save_to is None:
+            return output
+        else:
+            start = time.perf_counter()
+            with open(save_to, 'w') as fh:
+                fh.write(output)
+            netw_time += round((time.perf_counter() - start)*1000,0)
         
     return (netw_time, gen_time, exec_time, reas_time)
        
