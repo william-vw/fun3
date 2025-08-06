@@ -6,9 +6,9 @@ For more on N3, checkout the [W3C Community Group report](https://w3c.github.io/
 
 ## Demo
 - _Online demo_. An online demo: [https://editor.notation3.org/fun3.html?link=76tXcm1A](https://editor.notation3.org/fun3.html?link=76tXcm1A)  
-It is pre-loaded with the `descendantOf` example, but feel free to change the query, rules and data to any other example.
+It is pre-loaded with the `descendantOf` example, but you can change the query, rules and data to any other example.
 
-- _Local demo_. You can run fun3 with custom tests on your own machine using [`test.ipynb`](python/test.ipynb).
+- _Local demo_. You can easily run fun3 on your own machine using [`test.ipynb`](python/test.ipynb).
 
 - _Benchmarks_. You can run the performance benchmarks and test suite as described [below](#testing).
 
