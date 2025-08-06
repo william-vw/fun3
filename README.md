@@ -2,7 +2,7 @@
 Stands for **fun**ctions implementing **N3**, or, alternatively, **fun** with **N3**.
 
 ## Notation3 (N3)
-For more on N3, checkout the [W3C Community Group report](https://w3c.github.io/N3/reports/20230703/) or the [N3 primer](https://notation3.org/).
+For more on N3, checkout the [W3C Community Group report](https://w3c.github.io/N3/reports/20230703/) or the [N3 primer](https://notation3.org/).  
 
 ## Demo
 - _Online demo_. An online demo: [https://editor.notation3.org/fun3.html?link=V1jKU9JQ](https://editor.notation3.org/fun3.html?link=V1jKU9JQ)
