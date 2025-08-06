@@ -15,7 +15,7 @@ It is pre-loaded with the `descendantOf` example, but feel free to change the qu
 ## Implementation
 Currently, there is only a Python implementation that also targets Python as the imperative language. This is located in the [`python`](python/) folder. Some very initial experimentation with Rust can be found in the [`rust`](rust/) folder.
 
-[`python/requirements.txt`](python/requirements.txt): use this file to easily install fun3's dependencies.
+[`python/requirements_all.txt`](python/requirements_all.txt): use this file to easily install all of fun3's (incl. analysis) dependencies.
 
 [`python/n3/fun`](python/n3/fun) folder: contains the implementation of fun3.
 
