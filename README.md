@@ -5,7 +5,7 @@ Stands for **fun**ctions implementing **N3**, or, alternatively, **fun** with **
 For more on N3, checkout the [W3C Community Group report](https://w3c.github.io/N3/reports/20230703/) or the [N3 primer](https://notation3.org/).
 
 ## Demo
-- _Online demo_. An online demo: [https://editor.notation3.org/fun3.html?link=V1jKU9JQ](https://editor.notation3.org/fun3.html?link=V1jKU9JQ).  
+- _Online demo_. An online demo: [https://editor.notation3.org/fun3.html?link=vGZAfRYE](https://editor.notation3.org/fun3.html?link=vGZAfRYE)  
 It is pre-loaded with the `descendantOf` example, but you can change the query, rules and data to any other example.
 
 - _Local demo_. You can easily run fun3 on your own machine using [`test.ipynb`](python/test.ipynb).
