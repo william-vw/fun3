@@ -55,7 +55,7 @@ def run_py(query, rules, data, print_code=False, save_to=None, all_stdout=False)
         
     return (netw_time, gen_time, exec_time, reas_time)
        
-def save_py(query, rules, data, out_path, print_code=False, add_tracing=False, code_dir=False):
+def save_py(query, rules, data, out_path, print_code=False, tracing=None, code_dir=None):
     query, rules, data = __proc_inputs(query, rules, data)
     
     mod = gen_py(rules, query, data)
@@ -63,11 +63,16 @@ def save_py(query, rules, data, out_path, print_code=False, add_tracing=False, c
     if print_code:
         print(unparsed)
     
-    if add_tracing:
-        unparsed = __add_tracing(unparsed)
+    imports = []
         
-    if code_dir:
-        unparsed = __use_code_dir(unparsed, code_dir)
+    if code_dir is not None:
+        unparsed = __use_code_dir(unparsed, imports, code_dir)
+    
+    if tracing is not None:
+        unparsed = __add_tracing(unparsed, imports, tracing)
+    
+    if len(imports) > 0:
+        unparsed = "\n".join(dict.fromkeys(imports)) + "\n" + unparsed
     
     with open(out_path, 'w') as fh:
         fh.write(unparsed)
@@ -98,13 +103,22 @@ def __exec_query(exec_ret, query):
     
     return "\n".join(out)
 
-def __use_code_dir(code, parent_dir):
-    return f"""import sys # noqa
-sys.path.insert(0, "{parent_dir}") # noqa
-""" + code
+def __use_code_dir(code, imports, parent_dir):
+    imports.append("import sys")
+    
+    return f"""sys.path.insert(0, "{parent_dir}") # noqa\n""" + code
 
 # assumed that code_dir will point to folder with "lib/trace"
-def __add_tracing(code):
-    return """from lib.trace import trace_calls # noqa
-sys.settrace(trace_calls) # noqa
-""" + code
+def __add_tracing(code, imports, tracing):
+    imports.append("import sys")
+    
+    trace_imports = [ tracing ]
+    ret =  f"""sys.settrace({tracing}) # noqa\n""" + code
+    
+    if tracing == 'count_calls':
+        trace_imports.append("print_call_counts")
+        ret += "\n\nprint_call_counts()"
+
+    imports.append(f"from lib.trace import {", ".join(trace_imports)}")
+    
+    return ret

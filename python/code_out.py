@@ -1,8 +1,11 @@
-from n3.parse import parse_n3_file
+import sys
+from lib.trace import trace_calls
+sys.settrace(trace_calls) # noqa
+from n3.parse import parse_n3
 from n3.objects import ANY, Terms, Iri, Var, Literal, Collection, GraphTerm, Triple
 from n3.ns import NS
 from lib.emit import emit
-data = parse_n3_file('/Users/wvw/git/n3/fun3/python/tests-manifest/recur/recur_1-data.n3').data
+data = parse_n3('@prefix : <http://example.org/> . \n@prefix : <http://example.org/> . \n\n:will :hasParent :paul .\n:paul :hasParent :edward .\n:edward :hasParent :peter . \n').data
 
 def query(x_0, y_1, final_ctu):
     data.find(x_0, Iri('http://example.org/descendantOf'), y_1, lambda s, p, o: final_ctu(s, o))

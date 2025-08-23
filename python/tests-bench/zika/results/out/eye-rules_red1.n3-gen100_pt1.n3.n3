@@ -1,5 +1,5 @@
 # Processed by EYE v11.19.7 (2025-06-01)
-# eye --quiet ./rules_red1.n3 ./data/gen100_pt1.n3 --query ./query_eye.n3 --nope
+# eye --quiet ./rules_red1.n3 --turtle ./data/gen100_pt1.n3 --query ./query_eye.n3 --nope
 
-# 2025-08-04T17:56:51.172Z in=892 out=0 ent=0 step=0 brake=1 inf=1249415 sec=0.095 inf/sec=13151737
+# 2025-08-06T15:12:58.060Z in=892 out=0 ent=0 step=0 brake=1 inf=235319 sec=0.039 inf/sec=6033821
 # ENDS
