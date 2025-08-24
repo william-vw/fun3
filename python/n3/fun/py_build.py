@@ -48,6 +48,9 @@ class PyBuilder:
     def fn_body_stmts(self, fn, stmts):
         fn.body.extend(stmts)
 
+    def fn_decorator(self, fn, dec):
+        fn.decorator_list.append(self.ref(dec))
+
     def ref(self, name):
         return self.__fix(ast.Name(id=name, ctx=ast.Load()))
 

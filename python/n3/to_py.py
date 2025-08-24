@@ -1,8 +1,10 @@
 import sys
+sys.path.insert(0, "../")
 sys.path.insert(0, "../../")
 from pathlib import Path
 import time
 from ast import dump, unparse, parse
+from lib.utils import Settings
 from n3.parse import parse_n3
 from n3.objects import ANY
 from n3.fun.gen import gen_py, InputData, QueryFn
@@ -20,16 +22,20 @@ def __proc_inputs(query, rules, data):
     # print(query); print(rules); print(data)
     return (query, rules, data)
 
-def run_py(query, rules, data, print_code=False, save_to=None, all_stdout=False):
+# params:
+# { 'print': { 'code: <bool>, 'all': <bool>, 'gen': <GenPython.params> } }
+def run_py(query, rules, data, save_to=None, params=None):
+    params = Settings(params)
+    
     start = time.perf_counter()
     query, rules, data = __proc_inputs(query, rules, data)
     netw_time = round((time.perf_counter() - start)*1000,0)
     
     start = time.perf_counter()
-    mod = gen_py(rules, query, data, call_query=False)    
+    mod = gen_py(rules, query, data, params['gen'])
     gen_time = round((time.perf_counter() - start)*1000,0)
     
-    if not all_stdout and print_code:
+    if not params['print'].enabled('all') and params['print'].enabled('code'):
         print(unparse(mod) + "\n\n")
     
     start = time.perf_counter()
@@ -39,7 +45,7 @@ def run_py(query, rules, data, print_code=False, save_to=None, all_stdout=False)
     
     reas_time = gen_time + exec_time
     
-    if all_stdout:
+    if params['print'].enabled('all'):
         print(output)
         print("-- START CODE --")
         print(unparse(mod))
@@ -55,21 +61,25 @@ def run_py(query, rules, data, print_code=False, save_to=None, all_stdout=False)
         
     return (netw_time, gen_time, exec_time, reas_time)
        
-def save_py(query, rules, data, out_path, print_code=False, tracing=None, code_dir=None):
+# params:
+# { 'print': { 'code: <bool> }, 'tracing': <bool>, 'code_dir': <string>, 'gen': <GenPython.params> }
+def save_py(query, rules, data, out_path, params=None):
+    params = Settings(params)
+    
     query, rules, data = __proc_inputs(query, rules, data)
     
-    mod = gen_py(rules, query, data)
+    mod = gen_py(rules, query, data, params['gen'])
     unparsed = unparse(mod)
-    if print_code:
+    if params['print'].enabled('code'):
         print(unparsed)
     
     imports = []
         
-    if code_dir is not None:
-        unparsed = __use_code_dir(unparsed, imports, code_dir)
+    if params.has('code_dir'):
+        unparsed = __use_code_dir(unparsed, imports, params.get('code_dir'))
     
-    if tracing is not None:
-        unparsed = __add_tracing(unparsed, imports, tracing)
+    if params.has('tracing'):
+        unparsed = __add_tracing(unparsed, imports, params.get('tracing'))
     
     if len(imports) > 0:
         unparsed = "\n".join(dict.fromkeys(imports)) + "\n" + unparsed

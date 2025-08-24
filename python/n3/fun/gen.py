@@ -1,18 +1,14 @@
 from enum import Enum
 from multidict import MultiDict
-from pathlib import Path
 from n3.fun.utils import unique_sorted
 from n3.fun.py_build import PyBuilder, IdxedTerm
 from n3.objects import Var, BlankNode, ANY, Triple, Iri, Literal, GraphTerm, Terms
-from n3.model import ListModel
 from n3.ns import logNs, swapNs, xsdNs
 from itertools import chain
-from ast import dump, unparse
 
-
-def gen_py(rules, query, data, call_query=True):
-    gen = GenPython()
-    return gen.gen_python(rules, query, data, call_query)
+def gen_py(rules, query, data, params):
+    gen = GenPython(params)
+    return gen.gen_python(rules, query, data)
 
 
 class InputData:
@@ -345,7 +341,7 @@ class FnCall(ConditionalStmt):
    
 class GenPython:
 
-    def __init__(self):
+    def __init__(self, params):
         self.bld = PyBuilder()
                 
         self.__rule_buildFnIdx = RuleProcessor_BuildFnIndex()
@@ -354,15 +350,18 @@ class GenPython:
         self.names = {
             'final_ctu': "final_ctu"
         }
+             
+        self.params = params
+        
 
-    def gen_python(self, rules, query, data, call_query):
+    def gen_python(self, rules, query, data):
         query = GraphTerm(triples=[query])
         self.__process_query(query)
         self.__process_rules(rules)
         
         self.code_imports = []; self.code_body = []
         self.__gen_data_python(data)
-        self.__gen_rule_python(rules, query, call_query)
+        self.__gen_rule_python(rules, query)
         
         return self.bld.module(self.code_imports + self.code_body)
 
@@ -388,10 +387,12 @@ class GenPython:
         
         self.code_body.append(assn)
         
-    def __gen_rule_python(self, rules, query, call_query):
+    def __gen_rule_python(self, rules, query):
         self.code_imports.append(self.bld.import_from('n3.objects', ['ANY', 'Terms', 'Iri', 'Var', 'Literal', 'Collection', 'GraphTerm', 'Triple']))
         self.code_imports.append(self.bld.import_from('n3.ns', ['NS']))
         self.code_imports.append(self.bld.import_from('lib.emit', ['emit']))
+        if self.params.enabled('memoize'):
+            self.code_imports.append(self.bld.import_from('lib.memoize', [ "MemoizeCtuPass" ]))
         
         query_fn = self.__gen_rule(QueryFn(query))
         
@@ -399,7 +400,7 @@ class GenPython:
             rule_fn = RuleFn(i, head, body)
             self.__gen_rule(rule_fn)
         
-        if call_query:
+        if self.params.enabled('call_query'):
             self.__gen_call_rule(query_fn)
         
     def __process_query(self, query):
@@ -479,6 +480,9 @@ class GenPython:
 
     def __gen_clause(self, clause, ctu_call):
         clause_fn_def = self.bld.fn(clause.fn_name, self.__get_fn_params(clause.rule.avail_vars))
+
+        if self.params.enabled('memoize'):
+            self.bld.fn_decorator(clause_fn_def, "MemoizeCtuPass")
 
         if self.__is_builtin(clause):
             clause_fn_body = self.__gen_builtin(clause, ctu_call)
