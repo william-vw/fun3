@@ -1,6 +1,9 @@
 from n3.ns import xsdNs
 from n3.objects import Var, Collection
 
+def is_string(lit):
+    return lit.dt.ns == xsdNs.iri and lit.dt.ln == 'string'
+
 def is_numeric(lit):
     if lit.dt.ns == xsdNs.iri:
         match (lit.dt.ln):

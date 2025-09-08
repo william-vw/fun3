@@ -1,0 +1,21 @@
+- tabling
+current mechanism is flawed
+cannot wait until _all_ ctu's are completed so as to store _all_ results
+we somehow need to know when results are complete (rule fn is "done") for a given input
+
+- clause re-ordering
+simple re-ordering based on dependencies
+if output (b/o flow pattern) is ref'ed by other TPs, then put builtin clause directly above first TP
+
+(put builtin clauses right above where they are needed (avoid useless work))
+use current mechanism to generate calls; assigns results to re-usable variables
+
+- inlin'ing
+when possible (think it's always possible (?)), inline code instead of calls
+first, try some manual performance experiments
+hmm, won't play well with memoization
+
+- more builtins
+
+- optimize for patterns
+e.g., iteration

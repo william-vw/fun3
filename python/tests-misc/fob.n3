@@ -1,0 +1,22 @@
+@prefix list: <http://www.w3.org/2000/10/swap/list#> .
+@prefix string: <http://www.w3.org/2000/10/swap/string#> .
+@prefix math: <http://www.w3.org/2000/10/swap/math#> .
+@prefix : <http://example.org/> . 
+
+{ 0 :fob ?m } <= {
+    ( "a" "b" ) list:member ?m
+} .
+
+{ 1 :fob ?m } <= {
+    ( "c" "d" ) list:member ?m
+} .
+
+{ ?n :fob ?f } 
+<= {
+    ?n math:greaterThan 1 .
+    ( ?n 1 ) math:difference ?n1 .
+    ( ?n 2 ) math:difference ?n2 .
+    ?n1 :fob ?f1 .
+    ?n2 :fob ?f2 .
+    ( ( ?f1 ) ( ?f2 ) ) list:append ?f .
+} .

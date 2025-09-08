@@ -36,7 +36,7 @@ class MemoizeCtuPass(Memoize):
         ctu_fn = args[-1] # last
         
         if self.verbose:
-            print(self.func.__name__, "<--", pass_args, self.args_res)
+            print(self.func.__name__, "<--", pass_args, "cache:", self.args_res)
         if pass_args not in self.args_res:
             all_cb_args = []
             # wrap ctu call; cb_args is result of func
@@ -44,6 +44,7 @@ class MemoizeCtuPass(Memoize):
             # call ctu_fn for each individual cb_args
             self.func(*pass_args, lambda *cb_args: self.wrap_ctu_call(all_cb_args, cb_args, ctu_fn))
             # get here when all ctu_fn calls are done
+            print(self.func.__name__, "caching:", pass_args, all_cb_args)
             self.remember(pass_args, all_cb_args)
         else:
             result = self.args_res[pass_args]
