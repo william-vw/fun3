@@ -21,11 +21,13 @@ class Memoize():
 # memoization for continuation passing
 class MemoizeCtuPass(Memoize):
     
-    def __init__(self, func):
+    def __init__(self, func, verbose=True):
         super().__init__(func)
+        self.verbose = verbose
     
     def wrap_ctu_call(self, all_cb_args, cb_args, ctu_fn):
-        print(self.func.__name__, "->", cb_args)
+        if self.verbose:
+            print(self.func.__name__, "->", cb_args)
         all_cb_args.append(cb_args)
         ctu_fn(*cb_args)
     
@@ -33,7 +35,8 @@ class MemoizeCtuPass(Memoize):
         pass_args = args[:-1] # all but last
         ctu_fn = args[-1] # last
         
-        print(self.func.__name__, "<--", pass_args, self.args_res)
+        if self.verbose:
+            print(self.func.__name__, "<--", pass_args, self.args_res)
         if pass_args not in self.args_res:
             all_cb_args = []
             # wrap ctu call; cb_args is result of func
@@ -44,6 +47,7 @@ class MemoizeCtuPass(Memoize):
             self.remember(pass_args, all_cb_args)
         else:
             result = self.args_res[pass_args]
-            print(self.func.__name__, "-m->", result)
+            if self.verbose:
+                print(self.func.__name__, "-m->", result)
             for cb_args in result:
                 ctu_fn(*cb_args)

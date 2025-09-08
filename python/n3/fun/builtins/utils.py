@@ -26,13 +26,12 @@ def is_numeric(lit):
 
 # TODO do this based on types of operands
 def xsd_num_type(num):
-    match (type(num)):
-        case 'int':
-            return xsdNs.int
-        case 'float':
-            return xsdNs.float
-        case 'complex':
-            return xsdNs.double
+    if isinstance(num, int):
+        return xsdNs['int']
+    elif isinstance(num, float):
+        return xsdNs['float']
+    elif isinstance(num, complex):
+        return xsdNs['double']
 
 def divide_buckets(coll, buckets, buck_no=0, start_idx=0, result=[]):
     if buck_no == len(buckets): # out of buckets

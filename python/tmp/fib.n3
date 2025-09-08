@@ -1,0 +1,19 @@
+@prefix math: <http://www.w3.org/2000/10/swap/math#> .
+@prefix : <http://example.org/> . 
+@prefix : <http://example.org/> . 
+
+# https://www.swi-prolog.org/pldoc/man?section=tabling-memoize
+
+{ 0 :fib 1 } <= {} .
+
+{ 1 :fib 1 } <= {} .
+
+{ ?n :fib ?f } 
+<= {
+    ?n math:greaterThan 1 .
+    ( ?n 1 ) math:difference ?n1 .
+    ( ?n 2 ) math:difference ?n2 .
+    ?n1 :fib ?f1 .
+    ?n2 :fib ?f2 .
+    ( ?f1 ?f2 ) math:sum ?f .
+} .

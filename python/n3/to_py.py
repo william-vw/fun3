@@ -79,15 +79,16 @@ def save_py(query, rules, data, out_path, params=None):
         print(unparsed)
     
     imports = []
+    
+    if params.has('tracing'):
+        unparsed = __add_tracing(unparsed, imports, params.get('tracing'))
         
     if params.has('code_dir'):
         unparsed = __use_code_dir(unparsed, imports, params.get('code_dir'))
     
-    if params.has('tracing'):
-        unparsed = __add_tracing(unparsed, imports, params.get('tracing'))
-    
-    if len(imports) > 0:
-        unparsed = "\n".join(dict.fromkeys(imports)) + "\n" + unparsed
+    # have to ensure that code_dir insert comes at the very top
+    # if len(imports) > 0:
+    #     unparsed = "\n".join(dict.fromkeys(imports)) + "\n" + unparsed
     
     with open(out_path, 'w') as fh:
         fh.write(unparsed)
@@ -119,21 +120,27 @@ def __exec_query(exec_ret, query):
     return "\n".join(out)
 
 def __use_code_dir(code, imports, parent_dir):
-    imports.append("import sys")
+    imports.append("sys")
     
-    return f"""sys.path.insert(0, "{parent_dir}") # noqa\n""" + code
+    return f"""import sys
+sys.path.insert(0, "{parent_dir}") # noqa\n""" + code
 
 # assumed that code_dir will point to folder with "lib/trace"
 def __add_tracing(code, imports, tracing):
-    imports.append("import sys")
-    
     trace_imports = [ tracing ]
-    ret =  f"""sys.settrace({tracing}) # noqa\n""" + code
-    
     if tracing == 'count_calls':
         trace_imports.append("print_call_counts")
-        ret += "\n\nprint_call_counts()"
-
-    imports.append(f"from lib.trace import {", ".join(trace_imports)}")
     
-    return ret
+    import_str = ""
+    if "sys" not in imports:    
+        import_str += "import sys\n"
+    import_str += f"from lib.trace import {", ".join(trace_imports)}\n"
+
+    code = f"""{import_str}sys.settrace({tracing}) # noqa\n""" + code
+    
+    if tracing == 'count_calls':
+        code += "\n\nprint_call_counts()"
+    
+    imports.extend(["sys", "lib.trace"])
+    
+    return code
