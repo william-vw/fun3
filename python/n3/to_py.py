@@ -23,8 +23,13 @@ def __proc_inputs(query, rules, data):
     return (query, rules, data)
 
 # params:
-# { 'print': { 'code: <bool>, 'all': <bool>, 'gen': <GenPython.params> } }
+# { 'print': { 'code: <bool>, 'all': <bool> }, 'gen': <GenPython.params> } }
 def run_py(query, rules, data, save_to=None, params=None):
+    if params and 'gen' in params: 
+        # do not call the query in the code
+        # (is done using __exec_query below)
+        params['gen']['call_query'] = False
+    
     params = Settings(params)
     
     start = time.perf_counter()

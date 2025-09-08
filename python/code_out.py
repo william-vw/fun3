@@ -3,7 +3,7 @@ from n3.objects import ANY, Terms, Iri, Var, Literal, Collection, GraphTerm, Tri
 from n3.ns import NS
 from lib.emit import emit
 from lib.memoize import MemoizeCtuPass
-data = parse_n3('@prefix : <http://example.org/> . \n@prefix : <http://example.org/> . \n\n:will :hasParent :paul .\n:paul :hasParent :edward .\n:edward :hasParent :peter . \n').data
+data = parse_n3('@prefix : <http://example.org/> . \n@prefix : <http://example.org/> . \n\n:will :hasParent :paul .\n:paul :hasParent :edward .\n# :edward :hasParent :peter . \n').data
 
 @MemoizeCtuPass
 def query(x_0, y_1, final_ctu):
