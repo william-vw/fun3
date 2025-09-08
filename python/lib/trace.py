@@ -30,11 +30,15 @@ def count_calls(frame, event, arg):
     return count_calls
 
 def print_call_counts():
+    total_all = 0
     print("\ncall counts:")
     for fn_name, call_dict in call_counts.items():
-        total_count = sum(call_dict.values())
-        print(f"- {fn_name}: #{total_count}")
+        total_fn = sum(call_dict.values())
+        total_all += total_fn
+        print(f"- {fn_name}: #{total_fn}")
         
         counts = sorted(call_dict.items(), key=lambda i: i[1], reverse=True)
         for call_args, count in counts:
             print(f"{call_args}: #{count}")
+ 
+    print(f"all: #{total_all}")

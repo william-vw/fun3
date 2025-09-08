@@ -1,5 +1,8 @@
 import sys
 sys.path.insert(0, "..") # noqa
+import sys
+from lib.trace import count_calls, print_call_counts
+sys.settrace(count_calls) # noqa
 from n3.parse import parse_n3_file
 from n3.objects import ANY, Terms, Iri, Var, Literal, Collection, GraphTerm, Triple
 from n3.ns import NS
@@ -13,8 +16,8 @@ data = parse_n3_file('/Users/wvw/git/n3/fun3/python/tests-misc/fib_data.n3').dat
 
 @MemoizeCtuPass
 def query(f_0, final_ctu):
-    data.find(Literal(4, NS.xsd['int']), Iri('http://example.org/fib'), f_0, lambda s, p, o: final_ctu(o))
-    rule_2(Literal(4, NS.xsd['int']), f_0, lambda n_1_m, f_2_m: final_ctu(f_2_m))
+    data.find(Literal(8, NS.xsd['int']), Iri('http://example.org/fib'), f_0, lambda s, p, o: final_ctu(o))
+    rule_2(Literal(8, NS.xsd['int']), f_0, lambda n_1_m, f_2_m: final_ctu(f_2_m))
 
 def rule_0(final_ctu):
     final_ctu()
@@ -55,4 +58,6 @@ def rule_2_4(n_1, f_2, n1_3, n2_4, f1_5, final_ctu):
 @MemoizeCtuPass
 def rule_2_5(n_1, f_2, n1_3, n2_4, f1_5, f2_6, final_ctu):
     math_sum(Collection([f1_5, f2_6]), f_2, lambda s, o: final_ctu(n_1, o))
-query(ANY, lambda f_0: emit(Triple(Literal(4, NS.xsd['int']), Iri('http://example.org/fib'), Var('f_0')), {'f_0': f_0}))
+query(ANY, lambda f_0: emit(Triple(Literal(8, NS.xsd['int']), Iri('http://example.org/fib'), Var('f_0')), {'f_0': f_0}))
+
+print_call_counts()
