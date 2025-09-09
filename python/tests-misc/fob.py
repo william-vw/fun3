@@ -4,6 +4,7 @@ from n3.parse import parse_n3_file
 from n3.objects import ANY, Terms, Iri, Var, Literal, Collection, GraphTerm, Triple
 from n3.ns import NS
 from lib.emit import emit
+from lib.memoize import MemoizeCtuPass
 from n3.fun.builtins.list import list_member
 from n3.fun.builtins.list import list_member
 from n3.fun.builtins.math import math_greaterThan
@@ -12,16 +13,20 @@ from n3.fun.builtins.math import math_difference
 from n3.fun.builtins.list import list_append
 data = parse_n3_file('/Users/wvw/git/n3/fun3/python/tests-misc/fob_data.n3').data
 
+@MemoizeCtuPass
 def query(f_0, final_ctu):
     data.find(Literal(3, NS.xsd['int']), Iri('http://example.org/fob'), f_0, lambda s, p, o: final_ctu(o))
     rule_2(Literal(3, NS.xsd['int']), f_0, lambda n_3_m, f_4_m: final_ctu(f_4_m))
 
+@MemoizeCtuPass
 def rule_0(m_1, final_ctu):
     list_member(Collection([Literal('a', NS.xsd['string']), Literal('b', NS.xsd['string'])]), m_1, lambda s, o: final_ctu(o))
 
+@MemoizeCtuPass
 def rule_1(m_2, final_ctu):
     list_member(Collection([Literal('c', NS.xsd['string']), Literal('d', NS.xsd['string'])]), m_2, lambda s, o: final_ctu(o))
 
+@MemoizeCtuPass
 def rule_2(n_3, f_4, final_ctu):
     math_greaterThan(n_3, Literal(1, NS.xsd['int']), lambda s, o: rule_2_1(s, f_4, final_ctu))
 

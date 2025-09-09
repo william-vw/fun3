@@ -27,7 +27,7 @@ class Memoize():
 # memoization for continuation passing
 class MemoizeCtuPass(Memoize):
     
-    def __init__(self, func, verbose=False, only_mod_flow=False):
+    def __init__(self, func, verbose=True, only_mod_flow=False):
         super().__init__(func)
         self.verbose = verbose
         # only modify the ctu call flow (testing)

@@ -469,7 +469,7 @@ class GenPython:
         return rule
 
     def __gen_empty_clause(self, clause, ctu_call):
-        clause_fn_def = self.bld.fn(clause.fn_name, self.__get_fn_params(clause.rule.avail_vars))
+        clause_fn_def = self.__gen_clause_fn(clause)
 
         # directly call ctu with same args
         ctu_call_bld = self.bld.stmt(self.bld.fn_call(ctu_call.ref, ctu_call.get_args()))
@@ -479,10 +479,7 @@ class GenPython:
         self.code_body.append(clause_fn_def)
 
     def __gen_clause(self, clause, ctu_call):
-        clause_fn_def = self.bld.fn(clause.fn_name, self.__get_fn_params(clause.rule.avail_vars))
-
-        if self.params.enabled('memoize'):
-            self.bld.fn_decorator(clause_fn_def, "MemoizeCtuPass")
+        clause_fn_def = self.__gen_clause_fn(clause)
 
         if self.__is_builtin(clause):
             clause_fn_body = self.__gen_builtin(clause, ctu_call)
@@ -495,6 +492,15 @@ class GenPython:
         self.bld.fn_body_stmts(clause_fn_def, clause_fn_body)
         
         self.code_body.append(clause_fn_def)
+
+    def __gen_clause_fn(self, clause):
+        clause_fn_def = self.bld.fn(clause.fn_name, self.__get_fn_params(clause.rule.avail_vars))
+        
+        # only decorate first rule function
+        if self.params.enabled('memoize') and clause.no == 0:
+            self.bld.fn_decorator(clause_fn_def, "MemoizeCtuPass")
+            
+        return clause_fn_def
 
     def __is_builtin(self, clause):
         return clause.tp.p.type() == Terms.IRI and clause.tp.p.iri.startswith(swapNs.iri)
