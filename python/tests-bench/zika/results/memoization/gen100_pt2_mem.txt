@@ -1,0 +1,47 @@
+> python code_out_mem.py   
+
+"Patient/p1247" <http://example.org/zika#testForZika> true .
+
+call counts:
+- rule_0: #1
+- rule_1: #1
+- rule_1_1: #150
+- rule_13: #150
+- rule_11: #150
+- rule_11_1: #150
+- rule_13_1: #106
+- rule_1_2: #58
+- rule_1_3: #58
+- rule_12: #117
+- rule_12_1: #117
+- rule_1_4: #16
+- rule_1_5: #16
+- rule_1_6: #16
+- rule_1_7: #16
+- rule_0_1: #16
+- rule_2: #16
+- rule_2_1: #16
+- rule_2_2: #19
+- rule_2_3: #19
+- rule_2_4: #19
+- rule_2_5: #19
+- rule_2_6: #19
+- rule_2_7: #19
+- rule_2_8: #19
+- rule_0_2: #3
+- rule_3: #3
+- rule_5: #3
+- rule_5_1: #3
+- rule_14: #3
+- rule_14_1: #7
+- rule_5_2: #1
+- rule_5_3: #1
+- rule_5_4: #1
+- rule_5_5: #1
+- rule_6: #1
+- rule_0_3: #1
+- rule_4: #3
+- rule_10: #3
+- rule_10_1: #1
+- rule_10_2: #1
+all: #1339

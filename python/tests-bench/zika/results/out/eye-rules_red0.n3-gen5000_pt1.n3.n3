@@ -1,5 +1,5 @@
-# Processed by EYE v11.19.7 (2025-06-01)
-# eye --quiet ./rules_red0.n3 --turtle ./data/gen5000_pt1.n3 --query ./query_eye.n3 --nope
+# Processed by EYE v11.20.11 (2025-09-09)
+# eye --quiet ./rules_red0.n3 ./data/gen5000_pt1.n3 --query ./query_eye.n3 --nope
 
 PREFIX zk: <http://example.org/zika#>
 
@@ -471,5 +471,5 @@ PREFIX zk: <http://example.org/zika#>
 "Patient/p30037" zk:testForZika true.
 "Patient/p30039" zk:testForZika true.
 "Patient/p30065" zk:testForZika true.
-# 2025-08-06T15:12:57.153Z in=44922 out=468 ent=468 step=468 brake=1 inf=4972639 sec=0.421 inf/sec=11811494
+# 2025-09-09T17:46:13.847Z in=44922 out=468 ent=468 step=468 brake=1 inf=56279555 sec=2.588 inf/sec=21746350
 # ENDS

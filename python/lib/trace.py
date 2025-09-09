@@ -37,8 +37,8 @@ def print_call_counts():
         total_all += total_fn
         print(f"- {fn_name}: #{total_fn}")
         
-        counts = sorted(call_dict.items(), key=lambda i: i[1], reverse=True)
-        for call_args, count in counts:
-            print(f"{call_args}: #{count}")
+        # counts = sorted(call_dict.items(), key=lambda i: i[1], reverse=True)
+        # for call_args, count in counts:
+        #     print(f"{call_args}: #{count}")
  
     print(f"all: #{total_all}")
