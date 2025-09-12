@@ -182,11 +182,11 @@ class MultiDictModel(Model):
     def find(self, subj, pred, obj, ctu):
         # print("find:", subj, pred, obj)
         
-        def found(s, p, o):
-            nonlocal ctu
+        for s, p, o in self.find_yield(subj, pred, obj):
             # print("found:", s, p, o)
             ctu(s, p, o)
         
+    def find_yield(self, subj, pred, obj):
         if not subj.is_wildcard(): # subject is given
             spo = self.spo
             if subj in spo:
@@ -195,23 +195,23 @@ class MultiDictModel(Model):
                     if pred in po:
                         if not obj.is_wildcard():  # subject+predicate+object is given
                             if obj in po[pred]:
-                                found(subj, pred, obj)
+                                yield subj, pred, obj
                         else:  # subject+predicate is given, object wildcard
                             for o in po[pred]:
                                 # composite (collections, graph terms) are wildcards if they have a variable
                                 # so still need to compare with these ungrounded composites
                                 if o == obj:
-                                    found(subj, pred, o)
+                                    yield subj, pred, o
                 else:  # subject given, predicate woldcard
                     for p in po:
                         if p == pred:
                             if not obj.is_wildcard(): # subject+object is given, predicate wildcard
                                 if obj in po[p]:
-                                    found(subj, p, obj)
+                                    yield subj, p, obj
                             else:  # subject given, predicate+object wildcards
                                 for o in po[p]:
                                     if o == obj:
-                                        found(subj, p, o)
+                                        yield subj, p, o
         elif not pred.is_wildcard(): # predicate is given, subject wildcard
             pos = self.pos
             if pred in pos:
@@ -220,13 +220,13 @@ class MultiDictModel(Model):
                     if obj in os:
                         for s in os[obj]:
                             if s == subj:
-                                found(s, pred, obj)
+                                yield s, pred, obj
                 else: # predicate is given, object+subject wildcard
                     for o in os:
                         if o == obj:
                             for s in os[o]:
                                 if s == subj:
-                                    found(s, pred, o)
+                                    yield s, pred, o
         elif not obj.is_wildcard(): # object is given, subject+predicate wildcard
             osp = self.osp
             if obj in osp:
@@ -235,10 +235,10 @@ class MultiDictModel(Model):
                     if s == subj:
                         for p in sp[s]:
                             if p == pred:
-                                found(s, p, obj)
+                                yield s, p, obj
         else: 
             for t in self:
-                found(t.s, t.p, t.o)
+                yield t.s, t.p, t.o
     
     def __hash__(self):
         raise NotImplementedError()
