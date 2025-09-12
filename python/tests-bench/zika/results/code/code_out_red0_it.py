@@ -5,9 +5,12 @@ from n3.parse import parse_n3_file
 from n3.objects import ANY, Terms, Iri, Var, Literal, Collection, GraphTerm, Triple
 from n3.ns import NS
 from lib.emit import emit
-data = parse_n3_file('/Users/wvw/git/n3/fun3/python/tests-bench/zika/data/gen5000_pt2.n3').data
+from timeit import default_timer as timer
 
-# takes same amount of time (ca. 11s) as ctu version
+start = timer()
+data = parse_n3_file('/Users/wvw/git/n3/fun3/python/tests-bench/zika/data/gen5000_pt2.n3').data
+end = timer()
+print("load:", end-start)
 
 # - but, perhaps more flexibility; 
 # if some clause does not contribute any variable values, 
@@ -124,10 +127,8 @@ def rule_4(p_14, c_15):
         for s, _, _ in data.find_yield(c_15, NS.rdf['type'], Iri('http://hl7.org/fhir/Condition')):
             yield p_14, s
 
-import time
-
-start_time = time.time()
+start = timer()
 for x_0 in query(ANY):
     emit(Triple(Var('x_0'), Iri('http://example.org/zika#testForZika'), Literal(True, NS.xsd['boolean'])), {'x_0': x_0})
-end_time = time.time()    
-print("elapsed:", (end_time - start_time))
+end = timer()
+print("reason:", end-start)

@@ -1,0 +1,45 @@
+gen5000_pt2, red0:
+fun3:
+load: 11.04592441697605
+reason: 0.12056033289991319
+eye:
+0,rules_red0.n3,gen5000_pt2.n3,6889,36
+
+gen5000_pt2, red1:
+fun3:
+load: 11.081663666991517
+reason: 1.634492625016719
+eye:
+0,rules_red1.n3,gen5000_pt2.n3,6855,59
+
+gen10000_pt2, red0:
+fun3:
+load: 23.549426290905103
+reason: 0.25126112485304475
+eye:
+0,rules_red0.n3,gen10000_pt2.n3,14745,80
+
+gen10000_pt2, red1:
+fun3:
+load: 23.288319875020534
+reason: 6.564937541959807
+eye:
+0,rules_red1.n3,gen10000_pt2.n3,14692,267
+
+gen20000_pt2, red0:
+fun3:
+load: 46.9614442079328
+reason: 0.4649237908888608
+eye:
+0,rules_red0.n3,gen20000_pt2.n3,30781,160
+
+gen20000_pt2, red1:
+fun3:
+load: 46.79774041683413
+reason: 22.774540125159547
+eye:
+0,rules_red1.n3,gen20000_pt2.n3,30297,1084
+
+gen50000_pt2, red0:
+load: 117.78935004211962
+reason: 1.2652895420324057
