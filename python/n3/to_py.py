@@ -35,10 +35,12 @@ def run_py(query, rules, data, save_to=None, params=None):
     
     params = Settings(params)
     
+    # network (query, rules)
     start_netw = time.perf_counter()
     query, rules, data = __proc_inputs(query, rules, data)
     netw_time = round((time.perf_counter() - start_netw)*1000,0)
     
+    # generate
     start_gen = time.perf_counter()
     mod = gen_py(rules, query, data, params['gen'])
     gen_time = round((time.perf_counter() - start_gen)*1000,0)
@@ -46,16 +48,22 @@ def run_py(query, rules, data, save_to=None, params=None):
     if not params['print'].enabled('all') and params['print'].enabled('code'):
         print(unparse(mod) + "\n\n")
     
+    # reason
     start_reas = time.perf_counter() # will include data load
     exec_ret = __get_exec(mod)
     output = __exec_query(exec_ret, query)
     reas_time = round((time.perf_counter() - start_reas)*1000,0)
     
-    # get data load time
+    # load (data)
     if params['gen'].enabled('experiment'):
         load_time = exec_ret['load_time'] * 1000
         reas_time -= load_time # subtract from reasoning time
         netw_time += load_time # add to network time
+    
+    # network (serialize inferences) 
+    start_save = time.perf_counter()
+    output = "\n".join(output)
+    save_time = round((time.perf_counter() - start_save)*1000,0)
     
     if params['print'].enabled('all'):
         print(output)
@@ -63,15 +71,16 @@ def run_py(query, rules, data, save_to=None, params=None):
         print(unparse(mod))
 
     if save_to is not None:
-        start_netw = time.perf_counter()
+        # network (store inferences)
+        start_save = time.perf_counter()
         with open(save_to, 'w') as fh:
             fh.write(output)
-        netw_time += round((time.perf_counter() - start_netw)*1000,0)
+        save_time += round((time.perf_counter() - start_save)*1000,0)
     
     total_time = round((time.perf_counter() - start_total)*1000,0)
     
     if params['gen'].enabled('experiment'):
-        return (netw_time, reas_time, gen_time, total_time)
+        return (netw_time, save_time, gen_time, reas_time, total_time)
     elif save_to is None:
         return output
        
@@ -126,7 +135,7 @@ def __exec_query(exec_ret, query):
     out = set()
     query_fn(*[ANY for _ in variables], lambda *args: out.add(str(query.instantiate({ var: args[idx] for idx, var in enumerate(variables) }))))
     
-    return "\n".join(out)
+    return out
 
 def __use_code_dir(code, imports, parent_dir):
     imports.append("sys")

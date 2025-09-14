@@ -56,9 +56,11 @@ def get_times_file(path, system):
     exists = os.path.exists(times_file)
     times_fh = open(times_file, 'a')
     if not exists:
-        header = "run,query,data,netw_time,reas_time"
-        if system == "fun3":
-            header += ",gen_time,total_time"
+        match (system):
+            case 'eye':
+                header = "run,query,data,netw_time,reas_time"
+            case 'fun3':
+                header = "run,query,data,netw_time,save_time,gen_time,reas_time,total_time"
         header += "\n"
         times_fh.write(header)
         
@@ -67,8 +69,8 @@ def get_times_file(path, system):
 def record_eye(times_file, run, query, data, netw_time, reas_time):
     times_file.write(f"{run},{query},{data},{netw_time},{reas_time}\n")
     
-def record_fun3(times_file, run, query, data, netw_time, reas_time, gen_time, total_time):
-    times_file.write(f"{run},{query},{data},{netw_time},{reas_time},{gen_time},{total_time}\n")
+def record_fun3(times_file, run, query, data, netw_time, reas_time, gen_time, netw_time2,total_time):
+    times_file.write(f"{run},{query},{data},{netw_time},{reas_time},{gen_time},{netw_time2},{total_time}\n")
     
     
 def __load_n3_time(path):
@@ -98,11 +100,11 @@ def load_n3_times(path, pt=None, q=None):
 
     return df_n3
 
-def load_n3_agg(path, pt=None, q=None, grouper=['data']):
+def load_n3_agg(path, pt=None, q=None, data_limit=None, grouper=['data']):
     df_n3 = load_n3_times(path, pt=pt, q=q)
     cols = ['netw_time', 'reas_time', 'total_time']
     if "fun3" in path:
-        cols.append("gen_time")
+        cols.extend(["save_time", "gen_time"])
     df_n3_agg = df_n3.groupby(grouper)[cols].mean().reset_index()
 
     if 'query' in grouper:
@@ -110,6 +112,9 @@ def load_n3_agg(path, pt=None, q=None, grouper=['data']):
     if 'data' in grouper:
         df_n3_agg['data_id'] = df_n3_agg['data'].str.slice(
             len("gen"), -len("_ptx.n3")).astype(int)
+    
+    if data_limit is not None:
+        df_n3_agg = df_n3_agg[df_n3_agg['data_id'] <= data_limit]
     
     sorter = [ f"{g}_id" for g in grouper ]
     df_n3_agg = df_n3_agg.sort_values(by=sorter)
