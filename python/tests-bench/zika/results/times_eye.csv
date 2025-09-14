@@ -41,3 +41,16 @@ run,query,data,netw_time,reas_time
 0,rules_red1.n3,gen5000_pt1.n3,3537,7
 0,rules_red1.n3,gen5000_pt2.n3,6885,61
 0,rules_red1.n3,gen5000_pt5.n3,17556,1020
+
+0,rules_red0.n3,gen7000_pt1.n3,5048,24
+0,rules_red0.n3,gen7000_pt2.n3,9725,49
+0,rules_red0.n3,gen10000_pt1.n3,7368,39
+0,rules_red0.n3,gen10000_pt2.n3,14643,77
+0,rules_red0.n3,gen20000_pt1.n3,15298,86
+0,rules_red0.n3,gen20000_pt2.n3,30377,160
+0,rules_red1.n3,gen7000_pt1.n3,5084,21
+0,rules_red1.n3,gen7000_pt2.n3,9677,119
+0,rules_red1.n3,gen10000_pt1.n3,7279,33
+0,rules_red1.n3,gen10000_pt2.n3,14702,237
+0,rules_red1.n3,gen20000_pt1.n3,15215,122
+0,rules_red1.n3,gen20000_pt2.n3,30216,1130
