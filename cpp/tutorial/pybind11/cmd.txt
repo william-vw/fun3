@@ -1,0 +1,10 @@
+g++ -O3 -Wall -shared -std=c++11 example.cpp -o libexample.so
+g++ -O3 -Wall -shared -std=c++11 -undefined dynamic_lookup $(python3 -m pybind11 --includes) example_bind.cpp -L. -lexample -o example$(python3-config --extension-suffix)
+
+g++ -O3 -Wall -shared -std=c++11 example2.cpp -o libexample2.so
+g++ -O3 -Wall -shared -std=c++11 -undefined dynamic_lookup $(python3 -m pybind11 --includes) example2_bind.cpp -L. -lexample2 -o example2$(python3-config --extension-suffix)
+
+# copy & rename setup1.py / setup2.py as setup.py
+# note: also installs it as a library (duh)
+(to remove, run `pip uninstall example`)
+pip install .
