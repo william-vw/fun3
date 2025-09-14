@@ -58,7 +58,7 @@ def get_times_file(path, system):
     if not exists:
         header = "run,query,data,netw_time,reas_time"
         if system == "fun3":
-            header += ",gen_time,exec_time"
+            header += ",gen_time,total_time"
         header += "\n"
         times_fh.write(header)
         
@@ -67,8 +67,8 @@ def get_times_file(path, system):
 def record_eye(times_file, run, query, data, netw_time, reas_time):
     times_file.write(f"{run},{query},{data},{netw_time},{reas_time}\n")
     
-def record_fun3(times_file, run, query, data, netw_time, reas_time, gen_time, exec_time):
-    times_file.write(f"{run},{query},{data},{netw_time},{reas_time},{gen_time},{exec_time}\n")
+def record_fun3(times_file, run, query, data, netw_time, reas_time, gen_time, total_time):
+    times_file.write(f"{run},{query},{data},{netw_time},{reas_time},{gen_time},{total_time}\n")
     
     
 def __load_n3_time(path):
@@ -84,12 +84,17 @@ def __load_n3_time(path):
 
 def load_n3_times(path, pt=None, q=None):
     df_n3 = pd.read_csv(path)
+    df_n3 = df_n3.dropna(how='all')
+    
     if pt is not None:
         df_n3 = df_n3[df_n3['data'].str.contains(pt)]
     if q is not None:
         df_n3 = df_n3[df_n3['query'].str.contains(q)]
     
-    df_n3['total_time'] = df_n3['netw_time'] + df_n3['reas_time']
+    df_n3['netw_time'] = df_n3['netw_time'].astype(float)
+    df_n3['reas_time'] = df_n3['reas_time'].astype(float)
+    if 'total_time' not in df_n3.columns:
+        df_n3['total_time'] = df_n3['netw_time'] + df_n3['reas_time']
 
     return df_n3
 

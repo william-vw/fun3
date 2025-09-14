@@ -1,7 +1,24 @@
+gen1000_pt2, red1:
+load: 1.8623593328520656
+reason: 0.09650999959558249
+
+gen1000_pt5, red1:
+load: 4.6182527909986675
+reason: 1.2489409167319536
+
+gen2000_pt2, red1:
+load: 4.2874497920274734
+reason: 0.35260245902463794
+
+gen2000_pt5, red1:
+load: 9.89016145793721
+reason: 4.730214834213257
+
 gen5000_pt2, red0:
 fun3:
 load: 11.04592441697605
 reason: 0.12056033289991319
+reason (it): 0.10941770812496543
 eye:
 0,rules_red0.n3,gen5000_pt2.n3,6889,36
 
@@ -12,10 +29,15 @@ reason: 1.634492625016719
 eye:
 0,rules_red1.n3,gen5000_pt2.n3,6855,59
 
+gen5000_pt5, red1:
+load: 26.23425458278507
+reason: 27.150157208088785
+
 gen10000_pt2, red0:
 fun3:
 load: 23.549426290905103
 reason: 0.25126112485304475
+reason (it): 0.24660541699267924
 eye:
 0,rules_red0.n3,gen10000_pt2.n3,14745,80
 
@@ -30,6 +52,7 @@ gen20000_pt2, red0:
 fun3:
 load: 46.9614442079328
 reason: 0.4649237908888608
+reason (it): 0.47417000005953014
 eye:
 0,rules_red0.n3,gen20000_pt2.n3,30781,160
 
@@ -43,3 +66,33 @@ eye:
 gen50000_pt2, red0:
 load: 117.78935004211962
 reason: 1.2652895420324057
+reason (it): 1.1755807078443468
+eye:
+ eye --quiet ./rules_red0.n3 ./data/gen50000_pt2.n3 --query ./query_eye.n3 --nope
+EYE v11.20.11 (2025-09-09)
+SWI-Prolog version 9.2.7
+starting 31 [msec cputime] 34 [msec walltime]
+GET file:///Users/wvw/git/n3/fun3/python/tests-bench/zika/rules_red0.n3 SC=5
+GET file:///Users/wvw/git/n3/fun3/python/tests-bench/zika/data/gen50000_pt2.n3 ** ERROR ** file:///Users/wvw/git/n3/fun3/python/tests-bench/zika/data/gen50000_pt2.n3 ** error(resource_error(stack),stack_overflow{choicepoints:17,depth:56268,environments:56255,globalused:773095,localused:8355,non_terminating:[frame(56242,user:statements_optional(_197912584,[1454650],_197912588),[]),frame(56241,user:statements_optional(_197912612,[1454658],_197912616),[])],stack_limit:1048576,trailused:29371})
+SC=0
+GET file:///Users/wvw/git/n3/fun3/python/tests-bench/zika/query_eye.n3 SC=1
+networking -5410 [msec cputime] 34589 [msec walltime]
+reasoning 0 [msec cputime] 0 [msec walltime]
+2025-09-13T19:45:08.815Z in=6 out=0 ent=0 step=0 brake=1 inf=500292970 sec=-5.379 inf/sec=-93008546
+
+gen100000_pt2, red0:
+load: 233.1305830408819
+reason: 2.7801823751069605
+reason (it): 2.482720874948427
+eye:
+eye --quiet ./rules_red0.n3 ./data/gen100000_pt2.n3 --query ./query_eye.n3 --nope
+EYE v11.20.11 (2025-09-09)
+SWI-Prolog version 9.2.7
+starting 26 [msec cputime] 46 [msec walltime]
+GET file:///Users/wvw/git/n3/fun3/python/tests-bench/zika/rules_red0.n3 SC=5
+GET file:///Users/wvw/git/n3/fun3/python/tests-bench/zika/data/gen100000_pt2.n3 ** ERROR ** file:///Users/wvw/git/n3/fun3/python/tests-bench/zika/data/gen100000_pt2.n3 ** error(resource_error(stack),stack_overflow{choicepoints:16,depth:28160,environments:28146,globalused:835970,localused:4183,non_terminating:[frame(28132,user:statements_optional(_214008632,[4884309],_214008636),[]),frame(28131,user:statements_optional(_214008660,[4884317],_214008664),[])],stack_limit:1048576,trailused:15350})
+SC=0
+GET file:///Users/wvw/git/n3/fun3/python/tests-bench/zika/query_eye.n3 SC=1
+networking 3945 [msec cputime] 32196 [msec walltime]
+reasoning 0 [msec cputime] 0 [msec walltime]
+2025-09-13T19:43:10.817Z in=6 out=0 ent=0 step=0 brake=1 inf=507448785 sec=3.971 inf/sec=127788664

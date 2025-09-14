@@ -3,6 +3,7 @@ sys.path.insert(0, "../")
 sys.path.insert(0, "../../")
 from pathlib import Path
 import time
+import re
 from ast import dump, unparse, parse
 from lib.utils import Settings
 from n3.parse import parse_n3
@@ -25,6 +26,8 @@ def __proc_inputs(query, rules, data):
 # params:
 # { 'print': { 'code: <bool>, 'all': <bool> }, 'gen': <GenPython.params> } }
 def run_py(query, rules, data, save_to=None, params=None):
+    start_total = time.perf_counter()
+    
     if params and 'gen' in params: 
         # do not call the query in the code
         # (is done using __exec_query below)
@@ -32,39 +35,45 @@ def run_py(query, rules, data, save_to=None, params=None):
     
     params = Settings(params)
     
-    start = time.perf_counter()
+    start_netw = time.perf_counter()
     query, rules, data = __proc_inputs(query, rules, data)
-    netw_time = round((time.perf_counter() - start)*1000,0)
+    netw_time = round((time.perf_counter() - start_netw)*1000,0)
     
-    start = time.perf_counter()
+    start_gen = time.perf_counter()
     mod = gen_py(rules, query, data, params['gen'])
-    gen_time = round((time.perf_counter() - start)*1000,0)
+    gen_time = round((time.perf_counter() - start_gen)*1000,0)
     
     if not params['print'].enabled('all') and params['print'].enabled('code'):
         print(unparse(mod) + "\n\n")
     
-    start = time.perf_counter()
+    start_reas = time.perf_counter() # will include data load
     exec_ret = __get_exec(mod)
     output = __exec_query(exec_ret, query)
-    exec_time = round((time.perf_counter() - start)*1000,0)
+    reas_time = round((time.perf_counter() - start_reas)*1000,0)
     
-    reas_time = gen_time + exec_time
+    # get data load time
+    if params['gen'].enabled('experiment'):
+        load_time = exec_ret['load_time'] * 1000
+        reas_time -= load_time # subtract from reasoning time
+        netw_time += load_time # add to network time
     
     if params['print'].enabled('all'):
         print(output)
         print("-- START CODE --")
         print(unparse(mod))
 
-    else:
-        if save_to is None:
-            return output
-        else:
-            start = time.perf_counter()
-            with open(save_to, 'w') as fh:
-                fh.write(output)
-            netw_time += round((time.perf_counter() - start)*1000,0)
-        
-    return (netw_time, gen_time, exec_time, reas_time)
+    if save_to is not None:
+        start_netw = time.perf_counter()
+        with open(save_to, 'w') as fh:
+            fh.write(output)
+        netw_time += round((time.perf_counter() - start_netw)*1000,0)
+    
+    total_time = round((time.perf_counter() - start_total)*1000,0)
+    
+    if params['gen'].enabled('experiment'):
+        return (netw_time, reas_time, gen_time, total_time)
+    elif save_to is None:
+        return output
        
 # params:
 # { 'print': { 'code: <bool> }, 'tracing': <bool>, 'code_dir': <string>, 'gen': <GenPython.params> }
@@ -101,7 +110,7 @@ def __get_exec(mod):
     
     for name, code in new_refs.items():
         globals()[name] = code
-        
+    
     return new_refs
 
 # def __unparse_with_lineno(ast):

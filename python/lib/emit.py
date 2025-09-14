@@ -9,7 +9,7 @@ def emit(t, inst_dict):
     t = t.instantiate(inst_dict)
             
     if t not in emitted:
-        print(t)
+        # print(t)
         emitted.add(t)
     # else:
     #     print("skipping duplicate")

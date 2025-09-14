@@ -9,7 +9,7 @@ from n3.fun.builtins.list import list_in
 from timeit import default_timer as timer
 
 start = timer()
-data = parse_n3_file('/Users/wvw/git/n3/fun3/python/tests-bench/zika/data/gen20000_pt2.n3').data
+data = parse_n3_file('/Users/wvw/git/n3/fun3/python/tests-bench/zika/data/gen5000_pt5.n3').data
 end = timer()
 print("load:", end-start)
 

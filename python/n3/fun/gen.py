@@ -360,32 +360,39 @@ class GenPython:
         self.__process_rules(rules)
         
         self.code_imports = []; self.code_body = []
+        if self.params.enabled('experiment'):
+            self.__prep_exp()
+            
         self.__gen_data_python(data)
         self.__gen_rule_python(rules, query)
         
         return self.bld.module(self.code_imports + self.code_body)
 
     def __gen_data_python(self, data):
+        stmts = []
         if data.path is not None:
             import_fn = 'parse_n3_file'
-            assn = self.bld.assn('data', 
+            stmts.append(self.bld.assn('data', 
                 self.bld.attr_ref_expr(
-                    self.bld.fn_call(self.bld.ref('parse_n3_file'), [ self.bld.cnst(str(data.path.resolve()))] ),
+                    self.bld.fn_call(self.bld.ref('parse_n3_file'), [ self.bld.cnst(str(data.path.resolve())) ] ),
                     'data'
-                ))
+                )))
         elif data.data_str is not None:
             import_fn = 'parse_n3'
-            assn = self.bld.assn('data', 
+            stmts.append(self.bld.assn('data', 
                 self.bld.attr_ref_expr(
-                    self.bld.fn_call(self.bld.ref('parse_n3'), [ self.bld.cnst(data.data_str)] ),
+                    self.bld.fn_call(self.bld.ref('parse_n3'), [ self.bld.cnst(data.data_str) ] ),
                     'data'
-                ))
+                )))
         else:
             raise "require a data path or string to load from"
         
+        if self.params.enabled('experiment'):
+            self.__measure_time("load", stmts)
+        
         self.code_imports.append(self.bld.import_from('n3.parse', [import_fn]))
         
-        self.code_body.append(assn)
+        self.code_body.extend(stmts)
         
     def __gen_rule_python(self, rules, query):
         self.code_imports.append(self.bld.import_from('n3.objects', ['ANY', 'Terms', 'Iri', 'Var', 'Literal', 'Collection', 'GraphTerm', 'Triple']))
@@ -401,7 +408,7 @@ class GenPython:
             self.__gen_rule(rule_fn)
         
         if self.params.enabled('call_query'):
-            self.__gen_call_rule(query_fn)
+            self.__gen_call_rule(query_fn, is_query=True)
         
     def __process_query(self, query):
         query_rule = Triple(query, logNs['implies'], Literal(True, xsdNs['boolean']))
@@ -572,7 +579,7 @@ class GenPython:
         
         return call_bld
 
-    def __gen_call_rule(self, rule_fn):
+    def __gen_call_rule(self, rule_fn, is_query=False):
         head_triple = rule_fn.head.model.triple_at(0)
         ret_args = rule_fn.input_vars
         
@@ -588,6 +595,7 @@ class GenPython:
         
         args = [ self.bld.val(ANY) for _ in ret_args ] + [ lmbda_ctu ]
         call_bld = self.bld.stmt(self.bld.fn_call(self.bld.ref(rule_fn.fn_name), args))
+        
         self.code_body.append(call_bld)
 
     def __unify(self, clause, match_tp, fn_call, ctu_call):
@@ -644,3 +652,11 @@ class GenPython:
     
     def __get_fn_params(self, params, final=False):
         return params + [ self.names['final_ctu'] ] if not final else params
+    
+    def __prep_exp(self):
+        self.code_imports.append(self.bld.import_from_as('timeit', [ ( 'default_timer', 'timer' ) ]))
+        
+    def __measure_time(self, op_name, stmts):
+        stmts.insert(0, self.bld.assn('start', self.bld.fn_call(self.bld.ref('timer'), [])))
+        stmts.append(self.bld.assn('end', self.bld.fn_call(self.bld.ref('timer'), [])))
+        stmts.append(self.bld.assn(f"{op_name}_time", self.bld.bin_exp(self.bld.ref('end'), 'subtract', self.bld.ref('start'))))

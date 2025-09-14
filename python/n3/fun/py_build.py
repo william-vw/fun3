@@ -26,6 +26,9 @@ class PyBuilder:
     def import_from(self, module, names):
         return self.__fix(ast.ImportFrom(module=module, names=[self.__fix(ast.alias(name=n)) for n in names], level=0))
 
+    def import_from_as(self, module, names_aliases):
+        return self.__fix(ast.ImportFrom(module=module, names=[self.__fix(ast.alias(name=name, asname=alias)) for name, alias in names_aliases], level=0))
+
     def import_as(self, module, alias):
         return self.__fix(ast.Import(names=[self.__fix(ast.alias(name=module, asname=alias))]))
 
@@ -187,11 +190,23 @@ class PyBuilder:
             case 'lte': cmp = ast.LtE()
             case 'is': cmp = ast.Is()
             case 'is not': cmp = ast.IsNot()
-            case _: raise BuildException("inconceivable")
+            case _: raise BuildException("inconceivable: " + cmp)
         self.__fix(cmp)
         
         return self.__fix(ast.Compare(left=ops[0], ops=[cmp], comparators=ops[1:]))
         
+    def bin_exp(self, left, op, right):
+        match op:
+            case 'add':
+                op = ast.Add()
+            case 'subtract':
+                op = ast.Sub()
+            case _: raise BuildException("inconceivable: " + op)
+        
+        op = self.__fix(op)
+        
+        return self.__fix(ast.BinOp(left, op, right))
+    
     def assn(self, var, expr):
         # I made this mistake so often I added an error for it
         if not isinstance(var, str):

@@ -8,5 +8,5 @@ PREFIX zk: <http://example.org/zika#>
 "Patient/p1493" zk:testForZika true.
 "Patient/p1546" zk:testForZika true.
 "Patient/p1566" zk:testForZika true.
-# 2025-09-09T17:46:21.489Z in=3329 out=5 ent=5 step=5 brake=1 inf=4388264 sec=0.265 inf/sec=16559487
+# 2025-09-14T14:26:54.838Z in=3329 out=5 ent=5 step=5 brake=1 inf=4388265 sec=0.269 inf/sec=16313253
 # ENDS
