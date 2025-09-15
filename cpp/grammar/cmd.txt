@@ -1,0 +1,14 @@
+- install macos runtime
+(prebuilt not working for arm64)
+% cd cpp/grammar/antlr4-cpp-runtime-4.13.2-macos
+% ./deploy_macos.sh
+
+- generate lexer, parser
+% java -jar ../../grammar/antlr-4.13.2-complete.jar -Dlanguage=Cpp -o ./parser ../../grammar/n3.g4
+
+- compile lexer, parser
+% cd parser
+% g++ -O3 -Iantlr4-runtime/ -Lantlr4-cpp-runtime-4.13.2-source/runtime -lantlr4-runtime -std=c++17 -Wall -shared -std=c++17 parser/*.cpp -o libn3Parser.so
+
+- compile example
+% g++ -std=c++17 -o test test.cpp -Iparser/ -Iantlr4-runtime/ -Lantlr4-cpp-runtime-4.13.2-source/runtime -lantlr4-runtime -L. -ln3Parser

@@ -1,0 +1,58 @@
+
+// Generated from ../../grammar/n3.g4 by ANTLR 4.13.2
+
+#pragma once
+
+
+#include "antlr4-runtime.h"
+
+
+
+
+class  n3Lexer : public antlr4::Lexer {
+public:
+  enum {
+    T__0 = 1, T__1 = 2, T__2 = 3, T__3 = 4, T__4 = 5, T__5 = 6, T__6 = 7, 
+    T__7 = 8, T__8 = 9, T__9 = 10, T__10 = 11, T__11 = 12, T__12 = 13, T__13 = 14, 
+    T__14 = 15, T__15 = 16, T__16 = 17, T__17 = 18, T__18 = 19, T__19 = 20, 
+    T__20 = 21, T__21 = 22, COMMENT = 23, BooleanLiteral = 24, String = 25, 
+    IRIREF = 26, PNAME_NS = 27, PNAME_LN = 28, BLANK_NODE_LABEL = 29, LANGTAG = 30, 
+    INTEGER = 31, DECIMAL = 32, DOUBLE = 33, EXPONENT = 34, STRING_LITERAL_LONG_SINGLE_QUOTE = 35, 
+    STRING_LITERAL_LONG_QUOTE = 36, STRING_LITERAL_QUOTE = 37, STRING_LITERAL_SINGLE_QUOTE = 38, 
+    UCHAR = 39, ECHAR = 40, WS = 41, IPLSTART = 42, ANON = 43, QuickVarName = 44, 
+    PN_CHARS_U = 45, PN_CHARS_BASE = 46, PN_CHARS = 47, BASE = 48, PREFIX = 49, 
+    PN_PREFIX = 50, PN_LOCAL = 51, PLX = 52, PERCENT = 53, HEX = 54, PN_LOCAL_ESC = 55
+  };
+
+  explicit n3Lexer(antlr4::CharStream *input);
+
+  ~n3Lexer() override;
+
+
+  std::string getGrammarFileName() const override;
+
+  const std::vector<std::string>& getRuleNames() const override;
+
+  const std::vector<std::string>& getChannelNames() const override;
+
+  const std::vector<std::string>& getModeNames() const override;
+
+  const antlr4::dfa::Vocabulary& getVocabulary() const override;
+
+  antlr4::atn::SerializedATNView getSerializedATN() const override;
+
+  const antlr4::atn::ATN& getATN() const override;
+
+  // By default the static state used to implement the lexer is lazily initialized during the first
+  // call to the constructor. You can call this function if you wish to initialize the static state
+  // ahead of time.
+  static void initialize();
+
+private:
+
+  // Individual action functions triggered by action() above.
+
+  // Individual semantic predicate functions triggered by sempred() above.
+
+};
+

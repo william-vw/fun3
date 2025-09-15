@@ -660,3 +660,17 @@ def parse_n3(string, has_vars=False):
     # print("load time:", (end-start))
     
     return ret
+
+def test_parser(path):
+    start = time.time()
+    
+    string = open(path, 'r').read()
+    
+    lexer = n3Lexer(InputStream(string))
+    stream = CommonTokenStream(lexer)
+    parser = n3Parser(stream)
+
+    _ = parser.n3Doc()
+    
+    end = time.time()
+    print("time:", (end-start))

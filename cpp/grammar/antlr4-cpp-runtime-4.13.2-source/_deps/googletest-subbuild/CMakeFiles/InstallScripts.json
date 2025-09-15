@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/Users/wvw/git/n3/fun3/cpp/grammar/antlr4-cpp-runtime-4.13.2-source/_deps/googletest-subbuild/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

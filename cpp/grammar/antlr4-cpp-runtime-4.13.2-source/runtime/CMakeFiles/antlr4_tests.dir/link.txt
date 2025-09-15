@@ -1,0 +1,1 @@
+/usr/bin/c++    -Wall -pedantic -W -std=c++17 -stdlib=libc++ -O3 -DNDEBUG -O3 -DNDEBUG  -arch arm64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/antlr4_tests.dir/tests/Utf8Test.cpp.o -o antlr4_tests  libantlr4-runtime.a ../lib/libgtest_main.a -framework CoreFoundation ../lib/libgtest.a
