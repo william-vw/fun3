@@ -4,13 +4,11 @@
 #include "parser/n3Lexer.h"
 #include "parser/n3Parser.h"
 #include <chrono>
-#include <pybind11/pybind11.h>
 
 using namespace std;
 using namespace antlr4;
-namespace py = pybind11;
 
-double parse(string path, py::object &func) {
+void parse(string path) {
     auto start = chrono::high_resolution_clock::now();
 
     ifstream stream;
@@ -27,8 +25,14 @@ double parse(string path, py::object &func) {
     // auto duration_ms = chrono::duration_cast<chrono::milliseconds>(end - start);
     chrono::duration<double> duration = (end - start);
 
-    // cout << duration.count() << endl;
-    func(duration.count());
-    
-    return duration.count();
+    cout << duration.count() << endl;
 }
+
+int main(int argc, const char* argv[]) {
+    string path = argv[1];
+    cout << path << endl;
+
+    parse(path);
+
+    return 0;
+} 
