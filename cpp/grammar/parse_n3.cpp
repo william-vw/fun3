@@ -8,10 +8,7 @@
 using namespace std;
 using namespace antlr4;
 
-int main(int argc, const char* argv[]) {
-    string path = argv[1];
-    cout << path << endl;
-
+double parse(string path) {
     auto start = chrono::high_resolution_clock::now();
 
     ifstream stream;
@@ -20,7 +17,7 @@ int main(int argc, const char* argv[]) {
     ANTLRInputStream input(stream);
     n3Lexer lexer(&input);
     CommonTokenStream tokens(&lexer);
-    n3Parser parser(&tokens);    
+    n3Parser parser(&tokens);
 
     n3Parser::N3DocContext* tree = parser.n3Doc();
 
@@ -30,5 +27,14 @@ int main(int argc, const char* argv[]) {
 
     cout << duration.count() << endl;
 
-    return 0;
+    return duration.count();
 }
+
+int main(int argc, const char* argv[]) {
+    string path = argv[1];
+    cout << path << endl;
+
+    parse(path);
+
+    return 0;
+} 
