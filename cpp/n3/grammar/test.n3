@@ -1,0 +1,40 @@
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ex: <http://example1.org/> .
+@prefix : <http://example.org/> .
+@base <http://example.org/> .
+BASE <http://example.org#>
+
+ex:hello ex:at ex:world , ex:mars, ex:venus .
+
+ex:world a :Planet .
+ex:world = :sol .
+
+ex:earth :goodToLive true .
+ex:venus :goodToLive false .
+
+[   a :HeavenlyBody ;
+    rdfs:comment "possibly planet x"
+] a :Planet .
+
+[ id ex:planetY
+    a :HeavenlyBody ;
+    rdfs:comment "possibly planet y"
+] a :Planet .
+
+( ex:world ex:venus ex:mars ) a :ListOfPlanets .
+
+{ :a :b { :x :y :z } } => { :d :e :f } .
+
+<http://en.wikipedia.org/wiki/Helium>
+  :atomicNumber 2 ;               # xsd:integer
+  :atomicMass 4.002602 ;          # xsd:decimal
+  :specificGravity 1.663E-4 ;     # xsd:double
+  :isNobleGas true ;              # xsd:boolean
+  rdfs:label "Helium" .           # xsd:string 
+
+ex:world :name "wereld"@nedl .
+
+_:blank _:blanky _:mcblank .
+
+{ ?a ?b { ?x ?y ?z } } => { ?a ?b ?x } .

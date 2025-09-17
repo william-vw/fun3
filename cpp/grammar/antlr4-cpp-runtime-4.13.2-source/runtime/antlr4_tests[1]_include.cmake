@@ -1,5 +1,0 @@
-if(EXISTS "/Users/wvw/git/n3/fun3/cpp/grammar/antlr4-cpp-runtime-4.13.2-source/runtime/antlr4_tests[1]_tests.cmake")
-  include("/Users/wvw/git/n3/fun3/cpp/grammar/antlr4-cpp-runtime-4.13.2-source/runtime/antlr4_tests[1]_tests.cmake")
-else()
-  add_test(antlr4_tests_NOT_BUILT antlr4_tests_NOT_BUILT)
-endif()

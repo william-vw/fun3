@@ -1,0 +1,32 @@
+- WIHOUT CREATOR
+gen5000_pt2
+python: 7.9s
+c++: 0.33s
+c++ (pass strings): 0.81s
+
+gen7000_pt2
+python: 11.6s
+c++: 0.43s
+c++ (pass strings): 1.13s
+
+gen10000_pt2:
+python: 16s
+c++: 0.63s
+c++ (pass strings): 1.66s
+
+gen20000_pt2:
+python: 32s
+c++: 1.23
+c++ (pass strings): 3.22s
+
+
+- WITH CREATOR
+gen5000_pt2
+python: 13s
+c++: 1.6s
+
+gen20000_pt2
+python: 52s
+    # triples: 335738
+c++: 6.6s
+    # triples: 335738

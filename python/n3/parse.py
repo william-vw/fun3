@@ -629,48 +629,52 @@ class n3ParseResult:
         self.rules = state.rules
 
 import time
-def parse_n3_file(path, has_vars=False):
-    # start = time.time()
+def parse_n3_file(path, has_vars=False, measure_time=False):
+    start = time.time()
     string = open(path, 'r').read()
-    # end = time.time()
-    # print("read time:", (end-start))
+    ret = parse_n3_stream(InputStream(string), has_vars)
+    # ret = parse_n3_stream(FileStream(path), has_vars)
+    end = time.time()
+    if measure_time:
+        print("time:", (end - start))
     
-    return parse_n3(string, has_vars)
+    return ret;
 
-def parse_n3(string, has_vars=False):
-    # start = time.time()
+def parse_n3(string, has_vars=False, measure_time=False):
+    start = time.time()
+    ret = parse_n3_stream(InputStream(string), has_vars)
+    end = time.time()
+    if measure_time:
+        print("time:", (end - start))
+    
+    return ret
+
+def parse_n3_stream(stream, has_vars=False):
     creator = n3Creator(has_vars=has_vars)
     
-    lexer = n3Lexer(InputStream(string))
+    lexer = n3Lexer(stream)
     stream = CommonTokenStream(lexer)
     parser = n3Parser(stream)
     parser.addParseListener(creator)
     parser.addErrorListener(creator)
 
     _ = parser.n3Doc()
-    # print(tree.toStringTree(recog=parser))
     
-    # end = time.time()
-    # print("parse time:", (end-start))
-    
-    # start = time.time()
-    ret =  n3ParseResult(creator.state)
+    ret = n3ParseResult(creator.state)
     ret.data.done()
-    # end = time.time()
-    # print("load time:", (end-start))
     
     return ret
 
-def test_parser(path):
-    start = time.time()
+# def time_parser(path):
+#     start = time.time()
     
-    string = open(path, 'r').read()
+#     string = open(path, 'r').read()
     
-    lexer = n3Lexer(InputStream(string))
-    stream = CommonTokenStream(lexer)
-    parser = n3Parser(stream)
+#     lexer = n3Lexer(InputStream(string))
+#     stream = CommonTokenStream(lexer)
+#     parser = n3Parser(stream)
 
-    _ = parser.n3Doc()
+#     _ = parser.n3Doc()
     
-    end = time.time()
-    print("time:", (end-start))
+#     end = time.time()
+#     print("time:", (end-start))

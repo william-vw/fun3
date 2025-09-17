@@ -1,2 +1,0 @@
-g++ -O3 -std=c++17 -undefined dynamic_lookup $(python3 -m pybind11 --includes) -shared parse_n3.cpp -o libparsen3.so -I/Users/wvw/git/lib/boost_1_89_0 -Iantlr4-runtime/ -Iparser/ -Lantlr4-cpp-runtime-4.13.2-source/runtime -lantlr4-runtime -L. -ln3Parser
-g++ -O3 -Wall -shared -std=c++17 -undefined dynamic_lookup $(python3 -m pybind11 --includes) parse_n3_bind.cpp -L. -lparsen3 -o n3Parser$(python3-config --extension-suffix)
