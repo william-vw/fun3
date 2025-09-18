@@ -1,0 +1,12 @@
+parse.cpp
+parse_bind.cpp
+pyproject.toml
+setup.py
+/Users/wvw/git/n3/fun3/cpp/n3/grammar/parser/n3BaseListener.cpp
+/Users/wvw/git/n3/fun3/cpp/n3/grammar/parser/n3Lexer.cpp
+/Users/wvw/git/n3/fun3/cpp/n3/grammar/parser/n3Listener.cpp
+/Users/wvw/git/n3/fun3/cpp/n3/grammar/parser/n3Parser.cpp
+cppN3Parser.egg-info/PKG-INFO
+cppN3Parser.egg-info/SOURCES.txt
+cppN3Parser.egg-info/dependency_links.txt
+cppN3Parser.egg-info/top_level.txt

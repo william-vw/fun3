@@ -8,6 +8,10 @@ from n3.model import MultiDictModel, ListModel
 from n3.objects import Terms, Iri, Collection, Var, BlankNode, Literal, GraphTerm, Triple
 from n3.ns import rdfNs, owlNs, logNs, xsdNs
 
+import sys
+sys.path.insert(0, "/Users/wvw/git/n3/fun3/cpp/n3/grammar")
+from parse import parse_n3_file as cpp_parse_n3_file
+
 class state:
     
     # parent
@@ -629,16 +633,18 @@ class n3ParseResult:
         self.rules = state.rules
 
 import time
-def parse_n3_file(path, has_vars=False, measure_time=False):
-    start = time.time()
-    string = open(path, 'r').read()
-    ret = parse_n3_stream(InputStream(string), has_vars)
-    # ret = parse_n3_stream(FileStream(path), has_vars)
-    end = time.time()
-    if measure_time:
-        print("time:", (end - start))
-    
-    return ret;
+def parse_n3_file(path, has_vars=False, measure_time=False, use_cpp=True):
+    if use_cpp:
+        return cpp_parse_n3_file(path, has_vars, measure_time)
+    else:
+        start = time.time()
+        # string = open(path, 'r').read()
+        # ret = parse_n3_stream(InputStream(string), has_vars)
+        ret = parse_n3_stream(FileStream(path), has_vars)
+        end = time.time()
+        if measure_time:
+            print("time:", (end - start))        
+        return ret;
 
 def parse_n3(string, has_vars=False, measure_time=False):
     start = time.time()

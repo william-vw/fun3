@@ -6,9 +6,15 @@
 - generate lexer, parser
 % java -jar ../../grammar/antlr-4.13.2-complete.jar -Dlanguage=Cpp -o ./parser ../../grammar/n3.g4
 
+run 
+% pip install .
+
+(see setup.py)
+
+(
 - compile lexer, parser
 (only needed once)
-% g++ -O3 -std=c++17 -Iantlr4-runtime/ -Lantlr4-cpp-runtime-macos/lib -lantlr4-runtime -Wall -shared parser/*.cpp -o libn3Parser.so
+% g++ -O3 -std=c++17 -Iantlr4-runtime/ -Lantlr4-cpp-runtime-macos/lib -lantlr4-runtime -Wall -shared parser/*.cpp -o libN3Parser.so
 
 - run n3 parser solo
 % g++ -std=c++17 -o parsen3 parse_solo.cpp -Iparser/ -Iantlr4-runtime/ -Lantlr4-cpp-runtime-macos/lib -lantlr4-runtime -L. -ln3Parser
@@ -19,3 +25,4 @@
 
 - run in python
 % python test.py
+)

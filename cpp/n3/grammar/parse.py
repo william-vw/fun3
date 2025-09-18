@@ -12,6 +12,6 @@ def parse_n3_file(path, has_vars=False, measure_time=False):
     
     end = time.time()
     if measure_time:
-        print("time:", (end - start))
+        print("cpp time:", (end - start))
     
     return result
