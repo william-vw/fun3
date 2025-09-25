@@ -1,0 +1,26 @@
+import sys
+sys.path.insert(0, "../") # noqa
+import sys
+from n3.parse import parse_n3_file
+from n3.objects import ANY, Terms, Iri, Var, Literal, Collection, GraphTerm, Triple
+from n3.ns import NS
+from lib.emit import emit, emitted
+
+data = parse_n3_file('/Users/wvw/git/n3/fun3/python/tests-bench/zika/data/gen100_pt2.n3').data
+
+def query(x_0, final_ctu):
+    rule_0(x_0, lambda id_1_m: final_ctu(id_1_m))
+
+def rule_0(id_1, final_ctu):
+    rule_1(ANY, lambda p_3_m: rule_0_1(id_1, p_3_m, final_ctu))
+
+def rule_0_1(id_1, p_2, final_ctu):
+    data.find(p_2, Iri('http://hl7.org/fhir/id'), id_1, lambda s, p, o: final_ctu(o))
+
+def rule_1(p_3, final_ctu):
+    data.find(p_3, NS.rdf['type'], Iri('http://hl7.org/fhir/Patient'), lambda s, p, o: final_ctu(s))
+
+query(ANY, lambda x_0: emit(Triple(Var('x_0'), Iri('http://example.org/zika#testForZika'), Literal(True, NS.xsd['boolean'])), {'x_0': x_0}))
+
+for t in emitted:
+    print(t)

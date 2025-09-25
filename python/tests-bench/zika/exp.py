@@ -18,9 +18,10 @@ def __do_runNSave(cmd, out_path, ret_times, get_times_eye=True):
     out = out.rstrip()
     # print("out:", out)
     # print("error:", error)
-        
-    with open(out_path, 'w') as fh:
-        fh.write(out)
+    
+    if out_path is not None:
+        with open(out_path, 'w') as fh:
+            fh.write(out)
     
     if "** ERROR **" in error:
         print("ERROR:", error)
@@ -84,7 +85,7 @@ def __load_n3_time(path):
     return df_n3_filt
 
 
-def load_n3_times(path, pt=None, q=None):
+def load_n3_times(path, pt=None, q=None, data_limit=None):
     df_n3 = pd.read_csv(path)
     df_n3 = df_n3.dropna(how='all')
     
@@ -92,6 +93,11 @@ def load_n3_times(path, pt=None, q=None):
         df_n3 = df_n3[df_n3['data'].str.contains(pt)]
     if q is not None:
         df_n3 = df_n3[df_n3['query'].str.contains(q)]
+
+    df_n3['data_id'] = df_n3['data'].str.slice(
+            len("gen"), -len("_ptx")).astype(int)
+    if data_limit is not None:
+        df_n3 = df_n3[df_n3['data_id'] <= data_limit]
     
     df_n3['netw_time'] = df_n3['netw_time'].astype(float)
     df_n3['reas_time'] = df_n3['reas_time'].astype(float)
@@ -111,7 +117,7 @@ def load_n3_agg(path, pt=None, q=None, data_limit=None, grouper=['data']):
         df_n3_agg['query_id'] = df_n3_agg['query'].str.slice(len("rules_red"), -len(".n3")).astype(int)
     if 'data' in grouper:
         df_n3_agg['data_id'] = df_n3_agg['data'].str.slice(
-            len("gen"), -len("_ptx.n3")).astype(int)
+            len("gen"), -len("_ptx")).astype(int)
     
     if data_limit is not None:
         df_n3_agg = df_n3_agg[df_n3_agg['data_id'] <= data_limit]

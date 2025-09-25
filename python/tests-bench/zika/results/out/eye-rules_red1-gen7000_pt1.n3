@@ -1,0 +1,38 @@
+# Processed by EYE v11.20.11 (2025-09-09)
+# eye --quiet ./rules_red1.n3 ./data/gen7000_pt1.n3 --query ./query_eye.n3 --nope
+
+PREFIX zk: <http://example.org/zika#>
+
+"Patient/p40230" zk:testForZika true.
+"Patient/p40444" zk:testForZika true.
+"Patient/p40949" zk:testForZika true.
+"Patient/p41320" zk:testForZika true.
+"Patient/p41383" zk:testForZika true.
+"Patient/p41452" zk:testForZika true.
+"Patient/p41547" zk:testForZika true.
+"Patient/p42091" zk:testForZika true.
+"Patient/p42296" zk:testForZika true.
+"Patient/p42300" zk:testForZika true.
+"Patient/p42318" zk:testForZika true.
+"Patient/p42460" zk:testForZika true.
+"Patient/p42647" zk:testForZika true.
+"Patient/p42784" zk:testForZika true.
+"Patient/p43202" zk:testForZika true.
+"Patient/p43580" zk:testForZika true.
+"Patient/p44235" zk:testForZika true.
+"Patient/p44645" zk:testForZika true.
+"Patient/p45029" zk:testForZika true.
+"Patient/p45244" zk:testForZika true.
+"Patient/p45269" zk:testForZika true.
+"Patient/p45409" zk:testForZika true.
+"Patient/p45469" zk:testForZika true.
+"Patient/p45988" zk:testForZika true.
+"Patient/p46060" zk:testForZika true.
+"Patient/p46301" zk:testForZika true.
+"Patient/p46592" zk:testForZika true.
+"Patient/p46898" zk:testForZika true.
+"Patient/p47041" zk:testForZika true.
+"Patient/p47223" zk:testForZika true.
+"Patient/p47361" zk:testForZika true.
+# 2025-09-22T20:51:09.250Z in=64839 out=31 ent=31 step=33 brake=1 inf=81430342 sec=3.644 inf/sec=22346417
+# ENDS

@@ -1,0 +1,8 @@
+# Processed by EYE v11.20.11 (2025-09-09)
+# eye --quiet ./rules_red1.n3 ./data/gen200_pt1.n3 --query ./query_eye.n3 --nope
+
+PREFIX zk: <http://example.org/zika#>
+
+"Patient/p5149" zk:testForZika true.
+# 2025-09-22T20:50:43.974Z in=1899 out=1 ent=1 step=2 brake=1 inf=2424075 sec=0.160 inf/sec=15150469
+# ENDS

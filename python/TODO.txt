@@ -7,6 +7,20 @@ after rule function call ends; all results have been intercepted
 save results in memory
 for each result, call the original ctu function
 
+- try cython / pypy
+likely most useful with loops (see below), so don't get hopes up
+
+- iteration (loops) vs. ctu passing
+already tried for red0; very small performance difference
+gen20000_pt2:
+sans it: reason: 0.4608442089520395
+avec it: reason: 0.41969670820981264
+
+try for red1
+make simpler by avoiding redundant data calls; also avoid those for sans-it code
+check performance of pure python code
+then, try cython / pypy to see if loops can be vectorized
+
 - clause re-ordering
 simple re-ordering based on dependencies
 if output (b/o flow pattern) is ref'ed by other TPs, then put builtin clause directly above first TP

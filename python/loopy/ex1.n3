@@ -1,0 +1,19 @@
+@prefix list: <http://www.w3.org/2000/10/swap/list#> .
+
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX fh: <http://hl7.org/fhir/>
+PREFIX ut: <http://example.org/utils#>
+PREFIX zk: <http://example.org/zika#>
+
+{ ?id zk:testForZika true } <= {
+    ?p zk:isPregnant true .
+
+    ?p fh:id ?id .
+} .
+
+{ ?p zk:isPregnant true } <= {
+    ?p a fh:Patient .
+} .

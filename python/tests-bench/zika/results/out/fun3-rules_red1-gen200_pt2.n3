@@ -1,5 +1,5 @@
 "Patient/p1566" <http://example.org/zika#testForZika> true .
-"Patient/p1546" <http://example.org/zika#testForZika> true .
-"Patient/p1493" <http://example.org/zika#testForZika> true .
 "Patient/p1378" <http://example.org/zika#testForZika> true .
 "Patient/p1449" <http://example.org/zika#testForZika> true .
+"Patient/p1493" <http://example.org/zika#testForZika> true .
+"Patient/p1546" <http://example.org/zika#testForZika> true .
